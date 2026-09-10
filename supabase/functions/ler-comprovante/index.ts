@@ -5,7 +5,7 @@ import { zodOutputFormat } from 'npm:@anthropic-ai/sdk@0.70.0/helpers/zod'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { z } from 'npm:zod@3.25.76'
 
-const MODELO = Deno.env.get('ALICERCE_MODELO') ?? 'claude-opus-5'
+const MODELO = Deno.env.get('ALICERCE_MODELO') ?? 'claude-sonnet-5'
 
 const NotaLida = z.object({
   fornecedor: z.string().describe('Nome de quem emitiu a nota, como aparece no documento'),

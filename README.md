@@ -22,10 +22,21 @@ cp .env.example .env      # preencha com a URL e a anon key do projeto Supabase
 npm run dev
 ```
 
-## Banco
+## Ligando o backend (passo a passo)
 
-`supabase/migrations/0001_init.sql` cria tabelas, policies, triggers e o bucket `comprovantes`.
-Aplicar com a CLI do Supabase (`supabase db push`) ou colando no SQL Editor do projeto.
+O projeto Supabase ainda não existe — quando a conta estiver definida:
+
+1. Criar o projeto (região `sa-east-1` para latência no Brasil).
+2. Aplicar `supabase/migrations/0001_init.sql` no SQL Editor, ou `supabase db push` com a CLI.
+   Cria tabelas, policies, triggers e o bucket privado `comprovantes`.
+3. Em Authentication → Providers, manter e-mail/senha ligado. Para testar rápido, desligar
+   "Confirm email"; para produção, deixar ligado.
+4. `supabase functions deploy ler-comprovante` e `supabase secrets set ANTHROPIC_API_KEY=sk-ant-...`.
+5. Copiar Project URL e anon key para o `.env` do app (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
+6. `npm run dev`, criar as duas contas e usar o botão "+ convidar alguém" na tela Equipe para
+   ligar o segundo usuário à obra.
+
+## Banco
 
 Tabelas: `profiles`, `obras`, `obra_membros`, `categorias`, `aditivos`, `comprovantes`
 (fila do agente), `lancamentos`, `convites`.
@@ -42,8 +53,11 @@ Regras que a RLS garante:
 ```bash
 supabase functions deploy ler-comprovante
 supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-# opcional: ALICERCE_MODELO=claude-opus-5 (padrão) — sonnet ou haiku saem mais barato por nota
+# opcional: ALICERCE_MODELO — padrão claude-sonnet-5
 ```
+
+Modelo padrão: `claude-sonnet-5`. Trocar por `claude-opus-5` se aparecerem notas difíceis
+(amassadas, manuscritas, foto ruim) ou `claude-haiku-4-5` para baratear volume alto.
 
 Fluxo: o app sobe o arquivo para o Storage, cria a linha em `comprovantes` com status `lendo`,
 chama a função e mostra "lendo a nota…" na fila. A função baixa o arquivo, chama a Claude com
