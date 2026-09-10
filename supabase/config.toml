@@ -1,0 +1,4 @@
+project_id = "alicerce"
+
+[functions.ler-comprovante]
+verify_jwt = true
