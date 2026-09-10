@@ -238,7 +238,7 @@ declare
 begin
   select * into v_convite from public.convites where codigo = upper(trim(p_codigo));
 
-  if v_convite is null then
+  if not found then
     raise exception 'convite não encontrado';
   end if;
   if v_convite.expira_em < now() then
@@ -283,7 +283,7 @@ create policy "edita o próprio perfil"
 -- obras
 create policy "membro vê a obra"
   on public.obras for select to authenticated
-  using (public.e_membro(id));
+  using (dono_id = auth.uid() or public.e_membro(id));
 
 create policy "cria obra própria"
   on public.obras for insert to authenticated

@@ -22,9 +22,9 @@ cp .env.example .env      # preencha com a URL e a anon key do projeto Supabase
 npm run dev
 ```
 
-## Ligando o backend (passo a passo)
+## Ligando o backend
 
-O projeto Supabase ainda não existe — quando a conta estiver definida:
+Roteiro completo em [`SETUP.md`](./SETUP.md). Em resumo:
 
 1. Criar o projeto (região `sa-east-1` para latência no Brasil).
 2. Aplicar `supabase/migrations/0001_init.sql` no SQL Editor, ou `supabase db push` com a CLI.
