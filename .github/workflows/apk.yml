@@ -1,7 +1,10 @@
 name: APK do Android
 
 # Todo commit na main vira um APK instalável, baixável na aba Actions.
-# A máquina daqui não tem JDK nem Android SDK; o runner do GitHub tem os dois.
+# A máquina de desenvolvimento também compila local (npm run android:apk), mas isso
+# depende de quem está na frente dela e do SDK que ela tem instalado. Aqui o APK sai
+# de um ambiente limpo e fica guardado no commit, para qualquer um baixar sem instalar
+# nada — inclusive quem for testar o app sem mexer no código.
 on:
   push:
     branches: [main]
