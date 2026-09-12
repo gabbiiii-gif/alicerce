@@ -1,7 +1,6 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import { lerDestino, limparDestino } from '../lib/destino'
 import { useAviso } from '../components/Toast'
 import { Marca } from '../components/Marca'
 import { Carregando } from '../components/Tela'
@@ -26,17 +25,10 @@ export function Login() {
   // Quem entra por e-mail é minoria: o formulário fica guardado atrás de um toque.
   const [comEmail, setComEmail] = useState(false)
 
-  // O state do router e a via rapida; o destino guardado e o que sobrevive ao redirect de
-  // pagina inteira do Google, que e como chega quem abre um convite sem ter conta.
-  const destino = (location.state as { de?: string })?.de || lerDestino() || '/'
-
-  // So depois de entrar: apagar antes faria um login interrompido perder o convite.
-  useEffect(() => {
-    if (session) limparDestino()
-  }, [session])
-
+  // Via rápida para quem chegou aqui pelo próprio app. Quem volta de um redirect de página
+  // inteira perde este state — e aí quem cuida é o RetomaDestino, no App.
   if (carregando) return <Carregando />
-  if (session) return <Navigate to={destino} replace />
+  if (session) return <Navigate to={(location.state as { de?: string })?.de || '/'} replace />
 
   async function enviar() {
     if (!email.trim() || !senha) return avisar('Preencha e-mail e senha')

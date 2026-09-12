@@ -1,8 +1,8 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, type ReactNode } from 'react'
 import { AnimatePresence } from 'motion/react'
 import { useAuth } from './lib/auth'
-import { guardarDestino } from './lib/destino'
+import { guardarDestino, lerDestino, limparDestino } from './lib/destino'
 import { Carregando } from './components/Tela'
 import { Login } from './screens/Login'
 import { Obras } from './screens/Obras'
@@ -16,6 +16,29 @@ import { Categorias } from './screens/Categorias'
 import { Equipe } from './screens/Equipe'
 import { Encerrar } from './screens/Encerrar'
 import { AceitarConvite } from './screens/AceitarConvite'
+
+// Retoma o destino guardado assim que existe sessão, esteja a pessoa em que rota estiver.
+//
+// Não basta fazer isso na tela de Login: o `redirectTo` pede /login, mas quando essa URL
+// não está na lista de Redirect URLs do Supabase ele devolve a pessoa no Site URL — ou
+// seja, em "/". A tela de Login nunca monta, e um convite aberto por quem ainda não tinha
+// conta terminava na lista de obras, com o código intacto no armazenamento e ninguém para
+// lê-lo. Aqui vale para qualquer rota de volta.
+function RetomaDestino() {
+  const { session, carregando } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    if (carregando || !session) return
+    const destino = lerDestino()
+    if (!destino || destino === location.pathname) return
+    limparDestino()
+    navigate(destino, { replace: true })
+  }, [session, carregando, location.pathname, navigate])
+
+  return null
+}
 
 function Protegida({ children }: { children: ReactNode }) {
   const { session, carregando } = useAuth()
@@ -35,6 +58,7 @@ export function App() {
 
   return (
     <div className="app">
+      <RetomaDestino />
       {/* Sem `mode`: as duas telas convivem por um instante. Como toda tela é
           `position: absolute`, a que entra desliza por cima da que sai, em vez de
           esperar a primeira terminar — que é o que deixaria a navegação arrastada. */}
