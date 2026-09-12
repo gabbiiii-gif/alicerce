@@ -12,6 +12,13 @@ const MODELO = Deno.env.get('ALICERCE_MODELO') ?? 'claude-sonnet-5'
 
 const NotaLida = z.object({
   fornecedor: z.string().describe('Nome de quem emitiu a nota, como aparece no documento'),
+  descricao: z
+    .string()
+    .describe(
+      'O que foi comprado, em poucas palavras e em minúsculas: os itens principais da nota, ' +
+        'separados por vírgula (ex: "cimento, areia, brita"). No máximo uns 60 caracteres. ' +
+        'String vazia se o documento não disser o que foi comprado.',
+    ),
   valor: z.number().describe('Valor total pago, em reais, com centavos'),
   data: z.string().describe('Data do documento no formato AAAA-MM-DD'),
   categoria_sugerida: z.string().describe('Uma das categorias oferecidas, ou string vazia se nenhuma servir'),
@@ -97,6 +104,8 @@ Deno.serve(async req => {
       system:
         'Você lê comprovantes de gasto de obra no Brasil: notas fiscais, cupons, boletos e recibos. ' +
         'Extraia apenas o que está no documento. Valor é o total pago, em reais. ' +
+        'A descrição resume o que foi comprado para quem for bater o olho no histórico da obra ' +
+        'meses depois: os itens que importam, não a lista inteira nem códigos de produto. ' +
         'Se a data estiver incompleta ou ilegível, use a data de hoje e marque a confiança como baixa.',
       messages: [
         {
@@ -106,7 +115,7 @@ Deno.serve(async req => {
             {
               type: 'text',
               text:
-                `Hoje é ${hoje}. Leia este comprovante e devolva fornecedor, valor total, data e a categoria mais provável.\n` +
+                `Hoje é ${hoje}. Leia este comprovante e devolva fornecedor, o que foi comprado, valor total, data e a categoria mais provável.\n` +
                 (nomes.length
                   ? `Categorias disponíveis (escolha exatamente uma, ou deixe vazio se nenhuma servir): ${nomes.join(', ')}.`
                   : 'Não há lista de categorias: devolva categoria_sugerida vazia.'),
@@ -122,6 +131,7 @@ Deno.serve(async req => {
 
     const extraido = {
       fornecedor: lido.fornecedor || null,
+      descricao: lido.descricao?.trim() || null,
       valor: Number.isFinite(lido.valor) ? lido.valor : null,
       data: /^\d{4}-\d{2}-\d{2}$/.test(lido.data) ? lido.data : hoje,
       categoria_sugerida: nomes.includes(lido.categoria_sugerida) ? lido.categoria_sugerida : null,

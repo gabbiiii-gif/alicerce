@@ -48,6 +48,7 @@ export type Aditivo = {
 
 export type DadosExtraidos = {
   fornecedor: string | null
+  descricao: string | null
   valor: number | null
   data: string | null
   categoria_sugerida: string | null

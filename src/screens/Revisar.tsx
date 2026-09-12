@@ -36,7 +36,7 @@ export function Revisar() {
     if (!dados) return
     const lido = dados.comprovante.extraido
     setFornecedor(lido?.fornecedor ?? '')
-    setDescricao('')
+    setDescricao(lido?.descricao ?? '')
     setValor(lido?.valor ?? 0)
     setData(isoParaBR(lido?.data ?? hojeISO()))
     const sugerida = dados.categorias.find(c => c.nome.toLowerCase() === (lido?.categoria_sugerida ?? '').toLowerCase())
