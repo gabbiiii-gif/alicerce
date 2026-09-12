@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type {
-  Aditivo, Categoria, Comprovante, ContasObra, Convite, Lancamento, Membro, Obra,
+  Aditivo, Categoria, Comprovante, ContasObra, Convite, Lancamento, Membro, Obra, Profile,
 } from '../lib/types'
 import { hojeISO } from '../lib/format'
 
@@ -113,6 +113,17 @@ export async function carregarRelatorioGeral(): Promise<RelatorioGeral> {
     lancamentos: (lancRes.data ?? []) as unknown as Lancamento[],
     membros: [...porPessoa.values()],
   }
+}
+
+// Sócios e parceiros de obra. A RLS de profiles já limita a resposta a quem divide grupo
+// ou obra comigo, então não há filtro a fazer aqui — pedir a tabela é pedir a minha gente.
+export async function listarSocios(): Promise<Profile[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, nome, iniciais, avatar_url')
+    .order('nome')
+  if (error) throw error
+  return (data ?? []) as Profile[]
 }
 
 export async function criarObra(dados: {

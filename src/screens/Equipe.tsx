@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { carregarObra, criarConvite } from '../data/api'
+import { carregarObra, criarConvite, listarSocios } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
 import { useAviso } from '../components/Toast'
@@ -12,7 +12,10 @@ export function Equipe() {
   const { obraId = '' } = useParams()
   const { userId } = useUsuario()
   const avisar = useAviso()
-  const { dados, carregando, erro, recarregar } = useAsync(() => carregarObra(obraId), [obraId])
+  const { dados, carregando, erro, recarregar } = useAsync(async () => {
+    const [obraCompleta, socios] = await Promise.all([carregarObra(obraId), listarSocios()])
+    return { ...obraCompleta, socios }
+  }, [obraId])
   const [link, setLink] = useState<string | null>(null)
   const [gerando, setGerando] = useState(false)
 
@@ -32,7 +35,32 @@ export function Equipe() {
     )
   }
 
-  const { obra, membros } = dados
+  const { obra, membros, socios } = dados
+
+  // Quem aparece: os membros formais da obra MAIS os sócios do grupo.
+  //
+  // Desde que a sociedade passou a dar acesso pelo grupo, um sócio vê e lança nesta obra
+  // sem estar em obra_membros — e sumia desta tela, que lista só a tabela de membros. Ver
+  // "quem está na obra" sem a pessoa que acabou de lançar nela não faz sentido.
+  const naObra = new Map<string, { id: string; nome: string; iniciais: string; papel: string }>()
+  membros.forEach(m =>
+    naObra.set(m.user_id, {
+      id: m.user_id,
+      nome: m.profile.nome,
+      iniciais: m.profile.iniciais,
+      papel: m.papel === 'dono' ? 'dono da obra' : 'lança os próprios gastos',
+    }),
+  )
+  socios.forEach(s => {
+    if (naObra.has(s.id)) return
+    naObra.set(s.id, {
+      id: s.id,
+      nome: s.nome,
+      iniciais: s.iniciais,
+      papel: s.id === obra.dono_id ? 'dono da obra' : 'sócio — vê todas as obras',
+    })
+  })
+  const gente = [...naObra.values()]
   const souDono = obra.dono_id === userId
 
   async function convidar() {
@@ -63,12 +91,12 @@ export function Equipe() {
       <Tela titulo="Quem está na obra" voltar={`/obra/${obraId}`}>
         <div className="note">{obra.nome}</div>
 
-        {membros.map(m => (
-          <div className="cd" key={m.user_id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <div className="av">{m.profile.iniciais}</div>
+        {gente.map(p => (
+          <div className="cd" key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <div className="av">{p.iniciais}</div>
             <div style={{ flex: 1 }}>
-              <b style={{ fontSize: 14 }}>{m.profile.nome}</b>
-              <div className="note">{m.papel === 'dono' ? 'dono da obra' : 'lança os próprios gastos'}</div>
+              <b style={{ fontSize: 14 }}>{p.nome}</b>
+              <div className="note">{p.papel}</div>
             </div>
           </div>
         ))}
