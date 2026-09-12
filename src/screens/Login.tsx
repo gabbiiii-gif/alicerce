@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth'
 import { useAviso } from '../components/Toast'
 import { Marca } from '../components/Marca'
 import { Carregando } from '../components/Tela'
+import { NomeAnimado } from '../components/NomeAnimado'
 
 export function Login() {
   const { session, carregando, entrar, cadastrar, entrarComGoogle } = useAuth()
@@ -56,8 +57,8 @@ export function Login() {
         <div style={{ alignSelf: 'center', padding: '8px 0 4px' }}>
           <Marca />
         </div>
-        <div style={{ textAlign: 'center', fontSize: 22, fontWeight: 500, fontFamily: "'Instrument Sans', sans-serif", lineHeight: 1 }}>
-          Alicerce
+        <div style={{ textAlign: 'center' }}>
+          <NomeAnimado texto="Alicerce" className="nome-marca" />
         </div>
         <div className="note" style={{ textAlign: 'center', marginBottom: 6 }}>obras e gastos no lugar certo</div>
 

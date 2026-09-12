@@ -385,3 +385,13 @@ a { color: var(--azul-700); }
 
 /* A foto do Google entra no mesmo círculo das iniciais. */
 img.av { object-fit: cover; padding: 0; }
+
+/* Assinatura da entrada: o nome da marca animado letra a letra. */
+.nome-marca {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  font-family: 'Instrument Sans', sans-serif;
+  line-height: 1;
+  letter-spacing: -.015em;
+}
