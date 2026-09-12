@@ -17,6 +17,28 @@ function responde(corpo: unknown, status = 200) {
   })
 }
 
+// As recusas do Resend chegam em inglês e falando de conceitos dele (domínio
+// verificado, remetente). Quem está na obra não tem contexto para isso — o que a pessoa
+// precisa saber é o que fazer, na língua dela.
+function traduzir(mensagem: string): string {
+  const m = mensagem.toLowerCase()
+  if (m.includes('only send testing emails') || m.includes('verify a domain')) {
+    return (
+      'Enquanto não houver um domínio próprio verificado, o serviço de e-mail só entrega ' +
+      'na caixa de quem é dono da conta dele. Para mandar para outras pessoas, verifique ' +
+      'um domínio em resend.com/domains e defina o remetente no secret RESEND_FROM.'
+    )
+  }
+  if (m.includes('api key is invalid') || m.includes('unauthorized')) {
+    return 'A chave do serviço de e-mail não foi aceita. Confira o secret RESEND_API_KEY.'
+  }
+  if (m.includes('from') && m.includes('domain')) {
+    return 'O remetente em RESEND_FROM não usa um domínio verificado no serviço de e-mail.'
+  }
+  if (m.includes('rate')) return 'O serviço de e-mail pediu para esperar um pouco antes do próximo envio.'
+  return mensagem
+}
+
 const NAVY = '#0A2A6E'
 const CINZA = '#5B7392'
 const LINHA = '#E1EAF6'
@@ -185,7 +207,8 @@ Deno.serve(async req => {
       // A mensagem do Resend é específica (domínio não verificado, destinatário não
       // permitido, chave inválida) e é ela que diz o que consertar — repassar ajuda mais
       // do que um "falhou" genérico.
-      return responde({ erro: corpo?.message ?? `o serviço de e-mail respondeu ${resposta.status}` }, 200)
+      const bruta = corpo?.message ?? `o serviço de e-mail respondeu ${resposta.status}`
+      return responde({ erro: traduzir(String(bruta)), detalhe: bruta }, 200)
     }
 
     return responde({ status: 'enviado', para: destino, id: corpo?.id ?? null })
