@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { MotionConfig } from 'motion/react'
 import { AuthProvider } from './lib/auth'
 import { ToastProvider } from './components/Toast'
 import { configurado } from './lib/supabase'
@@ -42,13 +43,16 @@ function FaltaConfigurar() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {configurado ? (
-      <BrowserRouter>
-        <AuthProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      // Uma linha e todo o Motion do app passa a obedecer "reduzir movimento" do sistema.
+      <MotionConfig reducedMotion="user">
+        <BrowserRouter>
+          <AuthProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </MotionConfig>
     ) : (
       <FaltaConfigurar />
     )}

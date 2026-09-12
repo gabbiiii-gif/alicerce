@@ -7,6 +7,8 @@ import { useAviso } from '../components/Toast'
 import { fmt, isoParaBR } from '../lib/format'
 import { Carregando, Tela } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
+import { AnimatePresence, motion } from 'motion/react'
+import { CURVA } from '../lib/animacao'
 import type { Comprovante } from '../lib/types'
 
 export function Enviar() {
@@ -119,15 +121,23 @@ export function Enviar() {
 
         {carregando && <Carregando />}
 
-        {daObra.map(c => {
+        {/* AnimatePresence não desenha nada no DOM: só segura o item na tela o tempo
+            da saída. É o que faz a nota confirmada sumir em vez de piscar para fora. */}
+        <AnimatePresence initial={false}>
+        {daObra.map((c, i) => {
           const pronto = c.status === 'pronto'
           const falhou = c.status === 'erro'
           const parado = parou(c)
           const daParaAbrir = pronto || falhou || parado
           return (
-            <button
+            <motion.button
               key={c.id}
               className="li"
+              layout
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, height: 0, marginBottom: -9 }}
+              transition={{ ...CURVA, delay: Math.min(i, 8) * 0.035 }}
               onClick={() =>
                 daParaAbrir ? navigate(`/obra/${obraId}/revisar/${c.id}`) : avisar('O agente ainda está lendo')
               }
@@ -157,9 +167,10 @@ export function Enviar() {
               >
                 {pronto ? 'revisar' : falhou || parado ? 'conferir' : 'aguarde'}
               </span>
-            </button>
+            </motion.button>
           )
         })}
+        </AnimatePresence>
 
         {!carregando && daObra.length === 0 && <div className="dsh" style={{ padding: 18 }}>fila vazia — mande uma nota</div>}
 

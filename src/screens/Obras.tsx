@@ -7,6 +7,8 @@ import { fmt } from '../lib/format'
 import { Carregando, Tela, Vazio } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
 import { Barra } from '../components/Barra'
+import { motion } from 'motion/react'
+import { CURVA } from '../lib/animacao'
 
 export function Obras() {
   const navigate = useNavigate()
@@ -25,8 +27,19 @@ export function Obras() {
         {carregando && <Carregando />}
         {erro && <div className="ann">Não deu para carregar as obras: {erro}</div>}
 
-        {obras?.map(obra => (
-          <button key={obra.id} className="cd" style={{ cursor: 'pointer', textAlign: 'left' }} onClick={() => abrir(obra.id)}>
+        {obras?.map((obra, i) => (
+          // Os cartões entram em cascata, e o toque afunda um pouco — retorno tátil
+          // que o CSS :active dava só no desktop, com mouse.
+          <motion.button
+            key={obra.id}
+            className="cd"
+            style={{ cursor: 'pointer', textAlign: 'left' }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...CURVA, delay: Math.min(i, 8) * 0.045 }}
+            whileTap={{ scale: 0.985 }}
+            onClick={() => abrir(obra.id)}
+          >
             <div className="row">
               <b style={{ fontSize: 15 }}>{obra.nome}</b>
               <span className="chip">{obra.status === 'encerrada' ? 'encerrada' : `${obra.contas.pct}%`}</span>
@@ -37,7 +50,7 @@ export function Obras() {
               <span className="note">recebido {fmt(obra.contas.recebido)}</span>
               <span className="note">em aberto {fmt(obra.contas.aberto)}</span>
             </div>
-          </button>
+          </motion.button>
         ))}
 
         {obras?.length === 0 && (

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'motion/react'
+import { CURVA, TELA } from '../lib/animacao'
 
 type Props = {
   titulo: ReactNode
@@ -14,7 +16,16 @@ export function Tela({ titulo, voltar, acao, comAbas, children }: Props) {
   const aoVoltar = typeof voltar === 'function' ? voltar : voltar ? () => navigate(voltar) : undefined
 
   return (
-    <div className="scr">
+    // A saída é o ganho aqui: o CSS animava só a entrada, porque na hora de desmontar
+    // o elemento já não está no DOM para nenhum @keyframes rodar.
+    <motion.div
+      className="scr"
+      variants={TELA}
+      initial="entra"
+      animate="parada"
+      exit="sai"
+      transition={CURVA}
+    >
       <div className="nav">
         {aoVoltar && (
           <button className="voltar" onClick={aoVoltar} aria-label="Voltar">
@@ -25,7 +36,7 @@ export function Tela({ titulo, voltar, acao, comAbas, children }: Props) {
         {acao && <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>{acao}</div>}
       </div>
       <div className={comAbas ? 'bd com-abas' : 'bd'}>{children}</div>
-    </div>
+    </motion.div>
   )
 }
 

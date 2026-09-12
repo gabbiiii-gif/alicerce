@@ -8,9 +8,12 @@ import { useAviso } from '../components/Toast'
 import { curto, dataCurta, fmt, semSimbolo } from '../lib/format'
 import { Carregando, Tela } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
+import { ValorAnimado } from '../components/ValorAnimado'
 import { Barra } from '../components/Barra'
 import { Sheet } from '../components/Sheet'
 import { MoedaInput } from '../components/MoedaInput'
+import { AnimatePresence, motion } from 'motion/react'
+import { CURVA } from '../lib/animacao'
 import type { Lancamento } from '../lib/types'
 
 type SheetAberto = 'entrada' | 'aditivo' | null
@@ -95,7 +98,8 @@ export function Painel() {
           </div>
           <div className="row" style={{ borderTop: '1px solid #E1EAF6', paddingTop: 6 }}>
             <span style={{ fontSize: 14 }}>total</span>
-            <span className="big">{fmt(contas.total)}</span>
+            {/* Conta até o valor: é o número principal da tela, e a contagem faz o olho pousar nele. */}
+            <ValorAnimado className="big" valor={contas.total} formatar={fmt} />
           </div>
           <Barra pct={contas.pct} cor="#0A2A6E" />
           <div className="row">
@@ -119,8 +123,17 @@ export function Painel() {
           <span className="note">saídas {fmt(contas.saidas)}</span>
         </div>
 
-        {lancamentos.map(l => (
-          <button key={l.id} className="li" onClick={() => setSelecionado(l)}>
+        {lancamentos.map((l, i) => (
+          // Em cascata, não todos de uma vez. O atraso para no oitavo item: numa obra
+          // com cem lançamentos, esperar a cascata inteira seria pior que não ter.
+          <motion.button
+            key={l.id}
+            className="li"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...CURVA, delay: Math.min(i, 8) * 0.035 }}
+            onClick={() => setSelecionado(l)}
+          >
             <div>
               <b style={{ fontSize: 13.5 }}>{l.descricao}</b>
               <div className="note">
@@ -129,7 +142,7 @@ export function Painel() {
               </div>
             </div>
             <b style={{ fontSize: 13.5 }}>{(l.tipo === 'saida' ? '−' : '+') + semSimbolo(l.valor)}</b>
-          </button>
+          </motion.button>
         ))}
 
         {lancamentos.length === 0 && <div className="dsh" style={{ padding: 18 }}>nenhum lançamento nesta obra ainda</div>}
@@ -141,6 +154,7 @@ export function Painel() {
         </div>
       </Tela>
 
+      <AnimatePresence>
       {sheet && (
         <Sheet aoFechar={() => setSheet(null)}>
           <div className="row">
@@ -165,7 +179,9 @@ export function Painel() {
           </button>
         </Sheet>
       )}
+      </AnimatePresence>
 
+      <AnimatePresence>
       {selecionado && (
         <Sheet aoFechar={() => setSelecionado(null)}>
           <div className="row">
@@ -186,6 +202,7 @@ export function Painel() {
           </div>
         </Sheet>
       )}
+      </AnimatePresence>
 
       <TabBar ativa="obras" />
     </>
