@@ -202,8 +202,12 @@ export function montarVisao(
     previstoMes,
     ritmoMensal,
     // Sem gasto nenhum não há ritmo, e dividir por zero daria "infinitos meses de
-    // fôlego", que é uma resposta pior do que não responder.
-    mesesDeFolego: ritmoMensal > 0 && margem > 0 ? margem / ritmoMensal : null,
+    // fôlego", que é uma resposta pior do que não responder. Acima de 18 meses também
+    // não se responde: o número vira "143,7 meses", que é verdade e não serve para nada
+    // — ninguém planeja obra com doze anos de folga, e a precisão dá ares de previsão
+    // que meia dúzia de lançamentos não sustenta.
+    mesesDeFolego:
+      ritmoMensal > 0 && margem > 0 && margem / ritmoMensal <= 18 ? margem / ritmoMensal : null,
     meses,
     categorias,
     emRisco,
