@@ -126,6 +126,13 @@ export async function listarSocios(): Promise<Profile[]> {
   return (data ?? []) as Profile[]
 }
 
+// Desfaz a sociedade para quem chama: volta a ver só as próprias obras, e os sócios
+// deixam de ver as dela. Quem fica continua junto — sair é sobre si mesmo.
+export async function sairDaSociedade() {
+  const { error } = await supabase.rpc('sair_da_sociedade')
+  if (error) throw error
+}
+
 export async function criarObra(dados: {
   nome: string
   endereco: string

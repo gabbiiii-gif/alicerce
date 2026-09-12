@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { enviarRelatorioPorEmail, listarObras } from '../data/api'
+import { enviarRelatorioPorEmail, listarObras, listarSocios, sairDaSociedade } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useAuth, useUsuario } from '../lib/auth'
 import { useObraAtual } from '../lib/obraAtual'
@@ -15,7 +15,30 @@ export function Perfil() {
   const { userId, perfil } = useUsuario()
   const { obraId } = useObraAtual()
   const avisar = useAviso()
-  const { dados: obras } = useAsync(listarObras, [])
+  const { dados, recarregar } = useAsync(async () => {
+    const [obras, socios] = await Promise.all([listarObras(), listarSocios()])
+    return { obras, socios }
+  }, [])
+  const obras = dados?.obras
+  // Mais de um perfil visível significa que há alguém dividindo as obras comigo: a RLS
+  // de profiles só devolve quem divide grupo ou obra.
+  const socios = (dados?.socios ?? []).filter(s => s.id !== userId)
+  const [saindo, setSaindo] = useState(false)
+  const [confirmando, setConfirmando] = useState(false)
+
+  async function desfazer() {
+    setSaindo(true)
+    try {
+      await sairDaSociedade()
+      setConfirmando(false)
+      avisar('Sociedade desfeita')
+      await recarregar()
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : 'não deu para desfazer')
+    } finally {
+      setSaindo(false)
+    }
+  }
   const [enviando, setEnviando] = useState(false)
   const [destino, setDestino] = useState<string | null>(null)
 
@@ -79,6 +102,24 @@ export function Perfil() {
           <span className="note">em breve</span>
         </div>
 
+        {socios.length > 0 && (
+          <button
+            className="li"
+            onClick={() => setConfirmando(true)}
+            style={{ borderColor: '#FBD5B5' }}
+          >
+            <div style={{ flex: 1, textAlign: 'left' }}>
+              <b style={{ fontSize: 14, color: '#9A3412' }}>Desfazer sociedade</b>
+              <div className="note">
+                {socios.length === 1
+                  ? `você e ${socios[0].nome.split(' ')[0]} veem as obras um do outro`
+                  : `você e mais ${socios.length} pessoas veem as mesmas obras`}
+              </div>
+            </div>
+            <span className="note">›</span>
+          </button>
+        )}
+
         <div className="ann">
           O histórico de cada obra é compartilhado com quem está nela: todo lançamento mostra quem enviou, e só quem lançou pode
           apagar.
@@ -89,6 +130,29 @@ export function Perfil() {
         </div>
       </Tela>
       <TabBar ativa="perfil" />
+
+      {confirmando && (
+        <Sheet aoFechar={() => setConfirmando(false)}>
+          <b style={{ fontSize: 17 }}>Desfazer a sociedade?</b>
+          <span className="note">
+            Você volta a ver só as obras que são suas
+            {socios.length === 1 ? `, e ${socios[0].nome.split(' ')[0]} deixa de vê-las` : ', e os sócios deixam de vê-las'}.
+            O caminho de volta é um convite novo.
+          </span>
+          {/* O que NÃO se perde importa tanto quanto o que se perde: sem isto a pessoa
+              hesita achando que vai apagar o histórico da obra. */}
+          <div className="ann">
+            Nenhum lançamento é apagado. O que cada um gastou continua no histórico da obra,
+            com o nome de quem enviou.
+          </div>
+          <button className="bt btp" style={{ width: '100%' }} onClick={desfazer} disabled={saindo}>
+            {saindo ? 'desfazendo…' : 'Sim, desfazer'}
+          </button>
+          <button className="bt" style={{ width: '100%' }} onClick={() => setConfirmando(false)} disabled={saindo}>
+            Continuar sócios
+          </button>
+        </Sheet>
+      )}
 
       {destino !== null && (
         <Sheet aoFechar={() => setDestino(null)}>
