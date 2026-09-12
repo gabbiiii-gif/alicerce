@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { lerDestino } from '../lib/destino'
 import { useAviso } from '../components/Toast'
 import { Marca } from '../components/Marca'
 import { Carregando } from '../components/Tela'
@@ -25,10 +26,17 @@ export function Login() {
   // Quem entra por e-mail é minoria: o formulário fica guardado atrás de um toque.
   const [comEmail, setComEmail] = useState(false)
 
-  // Via rápida para quem chegou aqui pelo próprio app. Quem volta de um redirect de página
-  // inteira perde este state — e aí quem cuida é o RetomaDestino, no App.
   if (carregando) return <Carregando />
-  if (session) return <Navigate to={(location.state as { de?: string })?.de || '/'} replace />
+  if (session) {
+    // Havendo destino guardado, quem navega é o RetomaDestino (App.tsx) — e só ele.
+    // Os dois <Navigate> disparavam no mesmo ciclo e o segundo vencia: o RetomaDestino
+    // mandava para /e/CODIGO e este, que só conhece o state do router (vazio depois de um
+    // redirect de página inteira), mandava para "/" em seguida. Era o que despejava quem
+    // abria um convite na lista de obras.
+    if (lerDestino()) return <Carregando />
+    // Via rápida de quem já estava dentro do app: o state do router não passa por storage.
+    return <Navigate to={(location.state as { de?: string })?.de || '/'} replace />
+  }
 
   async function enviar() {
     if (!email.trim() || !senha) return avisar('Preencha e-mail e senha')
