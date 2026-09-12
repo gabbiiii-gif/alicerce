@@ -56,12 +56,32 @@ export function montarRelatorio(
     .slice(0, 4)
     .map(([nome, valor]) => ({ nome, valor, pct: Math.round((valor / maior) * 100) }))
 
-  const porPessoa = membros.map(m => {
-    const itens = doPeriodo.filter(l => l.autor_id === m.user_id && l.tipo === 'saida')
+  // Quem entra na quebra: os membros da obra MAIS quem lançou no período.
+  //
+  // Só os membros não basta desde que sócios passaram a ver e lançar em obras do grupo sem
+  // estar em obra_membros. O gasto entrava no total de saídas e sumia da lista por pessoa —
+  // a tela mostrava "saídas −1.235" e, logo abaixo, todo mundo com "sem saídas no período".
+  const pessoas = new Map<string, { userId: string; nome: string; iniciais: string }>()
+  membros.forEach(m =>
+    pessoas.set(m.user_id, { userId: m.user_id, nome: m.profile.nome, iniciais: m.profile.iniciais }),
+  )
+  doPeriodo.forEach(l => {
+    if (l.tipo !== 'saida' || pessoas.has(l.autor_id)) return
+    // Sem o perfil (a RLS pode não devolvê-lo), ainda é melhor mostrar o gasto sob um rótulo
+    // genérico do que deixar dinheiro fora da conta de alguém.
+    pessoas.set(l.autor_id, {
+      userId: l.autor_id,
+      nome: l.autor?.nome ?? 'alguém da equipe',
+      iniciais: l.autor?.iniciais ?? '··',
+    })
+  })
+
+  const porPessoa = [...pessoas.values()].map(pessoa => {
+    const itens = doPeriodo.filter(l => l.autor_id === pessoa.userId && l.tipo === 'saida')
     return {
-      userId: m.user_id,
-      nome: m.profile.nome.split(' ')[0],
-      iniciais: m.profile.iniciais,
+      userId: pessoa.userId,
+      nome: pessoa.nome.split(' ')[0],
+      iniciais: pessoa.iniciais,
       total: itens.reduce((s, l) => s + Number(l.valor), 0),
       itens: itens.map(l => ({
         esquerda: `${isoParaBR(l.data).slice(0, 5)} ${l.descricao} · ${l.categoria?.nome ?? 'sem categoria'}`,
