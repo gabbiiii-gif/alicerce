@@ -5,6 +5,7 @@ import { useAuth } from './lib/auth'
 import { guardarDestino, lerDestino, limparDestino } from './lib/destino'
 import { Carregando } from './components/Tela'
 import { Login } from './screens/Login'
+import { Resumo } from './screens/Resumo'
 import { Obras } from './screens/Obras'
 import { NovaObra } from './screens/NovaObra'
 import { Painel } from './screens/Painel'
@@ -66,6 +67,7 @@ export function App() {
         <Routes location={location} key={location.pathname}>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Protegida><Obras /></Protegida>} />
+          <Route path="/resumo" element={<Protegida><Resumo /></Protegida>} />
           <Route path="/nova" element={<Protegida><NovaObra /></Protegida>} />
           <Route path="/obra/:obraId" element={<Protegida><Painel /></Protegida>} />
           <Route path="/obra/:obraId/enviar" element={<Protegida><Enviar /></Protegida>} />

@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useObraAtual } from '../lib/obraAtual'
 import { useAviso } from './Toast'
 
-type Aba = 'obras' | 'enviar' | 'relatorios' | 'perfil'
+type Aba = 'resumo' | 'obras' | 'enviar' | 'relatorios' | 'perfil'
 
 export function TabBar({ ativa }: { ativa: Aba }) {
   const navigate = useNavigate()
@@ -11,6 +11,7 @@ export function TabBar({ ativa }: { ativa: Aba }) {
   const avisar = useAviso()
 
   function irPara(aba: Aba) {
+    if (aba === 'resumo') return navigate('/resumo')
     if (aba === 'obras') return navigate('/')
     if (aba === 'perfil') return navigate('/perfil')
     // Relatórios não depende de obra: sem nenhuma escolhida, abre o consolidado.
@@ -28,6 +29,16 @@ export function TabBar({ ativa }: { ativa: Aba }) {
 
   return (
     <div className="tb">
+      <button className={ativa === 'resumo' ? 'ativa' : ''} onClick={() => irPara('resumo')}>
+        {/* Quatro quadrantes: o ícone de painel, distinto das barras de relatório. */}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+          <rect x="4" y="4" width="7" height="7" rx="1.4" fill={cor('resumo')} />
+          <rect x="13" y="4" width="7" height="4.6" rx="1.4" />
+          <rect x="4" y="13" width="7" height="7" rx="1.4" />
+          <rect x="13" y="10.6" width="7" height="9.4" rx="1.4" />
+        </svg>
+        Resumo
+      </button>
       <button className={ativa === 'obras' ? 'ativa' : ''} onClick={() => irPara('obras')}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
           <rect x="7" y="4.6" width="10" height="3.6" rx="1" fill={cor('obras')} />
