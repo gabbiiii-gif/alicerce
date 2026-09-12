@@ -17,6 +17,13 @@
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <!-- Android 12 em diante desenha a abertura pela API do sistema e ignora o
+             android:background abaixo, que só vale nas versões anteriores. Sem estes
+             dois itens o resultado era o padrão do sistema: fundo claro e o ícone
+             genérico do Capacitor, nada a ver com o app. -->
+        <item name="windowSplashScreenBackground">@color/alicerce_navy</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_marca</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
         <item name="android:background">@drawable/splash</item>
     </style>
 </resources>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A marca do Alicerce como vetor, para a tela de abertura do sistema.
+
+  Vetor e não PNG: esta imagem aparece em telas de densidade muito diferente e é a
+  primeira coisa que se vê do app — serrilhado aqui é a primeira impressão.
+
+  A segunda barra é branca porque as quatro ficam sobre o navy, e a mais escura da marca
+  original sumiria no fundo.
+
+  O tamanho não é o da marca original reduzida: no Android 12 em diante o sistema recorta
+  este ícone num CÍRCULO. Com as larguras originais, a barra de baixo saía com os cantos
+  cortados e virava um trapézio. Aqui o conjunto inteiro (52 x 37) cabe dentro do círculo
+  de segurança — a diagonal dá 64, e o círculo tem 66.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#6CB4F0" android:pathData="M37.5,35h33v7h-33z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M30,45h48v7h-48z" />
+    <path android:fillColor="#6CB4F0" android:pathData="M33,55h42v7h-42z" />
+    <path android:fillColor="#1B8FE8" android:pathData="M28,65h52v7h-52z" />
+</vector>

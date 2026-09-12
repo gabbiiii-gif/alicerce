@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- O navy da marca. A tela de abertura nativa usa esta cor para emendar sem salto
+         na abertura em React, que é do mesmo navy: as duas viram uma coisa só. -->
+    <color name="alicerce_navy">#0A2A6E</color>
+    <color name="colorPrimary">#0A2A6E</color>
+    <color name="colorPrimaryDark">#0A2A6E</color>
+    <color name="colorAccent">#1B8FE8</color>
+</resources>
