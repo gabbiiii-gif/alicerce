@@ -58,7 +58,16 @@ export function Intro({ aoTerminar }: { aoTerminar: () => void }) {
   }
 
   return (
-    <motion.div className="scr" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={CURVA}>
+    // zIndex acima das rotas: .scr é absolute sem camada própria, e a tela de login
+    // desenharia por cima desta — a intro existia, montava e ficava escondida atrás.
+    // Abaixo de 50, que é da abertura: ela entra antes e sai por cima.
+    <motion.div
+      className="scr"
+      style={{ zIndex: 20 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={CURVA}
+    >
       <div className="bd" style={{ padding: '26px 24px 22px', gap: 0 }}>
         {/* A marca pequena no topo, sem nome: a pessoa acabou de ver o nome na abertura. */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 'none' }}>
