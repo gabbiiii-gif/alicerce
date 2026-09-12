@@ -38,7 +38,7 @@ export function Perfil() {
   function abrir(destino: 'categorias' | 'equipe') {
     if (!obraId) {
       avisar('Escolha uma obra primeiro')
-      return navigate('/')
+      return navigate('/obras')
     }
     navigate(`/obra/${obraId}/${destino}`)
   }

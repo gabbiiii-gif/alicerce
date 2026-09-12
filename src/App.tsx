@@ -1,8 +1,10 @@
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { AnimatePresence } from 'motion/react'
 import { useAuth } from './lib/auth'
 import { guardarDestino, lerDestino, limparDestino } from './lib/destino'
+import { Abertura } from './components/Abertura'
+import { Intro, introJaVista } from './screens/Intro'
 import { Carregando } from './components/Tela'
 import { Login } from './screens/Login'
 import { Resumo } from './screens/Resumo'
@@ -56,9 +58,21 @@ function Protegida({ children }: { children: ReactNode }) {
 
 export function App() {
   const location = useLocation()
+  const { session, carregando } = useAuth()
+  const [abrindo, setAbrindo] = useState(true)
+  const [introPendente, setIntroPendente] = useState(() => !introJaVista())
+
+  // A intro é para quem chega pela primeira vez. Quem já tem sessão conhece o app —
+  // trocou de aparelho, reinstalou, limpou o navegador — e não precisa da apresentação.
+  const mostraIntro = introPendente && !abrindo && !carregando && !session
 
   return (
     <div className="app">
+      {/* A abertura fica POR CIMA, não no lugar: as rotas montam atrás enquanto ela
+          roda, então quando o navy sai a tela de trás já está pronta. Substituir faria a
+          espera da animação somar com a espera do carregamento. */}
+      {abrindo && <Abertura aoTerminar={() => setAbrindo(false)} />}
+      {mostraIntro && <Intro aoTerminar={() => setIntroPendente(false)} />}
       <RetomaDestino />
       {/* Sem `mode`: as duas telas convivem por um instante. Como toda tela é
           `position: absolute`, a que entra desliza por cima da que sai, em vez de
@@ -66,8 +80,10 @@ export function App() {
       <AnimatePresence initial={false}>
         <Routes location={location} key={location.pathname}>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Protegida><Obras /></Protegida>} />
-          <Route path="/resumo" element={<Protegida><Resumo /></Protegida>} />
+          <Route path="/" element={<Protegida><Resumo /></Protegida>} />
+          <Route path="/obras" element={<Protegida><Obras /></Protegida>} />
+          {/* Endereço antigo do resumo: quem tiver um link guardado continua chegando. */}
+          <Route path="/resumo" element={<Navigate to="/" replace />} />
           <Route path="/nova" element={<Protegida><NovaObra /></Protegida>} />
           <Route path="/obra/:obraId" element={<Protegida><Painel /></Protegida>} />
           <Route path="/obra/:obraId/enviar" element={<Protegida><Enviar /></Protegida>} />

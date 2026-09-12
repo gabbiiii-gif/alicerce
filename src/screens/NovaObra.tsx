@@ -24,7 +24,7 @@ export function NovaObra() {
   const aberto = Math.max(valor - entrada, 0)
 
   function voltar() {
-    if (passo === 0) return navigate('/')
+    if (passo === 0) return navigate('/obras')
     setPasso(passo - 1)
   }
 

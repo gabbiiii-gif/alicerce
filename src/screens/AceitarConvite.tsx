@@ -36,7 +36,7 @@ export function AceitarConvite() {
       {erro ? (
         <>
           <div className="ann">Não deu para usar este convite: {erro}</div>
-          <button className="bt" onClick={() => navigate('/')}>Ir para as obras</button>
+          <button className="bt" onClick={() => navigate('/obras')}>Ir para as obras</button>
         </>
       ) : (
         <div className="note" style={{ textAlign: 'center' }}>entrando na obra…</div>

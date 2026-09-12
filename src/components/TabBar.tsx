@@ -11,14 +11,14 @@ export function TabBar({ ativa }: { ativa: Aba }) {
   const avisar = useAviso()
 
   function irPara(aba: Aba) {
-    if (aba === 'resumo') return navigate('/resumo')
-    if (aba === 'obras') return navigate('/')
+    if (aba === 'resumo') return navigate('/')
+    if (aba === 'obras') return navigate('/obras')
     if (aba === 'perfil') return navigate('/perfil')
     // Relatórios não depende de obra: sem nenhuma escolhida, abre o consolidado.
     if (aba === 'relatorios' && !obraId) return navigate('/relatorios')
     if (!obraId) {
       avisar('Escolha uma obra primeiro')
-      return navigate('/')
+      return navigate('/obras')
     }
     navigate(aba === 'enviar' ? `/obra/${obraId}/enviar` : `/obra/${obraId}/relatorios`, {
       state: { de: location.pathname },
