@@ -5,7 +5,7 @@ import { carregarRelatorioGeral, listarObras } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
 import { useObraAtual } from '../lib/obraAtual'
-import { montarVisao, COR_PREVISTO, COR_SAIDA } from '../lib/dashboard'
+import { montarVisao, COR_ENTRADA, COR_SAIDA } from '../lib/dashboard'
 import { curto, dataCurta, fmt, semSimbolo } from '../lib/format'
 import { CURVA } from '../lib/animacao'
 import { Carregando, Tela, Vazio } from '../components/Tela'
@@ -119,31 +119,6 @@ export function Resumo() {
               ))}
             </div>
 
-            {/* Estouro do mês vem antes de qualquer gráfico: é o único item desta tela
-                em que ainda dá para agir, e mês fechado não se conserta. */}
-            {visao.emRisco.length > 0 && (
-              <>
-                <Titulo texto="Passou do previsto" nota="este mês" />
-                {visao.emRisco.map(o => (
-                  <button
-                    key={o.id}
-                    className="cd"
-                    onClick={() => abrirObra(o.id)}
-                    style={{ borderColor: COR_SAIDA, background: '#FFF7ED', textAlign: 'left', cursor: 'pointer', gap: 3 }}
-                  >
-                    <div className="row">
-                      <b style={{ fontSize: 14 }}>{o.nome}</b>
-                      <b className="num" style={{ fontSize: 14, color: '#9A3412' }}>+{semSimbolo(o.excesso)}</b>
-                    </div>
-                    <span className="note" style={{ color: '#9A3412' }}>
-                      gastou <span className="num">{curto(o.gastoMes)}</span> num mês previsto para{' '}
-                      <span className="num">{curto(o.previsto)}</span>
-                    </span>
-                  </button>
-                ))}
-              </>
-            )}
-
             <Titulo texto="Avanço financeiro" nota="acumulado" />
             <div className="cd" style={{ padding: '12px 10px 8px', gap: 4 }}>
               <CurvaAvanco meses={visao.meses} maior={visao.maiorAcum} />
@@ -153,13 +128,13 @@ export function Resumo() {
               </div>
             </div>
 
-            <Titulo texto="Gasto x previsto" nota="mês a mês" />
+            <Titulo texto="Entrou e saiu" nota="mês a mês" />
             <div className="cd" style={{ padding: '10px 8px 6px', gap: 2 }}>
               <Grafico3D meses={visao.meses} maior={visao.maiorMes} />
               <div className="row" style={{ justifyContent: 'center', gap: 16, paddingTop: 2 }}>
                 {[
-                  { cor: COR_PREVISTO, texto: 'previsto' },
-                  { cor: COR_SAIDA, texto: 'gasto' },
+                  { cor: COR_ENTRADA, texto: 'entrou' },
+                  { cor: COR_SAIDA, texto: 'saiu' },
                 ].map(l => (
                   <span key={l.texto} className="row" style={{ gap: 5, flex: 'none' }}>
                     <i style={{ width: 9, height: 9, borderRadius: 2, background: l.cor, display: 'block' }} />
@@ -171,14 +146,12 @@ export function Resumo() {
 
             <div className="cd" style={{ gap: 5 }}>
               <div className="row">
-                <span className="note">orçamento do mês</span>
-                <b className="num" style={{ fontSize: 14 }}>{fmt(visao.previstoMes)}</b>
+                <span className="note">entrou este mês</span>
+                <b className="num" style={{ fontSize: 14, color: COR_ENTRADA }}>+{semSimbolo(visao.mesEntradas)}</b>
               </div>
               <div className="row">
-                <span className="note">gasto até agora</span>
-                <b className="num" style={{ fontSize: 14, color: visao.mesSaidas > visao.previstoMes && visao.previstoMes > 0 ? COR_SAIDA : undefined }}>
-                  {fmt(visao.mesSaidas)}
-                </b>
+                <span className="note">saiu este mês</span>
+                <b className="num" style={{ fontSize: 14, color: COR_SAIDA }}>−{semSimbolo(visao.mesSaidas)}</b>
               </div>
               <div className="row" style={{ borderTop: '1px solid var(--linha)', paddingTop: 5 }}>
                 <span style={{ fontSize: 14 }}>do contrato já executado</span>
@@ -241,7 +214,7 @@ export function Resumo() {
                         <span className="num">{dataCurta(l.data)}</span> · {l.obra?.nome ?? 'obra'}
                       </span>
                     </div>
-                    <b className="num" style={{ fontSize: 13, color: l.tipo === 'saida' ? COR_SAIDA : '#1B8FE8' }}>
+                    <b className="num" style={{ fontSize: 13, color: l.tipo === 'saida' ? COR_SAIDA : COR_ENTRADA }}>
                       {l.tipo === 'saida' ? '−' : '+'}{semSimbolo(l.valor)}
                     </b>
                   </div>
@@ -250,8 +223,7 @@ export function Resumo() {
             )}
 
             <div className="ann">
-              Os números somam todas as obras que você vê, inclusive as dos seus sócios. O previsto
-              mensal de cada obra sai do painel dela.
+              Os números somam todas as obras que você vê, inclusive as dos seus sócios.
             </div>
           </>
         )}

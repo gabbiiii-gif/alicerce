@@ -126,18 +126,6 @@ export async function listarSocios(): Promise<Profile[]> {
   return (data ?? []) as Profile[]
 }
 
-// Quanto a obra pode gastar por mês. Nasce como um chute do sistema (3% do valor
-// fechado) porque um número precisa existir para haver comparação — mas quem sabe o
-// ritmo da obra é quem toca a obra, e alertar contra um chute que ninguém escolheu é
-// ruído, não aviso.
-export async function definirPrevistoMensal(obraId: string, valor: number) {
-  const { error } = await supabase
-    .from('obras')
-    .update({ previsto_mensal: Math.max(valor, 0) })
-    .eq('id', obraId)
-  if (error) throw error
-}
-
 export async function criarObra(dados: {
   nome: string
   endereco: string
@@ -152,7 +140,9 @@ export async function criarObra(dados: {
       endereco: dados.endereco || null,
       valor_fechado: dados.valorFechado,
       // Previsto mensal de partida: 3% do valor fechado, ajustável depois.
-      previsto_mensal: Math.round(dados.valorFechado * 0.03),
+      // Zero: o app não trabalha mais com teto mensal. A coluna continua no banco por
+      // causa das obras já criadas, mas nada a lê.
+      previsto_mensal: 0,
       dono_id: dados.autorId,
     })
     .select('id')

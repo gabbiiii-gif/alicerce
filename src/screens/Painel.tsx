@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { apagarLancamento, carregarObra, criarAditivo, definirPrevistoMensal, registrarEntrada } from '../data/api'
+import { apagarLancamento, carregarObra, criarAditivo, registrarEntrada } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
 import { useObraAtual } from '../lib/obraAtual'
@@ -16,7 +16,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { CURVA } from '../lib/animacao'
 import type { Lancamento } from '../lib/types'
 
-type SheetAberto = 'entrada' | 'aditivo' | 'previsto' | null
+type SheetAberto = 'entrada' | 'aditivo' | null
 
 export function Painel() {
   const { obraId = '' } = useParams()
@@ -48,12 +48,6 @@ export function Painel() {
 
   const { obra, lancamentos, contas } = dados
 
-  const mesAtual = new Date().toISOString().slice(0, 7)
-  const saidasDoMes = lancamentos
-    .filter(l => l.tipo === 'saida' && l.data.startsWith(mesAtual))
-    .reduce((s, l) => s + Number(l.valor), 0)
-  const estouro = obra.previsto_mensal > 0 && saidasDoMes > obra.previsto_mensal
-
   function abrirSheet(qual: Exclude<SheetAberto, null>) {
     setValor(0)
     setDescricao('')
@@ -61,16 +55,10 @@ export function Painel() {
   }
 
   async function salvar() {
-    if (valor <= 0 && sheet !== 'previsto') {
-      return avisar(sheet === 'aditivo' ? 'Informe o valor do aditivo' : 'Informe o valor recebido')
-    }
+    if (valor <= 0) return avisar(sheet === 'aditivo' ? 'Informe o valor do aditivo' : 'Informe o valor recebido')
     setSalvando(true)
     try {
-      if (sheet === 'previsto') {
-        // Zero é resposta válida: significa "não quero ser avisado sobre esta obra".
-        await definirPrevistoMensal(obraId, valor)
-        avisar(valor > 0 ? 'Orçamento do mês atualizado' : 'Aviso de estouro desligado nesta obra')
-      } else if (sheet === 'aditivo') {
+      if (sheet === 'aditivo') {
         await criarAditivo({ obraId, autorId: userId, descricao, valor })
         avisar('Aditivo somado ao total')
       } else {
@@ -121,32 +109,6 @@ export function Painel() {
           </div>
         </div>
 
-        {/* O orçamento do mês sai de baixo do pano: fica à vista, dá para tocar e mudar,
-            e é contra ele que o aviso de estouro compara. Ele nasce como um chute do
-            sistema (3% do valor fechado) — alertar contra um número que a pessoa nunca
-            escolheu, e não podia mudar, é ruído e não aviso. */}
-        <button
-          className="li"
-          onClick={() => {
-            setValor(obra.previsto_mensal)
-            setDescricao('')
-            setSheet('previsto')
-          }}
-          style={estouro ? { borderColor: '#D97706', background: '#FFF7ED' } : undefined}
-        >
-          <div style={{ flex: 1, textAlign: 'left' }}>
-            <b style={{ fontSize: 13.5 }}>{estouro ? '⚠ Passou do previsto este mês' : 'Orçamento do mês'}</b>
-            <div className="note" style={estouro ? { color: '#9A3412' } : undefined}>
-              {obra.previsto_mensal > 0 ? (
-                <>gastou <span className="num">{curto(saidasDoMes)}</span> de <span className="num">{curto(obra.previsto_mensal)}</span></>
-              ) : (
-                'sem orçamento definido — toque para definir'
-              )}
-            </div>
-          </div>
-          <span className="note">{estouro ? `+${curto(saidasDoMes - obra.previsto_mensal)}` : '›'}</span>
-        </button>
-
         <div className="row" style={{ gap: 6, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
           <button className="chip" onClick={() => navigate(`/obra/${obraId}/equipe`)}>Equipe</button>
           <button className="chip" onClick={() => navigate(`/obra/${obraId}/categorias`)}>Categorias</button>
@@ -193,52 +155,24 @@ export function Painel() {
       {sheet && (
         <Sheet aoFechar={() => setSheet(null)}>
           <div className="row">
-            <b style={{ fontSize: 17 }}>
-              {sheet === 'previsto' ? 'Orçamento do mês' : sheet === 'aditivo' ? 'Aditivo' : 'Entrada do cliente'}
-            </b>
-            <span className="note">
-              {sheet === 'previsto' ? 'quanto esta obra pode gastar por mês' : sheet === 'aditivo' ? 'fora do valor fechado' : 'abate o saldo'}
-            </span>
+            <b style={{ fontSize: 17 }}>{sheet === 'aditivo' ? 'Aditivo' : 'Entrada do cliente'}</b>
+            <span className="note">{sheet === 'aditivo' ? 'fora do valor fechado' : 'abate o saldo'}</span>
           </div>
           <MoedaInput valor={valor} aoMudar={setValor} style={{ fontSize: 25, textAlign: 'center', padding: 12 }} autoFocus />
-          {/* Orçamento não tem descrição nem projeção de saldo: é um teto, não um
-              lançamento. No lugar, mostra o que já foi gasto no mês, que é a referência
-              para escolher o número. */}
-          {sheet === 'previsto' ? (
-            <>
-              <div className="row" style={{ background: '#E0F4FF', border: '1px solid #C4E4FB', borderRadius: 10, padding: '6px 9px' }}>
-                <span className="note" style={{ color: '#0A2A6E' }}>já gasto este mês</span>
-                <b className="num" style={{ fontSize: 15 }}>{fmt(saidasDoMes)}</b>
-              </div>
-              <div className="ann">
-                O app avisa quando as saídas do mês passam deste valor. Ele começa num chute de 3%
-                do valor fechado — ajuste para o ritmo real da obra. Zero desliga o aviso.
-              </div>
-            </>
-          ) : (
-            <>
-              <input
-                className="inp"
-                placeholder={sheet === 'aditivo' ? 'motivo (troca de piso…)' : 'descrição (parcela 3…)'}
-                value={descricao}
-                onChange={e => setDescricao(e.target.value)}
-              />
-              <div className="row" style={{ background: '#E0F4FF', border: '1px solid #C4E4FB', borderRadius: 10, padding: '6px 9px' }}>
-                <span className="note" style={{ color: '#0A2A6E' }}>{sheet === 'aditivo' ? 'novo total' : 'fica em aberto'}</span>
-                <b className="num" style={{ fontSize: 15 }}>
-                  {sheet === 'aditivo' ? fmt(contas.total + valor) : fmt(Math.max(contas.aberto - valor, 0))}
-                </b>
-              </div>
-            </>
-          )}
+          <input
+            className="inp"
+            placeholder={sheet === 'aditivo' ? 'motivo (troca de piso…)' : 'descrição (parcela 3…)'}
+            value={descricao}
+            onChange={e => setDescricao(e.target.value)}
+          />
+          <div className="row" style={{ background: '#E0F4FF', border: '1px solid #C4E4FB', borderRadius: 10, padding: '6px 9px' }}>
+            <span className="note" style={{ color: '#0A2A6E' }}>{sheet === 'aditivo' ? 'novo total' : 'fica em aberto'}</span>
+            <b className="num" style={{ fontSize: 15 }}>
+              {sheet === 'aditivo' ? fmt(contas.total + valor) : fmt(Math.max(contas.aberto - valor, 0))}
+            </b>
+          </div>
           <button className="bt btp" onClick={salvar} disabled={salvando}>
-            {salvando
-              ? 'salvando…'
-              : sheet === 'previsto'
-                ? 'Salvar orçamento'
-                : sheet === 'aditivo'
-                  ? 'Salvar aditivo'
-                  : 'Registrar entrada'}
+            {salvando ? 'salvando…' : sheet === 'aditivo' ? 'Salvar aditivo' : 'Registrar entrada'}
           </button>
         </Sheet>
       )}

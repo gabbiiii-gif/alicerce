@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MesResumo } from '../lib/dashboard'
-import { COR_PREVISTO, COR_SAIDA } from '../lib/dashboard'
+import { COR_ENTRADA, COR_SAIDA } from '../lib/dashboard'
 import { curto } from '../lib/format'
 
 type Props = {
@@ -10,13 +10,10 @@ type Props = {
 
 type Rotulo = { chave: string; x: number; y: number; texto: string }
 
-// Gasto do mês contra o previsto do mês, em barras 3D.
+// O que entrou e o que saiu em cada mês, em barras 3D.
 //
-// É a comparação que se faz em obra: o orçamento do mês foi respeitado? A barra âmbar
-// passando da cinza é o mês que estourou — dá para ver de longe, sem ler número.
-//
-// O cinza do previsto tem croma baixo de propósito. Ele não é uma série disputando
-// atenção com a outra: é a régua contra a qual a série é medida, e régua fica no fundo.
+// Duas grandezas medidas do mesmo jeito, lado a lado: dá para ver de longe o mês em que
+// saiu mais do que entrou, sem ler número nenhum.
 //
 // Câmera ORTOGRÁFICA, e isso não é detalhe: numa câmera em perspectiva o que está à
 // frente aparece maior, então duas barras de mesmo valor desenhariam alturas diferentes
@@ -100,10 +97,10 @@ export function Grafico3D({ meses, maior }: Props) {
 
       meses.forEach((m, i) => {
         const base = x0 + i * passo
-        // Previsto à esquerda, gasto à direita: a ordem é sempre a mesma, então a
+        // Entrada à esquerda, saída à direita: a ordem é sempre a mesma, então a
         // comparação é a mesma leitura em todos os meses.
         ;([
-          { valor: m.previsto, cor: COR_PREVISTO, desloca: -largura * 0.62 },
+          { valor: m.entradas, cor: COR_ENTRADA, desloca: -largura * 0.62 },
           { valor: m.saidas, cor: COR_SAIDA, desloca: largura * 0.62 },
         ] as const).forEach(b => {
           // Altura mínima visível: uma barra de valor pequeno mas não-zero precisa
@@ -203,7 +200,7 @@ export function Grafico3D({ meses, maior }: Props) {
         {meses.map(m => (
           <div key={m.chave} style={{ flex: 1, textAlign: 'center' }}>
             <div className="row" style={{ alignItems: 'flex-end', gap: 3, height: 118, justifyContent: 'center' }}>
-              <div style={{ width: 10, borderRadius: '3px 3px 0 0', background: COR_PREVISTO, height: `${(m.previsto / maior) * 100}%` }} />
+              <div style={{ width: 10, borderRadius: '3px 3px 0 0', background: COR_ENTRADA, height: `${(m.entradas / maior) * 100}%` }} />
               <div style={{ width: 10, borderRadius: '3px 3px 0 0', background: COR_SAIDA, height: `${(m.saidas / maior) * 100}%` }} />
             </div>
             <div className="note" style={{ fontSize: 11 }}>{m.rotulo}</div>
@@ -235,13 +232,13 @@ export function Grafico3D({ meses, maior }: Props) {
       {/* Tabela escondida: o mesmo dado em texto, para leitor de tela e para quem
           precisar do número exato que a barra não diz. */}
       <table style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-        <caption>Gasto e previsto por mês</caption>
+        <caption>Entradas e saídas por mês</caption>
         <tbody>
           {meses.map(m => (
             <tr key={m.chave}>
               <th scope="row">{m.rotulo}</th>
-              <td>previsto {curto(m.previsto)}</td>
-              <td>gasto {curto(m.saidas)}</td>
+              <td>entrou {curto(m.entradas)}</td>
+              <td>saiu {curto(m.saidas)}</td>
             </tr>
           ))}
         </tbody>

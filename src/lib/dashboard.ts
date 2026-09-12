@@ -10,7 +10,6 @@ import type { ObraComContas } from '../data/api'
 // (frio e quente).
 export const COR_ENTRADA = '#1B8FE8'
 export const COR_SAIDA = '#D97706'
-export const COR_PREVISTO = '#94A3B8'
 
 // Ordem fixa: uma categoria mantém a cor mesmo que outra suma do período. Cor segue a
 // coisa, nunca a posição dela na lista.
@@ -24,7 +23,6 @@ export type MesResumo = {
   rotulo: string
   entradas: number
   saidas: number
-  previsto: number
   // Acumulado até o fim deste mês: é o que mostra se a linha do gasto está encostando
   // na do recebido.
   recebidoAcum: number
@@ -36,14 +34,6 @@ export type FatiaCategoria = {
   valor: number
   pct: number
   cor: string
-}
-
-export type ObraEmRisco = {
-  id: string
-  nome: string
-  gastoMes: number
-  previsto: number
-  excesso: number
 }
 
 export type Visao = {
@@ -59,14 +49,12 @@ export type Visao = {
   obrasEncerradas: number
   mesEntradas: number
   mesSaidas: number
-  previstoMes: number
   // Média de gasto dos meses que tiveram gasto, e quantos meses a margem cobre nesse
   // ritmo. É a pergunta prática: "o dinheiro em caixa dura até quando?"
   ritmoMensal: number
   mesesDeFolego: number | null
   meses: MesResumo[]
   categorias: FatiaCategoria[]
-  emRisco: ObraEmRisco[]
   ultimos: Lancamento[]
   maiorMes: number
   maiorAcum: number
@@ -85,7 +73,6 @@ function ultimosMeses(quantos: number, base = new Date()) {
       rotulo: MESES_CURTOS[d.getMonth()],
       entradas: 0,
       saidas: 0,
-      previsto: 0,
       recebidoAcum: 0,
       gastoAcum: 0,
     })
@@ -125,11 +112,7 @@ export function montarVisao(
     else m.saidas += Number(l.valor)
   })
 
-  // O previsto mensal vale para os meses em que a obra estava tocando, e é a linha de
-  // referência contra a qual o gasto de cada mês é julgado.
-  const previstoMes = ativas.reduce((s, o) => s + Number(o.previsto_mensal || 0), 0)
   meses.forEach(m => {
-    m.previsto = previstoMes
     recebidoAcum += m.entradas
     gastoAcum += m.saidas
     m.recebidoAcum = recebidoAcum
@@ -166,22 +149,6 @@ export function montarVisao(
     })
   }
 
-  // Obras que passaram do previsto ESTE mês: é o alerta que dá para agir em cima,
-  // diferente de um total no fim da obra, quando já não há o que fazer.
-  const gastoPorObra = new Map<string, number>()
-  doMes
-    .filter(l => l.tipo === 'saida')
-    .forEach(l => gastoPorObra.set(l.obra_id, (gastoPorObra.get(l.obra_id) ?? 0) + Number(l.valor)))
-
-  const emRisco: ObraEmRisco[] = ativas
-    .map(o => {
-      const gastoMes = gastoPorObra.get(o.id) ?? 0
-      const previsto = Number(o.previsto_mensal || 0)
-      return { id: o.id, nome: o.nome, gastoMes, previsto, excesso: gastoMes - previsto }
-    })
-    .filter(o => o.previsto > 0 && o.excesso > 0)
-    .sort((a, b) => b.excesso - a.excesso)
-
   const mesesComGasto = meses.filter(m => m.saidas > 0)
   const ritmoMensal = mesesComGasto.length
     ? mesesComGasto.reduce((s, m) => s + m.saidas, 0) / mesesComGasto.length
@@ -199,7 +166,6 @@ export function montarVisao(
     obrasEncerradas: obras.length - ativas.length,
     mesEntradas: doMes.filter(l => l.tipo === 'entrada').reduce((s, l) => s + Number(l.valor), 0),
     mesSaidas: doMes.filter(l => l.tipo === 'saida').reduce((s, l) => s + Number(l.valor), 0),
-    previstoMes,
     ritmoMensal,
     // Sem gasto nenhum não há ritmo, e dividir por zero daria "infinitos meses de
     // fôlego", que é uma resposta pior do que não responder. Acima de 18 meses também
@@ -210,9 +176,8 @@ export function montarVisao(
       ritmoMensal > 0 && margem > 0 && margem / ritmoMensal <= 18 ? margem / ritmoMensal : null,
     meses,
     categorias,
-    emRisco,
     ultimos: lancamentos.slice(0, 5),
-    maiorMes: Math.max(1, ...meses.map(m => Math.max(m.saidas, m.previsto))),
+    maiorMes: Math.max(1, ...meses.map(m => Math.max(m.entradas, m.saidas))),
     maiorAcum: Math.max(1, ...meses.map(m => Math.max(m.recebidoAcum, m.gastoAcum))),
   }
 }
