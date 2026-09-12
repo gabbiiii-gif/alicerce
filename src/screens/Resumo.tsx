@@ -12,7 +12,6 @@ import { Carregando, Tela, Vazio } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
 import { ValorAnimado } from '../components/ValorAnimado'
 import { Grafico3D } from '../components/Grafico3D'
-import { CurvaAvanco } from '../components/CurvaAvanco'
 
 function Titulo({ texto, nota }: { texto: string; nota?: string }) {
   return (
@@ -119,16 +118,7 @@ export function Resumo() {
               ))}
             </div>
 
-            <Titulo texto="Avanço financeiro" nota="acumulado" />
-            <div className="cd" style={{ padding: '12px 10px 8px', gap: 4 }}>
-              <CurvaAvanco meses={visao.meses} maior={visao.maiorAcum} />
-              <div className="ann" style={{ marginTop: 2 }}>
-                Enquanto a faixa entre as duas linhas é larga, a obra se paga. Quando fecha, está
-                sendo tocada com dinheiro que ainda não entrou.
-              </div>
-            </div>
-
-            <Titulo texto="Entrou e saiu" nota="mês a mês" />
+            <Titulo texto="Entrou e saiu" nota="últimos 6 meses" />
             <div className="cd" style={{ padding: '10px 8px 6px', gap: 2 }}>
               <Grafico3D meses={visao.meses} maior={visao.maiorMes} />
               <div className="row" style={{ justifyContent: 'center', gap: 16, paddingTop: 2 }}>

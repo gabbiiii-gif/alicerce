@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { motion } from 'motion/react'
 import type { MesResumo } from '../lib/dashboard'
 import { COR_ENTRADA, COR_SAIDA } from '../lib/dashboard'
 import { curto } from '../lib/format'
@@ -9,6 +10,7 @@ type Props = {
 }
 
 type Rotulo = { chave: string; x: number; y: number; texto: string }
+type Valor = { id: string; x: number; y: number; texto: string; cor: string }
 
 // O que entrou e o que saiu em cada mês, em barras 3D.
 //
@@ -25,6 +27,7 @@ type Rotulo = { chave: string; x: number; y: number; texto: string }
 export function Grafico3D({ meses, maior }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const [rotulos, setRotulos] = useState<Rotulo[]>([])
+  const [valores, setValores] = useState<Valor[]>([])
   const [semWebGL, setSemWebGL] = useState(false)
 
   useEffect(() => {
@@ -92,7 +95,7 @@ export function Grafico3D({ meses, maior }: Props) {
       const alturaMax = 3.6
       const x0 = -11 / 2 + passo / 2
 
-      type Barra = { malha: import('three').Mesh; alvo: number; mes: MesResumo }
+      type Barra = { malha: import('three').Mesh; alvo: number; mes: MesResumo; valor: number; cor: string }
       const barras: Barra[] = []
 
       meses.forEach((m, i) => {
@@ -113,7 +116,7 @@ export function Grafico3D({ meses, maior }: Props) {
           malha.position.set(base + b.desloca, 0, 0)
           malha.scale.y = 0.0001
           cena.add(malha)
-          barras.push({ malha, alvo, mes: m })
+          barras.push({ malha, alvo, mes: m, valor: b.valor, cor: b.cor })
         })
       })
 
@@ -135,6 +138,30 @@ export function Grafico3D({ meses, maior }: Props) {
         // Todos na mesma linha: seguindo a diagonal da perspectiva, os rótulos viram uma
         // escada que cruza as barras e fica difícil saber qual é de qual.
         setRotulos(saida.map(r => ({ ...r, y: base })))
+
+        // O valor escrito no topo da barra.
+        //
+        // Sem isto o gráfico só serve para comparar alturas, e quando um mês é muito maior
+        // que os outros — uma entrada grande no meio de meses parados — as barras pequenas
+        // viram tracinhos indistinguíveis e não se lê nada.
+        //
+        // Nem toda barra ganha número: abaixo de 4% do maior, o rótulo vale mais que a
+        // barra que ele descreve e vira sujeira sobre o desenho.
+        const limite = maior * 0.04
+        const numeros: Valor[] = []
+        barras.forEach((b, i) => {
+          if (b.alvo <= 0 || b.valor < limite) return
+          v.set(b.malha.position.x, b.alvo + 0.34, 0)
+          v.project(camera)
+          numeros.push({
+            id: `${b.mes.chave}-${i}`,
+            x: ((v.x + 1) / 2) * L,
+            y: ((-v.y + 1) / 2) * A,
+            texto: curto(b.valor),
+            cor: b.cor,
+          })
+        })
+        setValores(numeros)
       }
 
       const suave = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -213,6 +240,28 @@ export function Grafico3D({ meses, maior }: Props) {
   return (
     <div style={{ position: 'relative' }}>
       <div ref={container} style={{ width: '100%', height: 230 }} />
+      {valores.map(v => (
+        <motion.span
+          key={v.id}
+          className="num"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1, duration: 0.35 }}
+          style={{
+            position: 'absolute',
+            left: v.x,
+            top: v.y,
+            transform: 'translate(-50%, -100%)',
+            fontSize: 10.5,
+            fontWeight: 500,
+            color: v.cor,
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {v.texto}
+        </motion.span>
+      ))}
       {rotulos.map(r => (
         <span
           key={r.chave}
