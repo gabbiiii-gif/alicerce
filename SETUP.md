@@ -62,7 +62,7 @@ console.cloud.google.com, com a conta que vai ser dona do app.
    - Nome: `Alicerce Web`
    - **Origens JavaScript autorizadas**:
      - `http://localhost:5173`
-     - a URL de produção, quando existir (ex.: `https://alicerce.app`)
+     - `https://alicerceobras.vercel.app`
    - **URIs de redirecionamento autorizados** — exatamente um, o do Supabase:
      - `https://SEU_PROJECT_REF.supabase.co/auth/v1/callback`
 5. Copie o **ID do cliente** e o **Chave secreta do cliente**.
@@ -81,10 +81,11 @@ console.cloud.google.com, com a conta que vai ser dona do app.
 
 **Authentication → URL Configuration**:
 
-- **Site URL**: `http://localhost:5173` enquanto testa; a URL real depois de publicar.
+- **Site URL**: `https://alicerceobras.vercel.app` (é para onde o Supabase manda quem
+  clica em link de e-mail; use `http://localhost:5173` só enquanto estiver testando local).
 - **Redirect URLs** (lista de permissão) — adicione as três:
   - `http://localhost:5173/login`
-  - `https://SEU_DOMINIO/login` (quando publicar)
+  - `https://alicerceobras.vercel.app/login`
   - `app.alicerce://login` ← **essencial para o APK e o iPhone**
 
 Sem a terceira linha, o login funciona no navegador e trava no app empacotado.
@@ -123,7 +124,30 @@ nunca no app.
 
 ---
 
-## 6. Virar APK e app de iPhone
+## 6. Publicar na Vercel
+
+Endereço final: **https://alicerceobras.vercel.app**
+
+No painel da Vercel, projeto apontado para `github.com/gabbiiii-gif/alicerce`:
+
+- **Root Directory**: deixe na raiz (`./`) — o app está na raiz do repositório
+- **Framework Preset**: Vite — Build `npm run build`, Output `dist`
+- **Environment Variables**, as mesmas duas do `.env`, em Production e Preview:
+  - `VITE_SUPABASE_URL` = `https://ryygkiehthqjaivtafkg.supabase.co`
+  - `VITE_SUPABASE_ANON_KEY` = a publishable key
+
+O `.env` é ignorado pelo git de propósito, então essas duas variáveis **precisam** ser
+cadastradas na Vercel — senão o site publicado abre na tela "Falta ligar o servidor".
+
+O `vercel.json` na raiz do app manda toda rota para o `index.html`. Sem ele, abrir
+`alicerceobras.vercel.app/obra/algum-id` direto, ou dar F5 numa tela interna, devolve 404 —
+e o link de convite (`/e/CODIGO`), que é justamente o que se manda para outra pessoa,
+nunca abriria.
+
+Depois de publicar, confira que os três endereços do passo 3.2 estão lá: o domínio nas
+origens do Google, e `https://alicerceobras.vercel.app/login` nas Redirect URLs do Supabase.
+
+## 7. Virar APK e app de iPhone
 
 O projeto já está empacotado com Capacitor: `android/` e `ios/` existem e apontam para o
 mesmo `dist` que roda no navegador.
