@@ -139,10 +139,12 @@ No painel da Vercel, projeto apontado para `github.com/gabbiiii-gif/alicerce`:
 O `.env` é ignorado pelo git de propósito, então essas duas variáveis **precisam** ser
 cadastradas na Vercel — senão o site publicado abre na tela "Falta ligar o servidor".
 
-O `vercel.json` na raiz do app manda toda rota para o `index.html`. Sem ele, abrir
-`alicerceobras.vercel.app/obra/algum-id` direto, ou dar F5 numa tela interna, devolve 404 —
-e o link de convite (`/e/CODIGO`), que é justamente o que se manda para outra pessoa,
-nunca abriria.
+O `vercel.json` na raiz manda toda rota para o `index.html` e impede o cache do
+`sw.js`. O preset de Vite da Vercel já faz esse desvio de rota sozinho — conferi que
+`/obra/123` e `/e/ABC-12` respondem 200 —, então o arquivo é garantia, não conserto:
+deixa explícito o que hoje é implícito, e vale se um dia o preset mudar. É o que
+sustenta o link de convite (`/e/CODIGO`), o único endereço que se manda para outra
+pessoa.
 
 Depois de publicar, confira que os três endereços do passo 3.2 estão lá: o domínio nas
 origens do Google, e `https://alicerceobras.vercel.app/login` nas Redirect URLs do Supabase.
