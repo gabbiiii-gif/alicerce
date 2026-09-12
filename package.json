@@ -11,6 +11,7 @@
     "sync": "npm run build && cap sync",
     "android:abrir": "npm run build && cap sync android && cap open android",
     "android:apk": "npm run build && cap sync android && cd android && gradlew.bat assembleDebug",
+    "android:vivo": "powershell -NoProfile -ExecutionPolicy Bypass -File vivo.ps1",
     "ios:abrir": "npm run build && cap sync ios && cap open ios"
   },
   "dependencies": {
