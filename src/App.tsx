@@ -44,6 +44,7 @@ export function App() {
           <Route path="/obra/:obraId/categorias" element={<Protegida><Categorias /></Protegida>} />
           <Route path="/obra/:obraId/equipe" element={<Protegida><Equipe /></Protegida>} />
           <Route path="/obra/:obraId/encerrar" element={<Protegida><Encerrar /></Protegida>} />
+          <Route path="/relatorios" element={<Protegida><Relatorios /></Protegida>} />
           <Route path="/perfil" element={<Protegida><Perfil /></Protegida>} />
           <Route path="/e/:codigo" element={<Protegida><AceitarConvite /></Protegida>} />
           <Route path="*" element={<Navigate to="/" replace />} />

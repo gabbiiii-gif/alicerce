@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { AnimatePresence, motion } from 'motion/react'
 import { apagarCategoria, carregarObra, criarCategoria, listarCategorias } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
 import { useAviso } from '../components/Toast'
 import { fmt } from '../lib/format'
+import { CURVA } from '../lib/animacao'
 import { Carregando, Tela } from '../components/Tela'
+import { Sheet } from '../components/Sheet'
+import type { Categoria } from '../lib/types'
 
 const CORES = ['#1B8FE8', '#0A2A6E', '#8CA3BF', '#B9CFE8', '#6CB4F0']
 
@@ -14,6 +18,9 @@ export function Categorias() {
   const { userId } = useUsuario()
   const avisar = useAviso()
   const [nova, setNova] = useState('')
+  // Tocar na linha abre as ações, como no painel. Antes tocar apagava na hora.
+  const [selecionada, setSelecionada] = useState<Categoria | null>(null)
+  const [apagando, setApagando] = useState(false)
 
   const { dados, carregando, recarregar } = useAsync(async () => {
     const completa = await carregarObra(obraId)
@@ -43,47 +50,89 @@ export function Categorias() {
     }
   }
 
-  async function remover(id: string, nome: string) {
-    if (gastoPorCategoria.get(id)) return avisar(`"${nome}" já tem gasto lançado`)
+  async function remover(categoria: Categoria) {
+    setApagando(true)
     try {
-      await apagarCategoria(id)
-      await recarregar()
+      await apagarCategoria(categoria.id)
+      setSelecionada(null)
       avisar('Categoria apagada')
+      await recarregar()
     } catch {
       avisar('só quem criou pode apagar')
+    } finally {
+      setApagando(false)
     }
   }
 
+  const usado = selecionada ? gastoPorCategoria.get(selecionada.id) ?? 0 : 0
+
   return (
-    <Tela titulo="Categorias" voltar={`/obra/${obraId}`}>
-      <div className="note">Valem para todas as obras. Os dois usuários usam a mesma lista.</div>
+    <>
+      <Tela titulo="Categorias" voltar={`/obra/${obraId}`}>
+        <div className="note">Valem para todas as obras. Os dois usuários usam a mesma lista.</div>
 
-      <div className="row" style={{ gap: 7 }}>
-        <input
-          className="inp"
-          placeholder="nova categoria"
-          value={nova}
-          onChange={e => setNova(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && adicionar()}
-          style={{ flex: 1 }}
-        />
-        <button className="bt bta" style={{ padding: '7px 14px' }} onClick={adicionar}>+</button>
-      </div>
+        <div className="row" style={{ gap: 7 }}>
+          <input
+            className="inp"
+            placeholder="nova categoria"
+            value={nova}
+            onChange={e => setNova(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && adicionar()}
+            style={{ flex: 1 }}
+          />
+          <button className="bt bta" style={{ padding: '7px 14px' }} onClick={adicionar}>+</button>
+        </div>
 
-      {categorias.map((c, i) => {
-        const usado = gastoPorCategoria.get(c.id) ?? 0
-        return (
-          <button key={c.id} className="li" onClick={() => remover(c.id, c.nome)}>
-            <div className="row" style={{ gap: 7 }}>
-              <span style={{ width: 13, height: 13, borderRadius: 3, background: CORES[i % CORES.length], display: 'block' }} />
-              <b style={{ fontSize: 14 }}>{c.nome}</b>
+        {categorias.map((c, i) => {
+          const gasto = gastoPorCategoria.get(c.id) ?? 0
+          return (
+            <motion.button
+              key={c.id}
+              className="li"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...CURVA, delay: Math.min(i, 8) * 0.035 }}
+              onClick={() => setSelecionada(c)}
+            >
+              <div className="row" style={{ gap: 7 }}>
+                <span style={{ width: 13, height: 13, borderRadius: 3, background: CORES[i % CORES.length], display: 'block' }} />
+                <b style={{ fontSize: 14 }}>{c.nome}</b>
+              </div>
+              <span className="note">{gasto ? fmt(gasto) : 'sem uso'}</span>
+            </motion.button>
+          )
+        })}
+
+        <div className="ann">O agente sugere a categoria pelo fornecedor, mas quem manda é a sua lista.</div>
+      </Tela>
+
+      <AnimatePresence>
+        {selecionada && (
+          <Sheet aoFechar={() => setSelecionada(null)}>
+            <div className="row">
+              <b style={{ fontSize: 17 }}>{selecionada.nome}</b>
+              <span className="note">{usado ? fmt(usado) : 'sem uso'}</span>
             </div>
-            <span className="note">{usado ? fmt(usado) : 'sem uso'}</span>
-          </button>
-        )
-      })}
 
-      <div className="ann">O agente sugere a categoria pelo fornecedor, mas quem manda é a sua lista.</div>
-    </Tela>
+            {usado > 0 ? (
+              <div className="ann">
+                Já tem gasto lançado nesta categoria. Apagar deixaria esses lançamentos sem classificação, então
+                ela fica.
+              </div>
+            ) : selecionada.criado_por !== userId ? (
+              <div className="ann">Só quem criou a categoria pode apagar.</div>
+            ) : (
+              <button className="bt" onClick={() => remover(selecionada)} disabled={apagando}>
+                {apagando ? 'apagando…' : 'Apagar categoria'}
+              </button>
+            )}
+
+            <div className="note" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setSelecionada(null)}>
+              fechar
+            </div>
+          </Sheet>
+        )}
+      </AnimatePresence>
+    </>
   )
 }

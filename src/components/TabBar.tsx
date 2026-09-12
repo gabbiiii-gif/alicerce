@@ -13,6 +13,8 @@ export function TabBar({ ativa }: { ativa: Aba }) {
   function irPara(aba: Aba) {
     if (aba === 'obras') return navigate('/')
     if (aba === 'perfil') return navigate('/perfil')
+    // Relatórios não depende de obra: sem nenhuma escolhida, abre o consolidado.
+    if (aba === 'relatorios' && !obraId) return navigate('/relatorios')
     if (!obraId) {
       avisar('Escolha uma obra primeiro')
       return navigate('/')

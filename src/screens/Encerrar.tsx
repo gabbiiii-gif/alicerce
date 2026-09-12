@@ -50,7 +50,7 @@ export function Encerrar() {
         }),
       }
 
-      const blob = await gerarPdfRelatorio(obra, final, contas.aberto, 'Fechamento')
+      const blob = await gerarPdfRelatorio(obra.nome, final, contas.aberto, 'Fechamento')
       await baixarOuCompartilhar(blob, `alicerce-${obra.nome.toLowerCase().replace(/\s+/g, '-')}-fechamento.pdf`, `Fechamento ${obra.nome}`)
       avisar('Obra encerrada e relatório final gerado')
       navigate('/', { replace: true })

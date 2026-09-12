@@ -1,4 +1,4 @@
-import type { Lancamento, Membro, Obra } from './types'
+import type { Lancamento, Membro } from './types'
 import { fmt, isoParaBR } from './format'
 import { mesDe, semanaDe } from './format'
 
@@ -12,6 +12,13 @@ export type ResumoPessoa = {
   itens: { esquerda: string; direita: string }[]
 }
 
+export type ResumoObra = {
+  id: string
+  nome: string
+  entradas: number
+  saidas: number
+}
+
 export type Relatorio = {
   titulo: string
   inicio: string
@@ -20,6 +27,8 @@ export type Relatorio = {
   saidas: number
   porCategoria: { nome: string; valor: number; pct: number }[]
   porPessoa: ResumoPessoa[]
+  // Vazio no relatório de uma obra só: ali a quebra por obra não diria nada.
+  porObra: ResumoObra[]
 }
 
 export function montarRelatorio(
@@ -61,17 +70,35 @@ export function montarRelatorio(
     }
   })
 
-  return { titulo: janela.titulo, inicio: janela.inicio, fim: janela.fim, entradas, saidas, porCategoria, porPessoa }
+  // No consolidado cada lançamento carrega a obra de onde veio; no de uma obra só,
+  // não carrega — e aí esta quebra sai vazia, que é o certo.
+  const totalPorObra = new Map<string, ResumoObra>()
+  doPeriodo.forEach(l => {
+    if (!l.obra) return
+    const atual = totalPorObra.get(l.obra.id) ?? { id: l.obra.id, nome: l.obra.nome, entradas: 0, saidas: 0 }
+    if (l.tipo === 'entrada') atual.entradas += Number(l.valor)
+    else atual.saidas += Number(l.valor)
+    totalPorObra.set(l.obra.id, atual)
+  })
+  const porObra = [...totalPorObra.values()].sort((a, b) => b.saidas - a.saidas)
+
+  return { titulo: janela.titulo, inicio: janela.inicio, fim: janela.fim, entradas, saidas, porCategoria, porPessoa, porObra }
 }
 
-export function textoResumo(obra: Obra, relatorio: Relatorio, aberto: number): string {
+// Recebe o nome pronto em vez da obra: no consolidado não existe uma obra só.
+export function textoResumo(nome: string, relatorio: Relatorio, aberto: number): string {
   const linhas = [
-    `*${obra.nome}* — ${relatorio.titulo}`,
+    `*${nome}* — ${relatorio.titulo}`,
     `Entradas: ${fmt(relatorio.entradas)}`,
     `Saídas: ${fmt(relatorio.saidas)}`,
     `Em aberto: ${fmt(aberto)}`,
-    '',
-    ...relatorio.porPessoa.map(p => `${p.nome}: ${fmt(p.total)}`),
   ]
+
+  if (relatorio.porObra.length) {
+    linhas.push('', 'Por obra:')
+    relatorio.porObra.forEach(o => linhas.push(`${o.nome}: −${fmt(o.saidas)}`))
+  }
+
+  linhas.push('', ...relatorio.porPessoa.map(p => `${p.nome}: ${fmt(p.total)}`))
   return linhas.join('\n')
 }

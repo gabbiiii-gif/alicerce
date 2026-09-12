@@ -1,4 +1,3 @@
-import type { Obra } from './types'
 import type { Relatorio } from './relatorio'
 import { fmt } from './format'
 import { ehNativo } from './plataforma'
@@ -8,7 +7,9 @@ const CINZA = '#5B7392'
 
 // Relatório em PDF com a cara do app: navy nos títulos, cinza nos rótulos.
 // O jsPDF entra por import dinâmico: só quem exporta PDF paga o download da biblioteca.
-export async function gerarPdfRelatorio(obra: Obra, relatorio: Relatorio, aberto: number, subtitulo: string): Promise<Blob> {
+// Recebe o nome pronto em vez da obra: o mesmo PDF serve para uma obra e para o
+// consolidado, que não tem obra nenhuma.
+export async function gerarPdfRelatorio(nome: string, relatorio: Relatorio, aberto: number, subtitulo: string): Promise<Blob> {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
   const margem = 48
@@ -22,7 +23,7 @@ export async function gerarPdfRelatorio(obra: Obra, relatorio: Relatorio, aberto
 
   doc.setTextColor(NAVY)
   doc.setFontSize(20)
-  doc.text(obra.nome, margem, y)
+  doc.text(nome, margem, y)
   y += 20
 
   doc.setFontSize(11)
@@ -46,6 +47,30 @@ export async function gerarPdfRelatorio(obra: Obra, relatorio: Relatorio, aberto
   doc.setDrawColor('#E1EAF6')
   doc.line(margem, y, margem + largura, y)
   y += 24
+
+  // Só no consolidado: quanto cada obra puxou no período, antes de abrir por categoria.
+  if (relatorio.porObra.length) {
+    doc.setFontSize(13)
+    doc.setTextColor(NAVY)
+    doc.text('Por obra', margem, y)
+    y += 18
+    relatorio.porObra.forEach(o => {
+      if (y > doc.internal.pageSize.getHeight() - 80) {
+        doc.addPage()
+        y = margem
+      }
+      doc.setFontSize(11)
+      doc.setTextColor(NAVY)
+      doc.text(o.nome, margem, y)
+      doc.setFontSize(10)
+      doc.setTextColor(CINZA)
+      doc.text(`entrou ${fmt(o.entradas)}`, margem + largura - 150, y, { align: 'right' })
+      doc.setTextColor(NAVY)
+      doc.text(`−${fmt(o.saidas)}`, margem + largura, y, { align: 'right' })
+      y += 17
+    })
+    y += 12
+  }
 
   if (relatorio.porCategoria.length) {
     doc.setFontSize(13)

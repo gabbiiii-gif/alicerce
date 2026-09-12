@@ -80,6 +80,9 @@ export type Lancamento = {
   created_at: string
   autor?: Profile
   categoria?: { id: string; nome: string } | null
+  // Só vem preenchido no relatório consolidado, onde lançamentos de obras
+  // diferentes se misturam e é preciso saber de qual obra cada um é.
+  obra?: { id: string; nome: string } | null
 }
 
 export type Convite = {

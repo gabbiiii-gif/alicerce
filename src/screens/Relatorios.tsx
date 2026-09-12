@@ -1,20 +1,42 @@
 import { useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { carregarObra } from '../data/api'
+import { useNavigate, useParams } from 'react-router-dom'
+import { motion } from 'motion/react'
+import { carregarObra, carregarRelatorioGeral, listarObras } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useAviso } from '../components/Toast'
 import { curto, fmt, semSimbolo } from '../lib/format'
 import { montarRelatorio, textoResumo, type Periodo } from '../lib/relatorio'
 import { baixarOuCompartilhar, gerarPdfRelatorio } from '../lib/pdf'
+import { CURVA } from '../lib/animacao'
 import { Carregando, Tela } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
 import { Barra } from '../components/Barra'
 
+const TODAS = 'Todas as obras'
+
 export function Relatorios() {
-  const { obraId = '' } = useParams()
+  // Sem obraId na rota (/relatorios) o relatório é o consolidado; com obraId
+  // (/obra/:obraId/relatorios) é o daquela obra isolada.
+  const { obraId } = useParams()
+  const navigate = useNavigate()
   const avisar = useAviso()
-  const { dados, carregando } = useAsync(() => carregarObra(obraId), [obraId])
   const [periodo, setPeriodo] = useState<Periodo>('semana')
+
+  const { dados: obras } = useAsync(listarObras, [])
+
+  const { dados, carregando } = useAsync(async () => {
+    if (obraId) {
+      const uma = await carregarObra(obraId)
+      return {
+        nome: uma.obra.nome,
+        lancamentos: uma.lancamentos,
+        membros: uma.membros,
+        aberto: uma.contas.aberto,
+      }
+    }
+    const geral = await carregarRelatorioGeral()
+    return { nome: TODAS, lancamentos: geral.lancamentos, membros: geral.membros, aberto: geral.aberto }
+  }, [obraId])
 
   const relatorio = useMemo(
     () => (dados ? montarRelatorio(dados.lancamentos, dados.membros, periodo) : null),
@@ -23,16 +45,16 @@ export function Relatorios() {
 
   if (carregando || !dados || !relatorio) return <Carregando />
 
-  const { obra, contas } = dados
+  const { nome, aberto } = dados
   const rotulo = periodo === 'semana' ? 'Semana' : 'Mês'
 
   async function exportarPdf() {
     try {
-      const blob = await gerarPdfRelatorio(obra, relatorio!, contas.aberto, rotulo)
+      const blob = await gerarPdfRelatorio(nome, relatorio!, aberto, rotulo)
       const resultado = await baixarOuCompartilhar(
         blob,
-        `alicerce-${obra.nome.toLowerCase().replace(/\s+/g, '-')}-${relatorio!.inicio}.pdf`,
-        `Relatório ${obra.nome}`,
+        `alicerce-${nome.toLowerCase().replace(/\s+/g, '-')}-${relatorio!.inicio}.pdf`,
+        `Relatório ${nome}`,
       )
       avisar(resultado === 'compartilhado' ? 'PDF compartilhado' : 'PDF salvo')
     } catch {
@@ -41,7 +63,7 @@ export function Relatorios() {
   }
 
   function mandarWhatsApp() {
-    const texto = textoResumo(obra, relatorio!, contas.aberto)
+    const texto = textoResumo(nome, relatorio!, aberto)
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank')
   }
 
@@ -59,15 +81,36 @@ export function Relatorios() {
 
   return (
     <>
-      <Tela titulo="Relatório" comAbas acao={<span className="note">{obra.nome}</span>}>
+      <Tela titulo="Relatório" comAbas acao={<span className="note">{rotulo}</span>}>
+        {/* Escolha do recorte: tudo junto, ou uma obra de cada vez. */}
+        <div className="tiras">
+          <button
+            className={!obraId ? 'chip bta' : 'chip'}
+            style={!obraId ? { background: '#0A2A6E', borderColor: '#0A2A6E' } : undefined}
+            onClick={() => navigate('/relatorios')}
+          >
+            Todas
+          </button>
+          {(obras ?? []).map(o => (
+            <button
+              key={o.id}
+              className={obraId === o.id ? 'chip bta' : 'chip'}
+              style={obraId === o.id ? { background: '#0A2A6E', borderColor: '#0A2A6E' } : undefined}
+              onClick={() => navigate(`/obra/${o.id}/relatorios`)}
+            >
+              {o.nome}
+            </button>
+          ))}
+        </div>
+
         <div className="row" style={{ border: '1px solid #D5E2F2', borderRadius: 10, overflow: 'hidden', gap: 0 }}>
           <button style={seg(periodo === 'semana')} onClick={() => setPeriodo('semana')}>Semana</button>
           <button style={seg(periodo === 'mes')} onClick={() => setPeriodo('mes')}>Mês</button>
         </div>
 
         <div className="row">
-          <b style={{ fontSize: 15 }}>{relatorio.titulo}</b>
-          <span className="note">fechado agora</span>
+          <b style={{ fontSize: 15 }}>{nome}</b>
+          <span className="note">{relatorio.titulo}</span>
         </div>
 
         <div className="cd">
@@ -76,14 +119,41 @@ export function Relatorios() {
             <b style={{ fontSize: 14 }}>+{curto(relatorio.entradas)}</b>
           </div>
           <div className="row">
-            <span className="note">saídas dos dois</span>
+            <span className="note">saídas</span>
             <b style={{ fontSize: 14 }}>−{semSimbolo(relatorio.saidas)}</b>
           </div>
           <div className="row" style={{ borderTop: '1px solid #E1EAF6', paddingTop: 5 }}>
-            <span style={{ fontSize: 14 }}>em aberto</span>
-            <b style={{ fontSize: 16 }}>{fmt(contas.aberto)}</b>
+            <span style={{ fontSize: 14 }}>em aberto{!obraId && obras && obras.length > 1 ? ' (soma)' : ''}</span>
+            <b style={{ fontSize: 16 }}>{fmt(aberto)}</b>
           </div>
         </div>
+
+        {/* Só aparece no consolidado: no relatório de uma obra, a quebra por obra
+            seria uma linha só repetindo o título. */}
+        {relatorio.porObra.length > 1 && (
+          <>
+            <div className="row" style={{ marginTop: 2 }}>
+              <span style={{ fontSize: 15, fontWeight: 500, fontFamily: "'Instrument Sans', sans-serif" }}>Por obra</span>
+              <span className="note">no período</span>
+            </div>
+            {relatorio.porObra.map((o, i) => (
+              <motion.button
+                key={o.id}
+                className="li"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ ...CURVA, delay: Math.min(i, 8) * 0.035 }}
+                onClick={() => navigate(`/obra/${o.id}/relatorios`)}
+              >
+                <div style={{ flex: 1 }}>
+                  <b style={{ fontSize: 13.5 }}>{o.nome}</b>
+                  <div className="note">entrou {curto(o.entradas)}</div>
+                </div>
+                <b style={{ fontSize: 13.5 }}>−{semSimbolo(o.saidas)}</b>
+              </motion.button>
+            ))}
+          </>
+        )}
 
         {relatorio.porCategoria.map(c => (
           <div className="row" key={c.nome}>
@@ -124,7 +194,11 @@ export function Relatorios() {
           <button className="bt bta" style={{ flex: 1, fontSize: 13.5, padding: 6 }} onClick={mandarWhatsApp}>WhatsApp</button>
         </div>
 
-        <div className="ann">O relatório fecha o período: mesmos lançamentos do painel, somados por pessoa.</div>
+        <div className="ann">
+          {obraId
+            ? 'O relatório fecha o período desta obra: mesmos lançamentos do painel, somados por pessoa.'
+            : 'Todas as suas obras somadas no período. Toque numa obra acima para ver ela sozinha.'}
+        </div>
       </Tela>
       <TabBar ativa="relatorios" />
     </>
