@@ -45,7 +45,7 @@ export function Grafico3D({ meses, maior }: Props) {
       }
 
       const L = el.clientWidth
-      const A = 210
+      const A = 230
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       renderer.setSize(L, A)
       el.appendChild(renderer.domElement)
@@ -53,13 +53,17 @@ export function Grafico3D({ meses, maior }: Props) {
       const cena = new THREE.Scene()
 
       // Enquadramento: a cena é montada num espaço de ~10 x 6, e a câmera abraça isso.
-      const alcance = 6.2
+      // O enquadramento sai da altura: o gráfico é largo e baixo, então é a vertical que
+      // aperta. Alcance menor aproxima a câmera e a série preenche o quadro.
+      const alcance = 3.9
       const proporcao = L / A
       const camera = new THREE.OrthographicCamera(
         -alcance * proporcao, alcance * proporcao, alcance, -alcance, 0.1, 100,
       )
-      camera.position.set(9, 8.5, 12)
-      camera.lookAt(0, 1.2, 0)
+      // Mais baixa que antes: de cima demais as barras viram retângulos achatados e a
+      // diferença de altura entre os meses, que é o dado, se perde.
+      camera.position.set(6.5, 5.2, 11)
+      camera.lookAt(0, 1.9, 0)
 
       cena.add(new THREE.AmbientLight(0xffffff, 0.72))
       const sol = new THREE.DirectionalLight(0xffffff, 0.85)
@@ -71,7 +75,7 @@ export function Grafico3D({ meses, maior }: Props) {
 
       // Chão: dá o plano de apoio sem competir com as barras.
       const chao = new THREE.Mesh(
-        new THREE.PlaneGeometry(13, 4.2),
+        new THREE.PlaneGeometry(12.4, 2.6),
         new THREE.MeshBasicMaterial({ color: 0xeaf2fb, transparent: true, opacity: 0.75 }),
       )
       chao.rotation.x = -Math.PI / 2
@@ -82,7 +86,7 @@ export function Grafico3D({ meses, maior }: Props) {
       const passo = 11 / n
       const largura = Math.min(passo * 0.3, 0.72)
       const prof = largura
-      const alturaMax = 4.6
+      const alturaMax = 4.1
       const x0 = -11 / 2 + passo / 2
 
       type Barra = { malha: import('three').Mesh; alvo: number; mes: MesResumo; entrada: boolean }
@@ -115,17 +119,17 @@ export function Grafico3D({ meses, maior }: Props) {
         if (!vivo) return
         const v = new THREE.Vector3()
         const saida: Rotulo[] = []
+        let base = 0
         meses.forEach((m, i) => {
-          v.set(x0 + i * passo, 0, prof * 1.4)
+          v.set(x0 + i * passo, 0, 1.5)
           v.project(camera)
-          saida.push({
-            chave: m.chave,
-            x: ((v.x + 1) / 2) * L,
-            y: ((-v.y + 1) / 2) * A,
-            texto: m.rotulo,
-          })
+          const y = ((-v.y + 1) / 2) * A
+          base = Math.max(base, y)
+          saida.push({ chave: m.chave, x: ((v.x + 1) / 2) * L, y, texto: m.rotulo })
         })
-        setRotulos(saida)
+        // Todos na mesma linha: seguindo a diagonal da perspectiva, os rótulos viram uma
+        // escada que cruza as barras e fica difícil saber qual é de qual.
+        setRotulos(saida.map(r => ({ ...r, y: base })))
       }
 
       const suave = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -203,7 +207,7 @@ export function Grafico3D({ meses, maior }: Props) {
 
   return (
     <div style={{ position: 'relative' }}>
-      <div ref={container} style={{ width: '100%', height: 210 }} />
+      <div ref={container} style={{ width: '100%', height: 230 }} />
       {rotulos.map(r => (
         <span
           key={r.chave}
