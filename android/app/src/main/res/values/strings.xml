@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Alicerce</string>
+    <string name="title_activity_main">Alicerce</string>
+    <string name="package_name">app.alicerce</string>
+    <string name="custom_url_scheme">app.alicerce</string>
+</resources>

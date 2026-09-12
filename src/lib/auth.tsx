@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { ehNativo, urlDeRetorno } from './plataforma'
 import type { Profile } from './types'
 
 type Contexto = {
@@ -10,6 +11,7 @@ type Contexto = {
   carregando: boolean
   entrar: (email: string, senha: string) => Promise<void>
   cadastrar: (nome: string, email: string, senha: string) => Promise<void>
+  entrarComGoogle: () => Promise<void>
   sair: () => Promise<void>
 }
 
@@ -29,18 +31,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe()
   }, [])
 
+  // No app empacotado o Google volta pelo esquema app.alicerce:// em vez de uma URL,
+  // então é o sistema que reabre o Alicerce e nós trocamos o código pela sessão.
   useEffect(() => {
-    if (!session?.user) {
+    if (!ehNativo()) return
+    let cancelar = () => {}
+    ;(async () => {
+      const { App } = await import('@capacitor/app')
+      const { Browser } = await import('@capacitor/browser')
+      const ouvinte = await App.addListener('appUrlOpen', async ({ url }) => {
+        const params = new URL(url).searchParams
+        const codigo = params.get('code')
+        // O Google devolve `error` quando a pessoa cancela ou nega o acesso.
+        if (!codigo && !params.get('error')) return
+        if (codigo) await supabase.auth.exchangeCodeForSession(codigo)
+        await Browser.close().catch(() => {})
+      })
+      cancelar = () => ouvinte.remove()
+    })()
+    return () => cancelar()
+  }, [])
+
+  const buscarPerfil = useCallback(async (userId: string) => {
+    // O perfil nasce de um trigger no banco junto com a conta. No primeiro login pelo
+    // Google os dois acontecem no mesmo instante, então vale uma segunda tentativa.
+    for (let tentativa = 0; tentativa < 3; tentativa++) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, nome, iniciais, avatar_url')
+        .eq('id', userId)
+        .maybeSingle()
+      if (data) return data as Profile
+      await new Promise(pronto => setTimeout(pronto, 400))
+    }
+    return null
+  }, [])
+
+  useEffect(() => {
+    const userId = session?.user.id
+    if (!userId) {
       setPerfil(null)
       return
     }
-    supabase
-      .from('profiles')
-      .select('id, nome, iniciais')
-      .eq('id', session.user.id)
-      .single()
-      .then(({ data }) => setPerfil((data as Profile | null) ?? null))
-  }, [session?.user?.id])
+    let valido = true
+    buscarPerfil(userId).then(p => valido && setPerfil(p))
+    return () => {
+      valido = false
+    }
+  }, [session?.user.id, buscarPerfil])
 
   const valor = useMemo<Contexto>(
     () => ({
@@ -59,6 +97,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })
         if (error) throw new Error(traduzErro(error.message))
       },
+      entrarComGoogle: async () => {
+        const nativo = ehNativo()
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: urlDeRetorno(),
+            // Quem tem mais de uma conta Google escolhe qual usar em vez de entrar na última.
+            queryParams: { prompt: 'select_account' },
+            // No navegador deixamos o próprio Supabase redirecionar; no app abrimos na mão.
+            skipBrowserRedirect: nativo,
+          },
+        })
+        if (error) throw new Error(traduzErro(error.message))
+        if (nativo && data?.url) {
+          const { Browser } = await import('@capacitor/browser')
+          await Browser.open({ url: data.url, presentationStyle: 'popover' })
+        }
+      },
       sair: async () => {
         await supabase.auth.signOut()
       },
@@ -74,6 +130,9 @@ function traduzErro(mensagem: string): string {
   if (/user already registered/i.test(mensagem)) return 'Esse e-mail já tem conta'
   if (/password should be at least/i.test(mensagem)) return 'A senha precisa de pelo menos 6 caracteres'
   if (/email address .* invalid/i.test(mensagem)) return 'E-mail inválido'
+  if (/provider is not enabled/i.test(mensagem)) return 'O login com Google ainda não está ligado no Supabase'
+  if (/email not confirmed/i.test(mensagem)) return 'Confirme o e-mail antes de entrar'
+  if (/failed to fetch|network/i.test(mensagem)) return 'Sem conexão com o servidor'
   return mensagem
 }
 

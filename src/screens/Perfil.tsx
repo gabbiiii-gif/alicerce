@@ -30,7 +30,12 @@ export function Perfil() {
     <>
       <Tela titulo="Perfil" comAbas>
         <div className="cd" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <div className="av">{perfil?.iniciais ?? '·'}</div>
+          {/* Quem entrou pelo Google já tem foto; os outros ficam com as iniciais. */}
+          {perfil?.avatar_url ? (
+            <img className="av" src={perfil.avatar_url} alt="" referrerPolicy="no-referrer" />
+          ) : (
+            <div className="av">{perfil?.iniciais ?? '·'}</div>
+          )}
           <div style={{ flex: 1 }}>
             <b style={{ fontSize: 15 }}>{perfil?.nome ?? 'você'}</b>
             <div className="note">{souDono ? 'dono de obra' : 'lança os próprios gastos'} · {session?.user.email}</div>

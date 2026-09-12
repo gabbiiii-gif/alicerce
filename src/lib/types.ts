@@ -7,6 +7,8 @@ export type Profile = {
   id: string
   nome: string
   iniciais: string
+  // Vem da conta Google de quem entrou por lá; nulo para quem entrou por e-mail.
+  avatar_url?: string | null
 }
 
 export type Obra = {

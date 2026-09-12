@@ -1,6 +1,7 @@
 import type { Obra } from './types'
 import type { Relatorio } from './relatorio'
 import { fmt } from './format'
+import { ehNativo } from './plataforma'
 
 const NAVY = '#0A2A6E'
 const CINZA = '#5B7392'
@@ -98,6 +99,20 @@ export async function gerarPdfRelatorio(obra: Obra, relatorio: Relatorio, aberto
 }
 
 export async function baixarOuCompartilhar(blob: Blob, nomeArquivo: string, titulo: string) {
+  // No APK/IPA não existe pasta de downloads nem link clicável: o PDF é gravado no
+  // cache do app e entregue à folha de compartilhamento do sistema.
+  if (ehNativo()) {
+    const { Filesystem, Directory } = await import('@capacitor/filesystem')
+    const { Share } = await import('@capacitor/share')
+    const { uri } = await Filesystem.writeFile({
+      path: nomeArquivo,
+      data: await paraBase64(blob),
+      directory: Directory.Cache,
+    })
+    await Share.share({ title: titulo, files: [uri] })
+    return 'compartilhado'
+  }
+
   const arquivo = new File([blob], nomeArquivo, { type: 'application/pdf' })
   const navegador = navigator as Navigator & { canShare?: (dados: { files: File[] }) => boolean }
 
@@ -117,4 +132,14 @@ export async function baixarOuCompartilhar(blob: Blob, nomeArquivo: string, titu
   link.click()
   URL.revokeObjectURL(url)
   return 'baixado'
+}
+
+// O plugin de arquivos do Capacitor grava texto: o PDF vai em base64.
+async function paraBase64(blob: Blob): Promise<string> {
+  const leitor = new FileReader()
+  return new Promise((pronto, falhou) => {
+    leitor.onerror = () => falhou(new Error('não deu para preparar o arquivo'))
+    leitor.onload = () => pronto(String(leitor.result).split(',')[1] ?? '')
+    leitor.readAsDataURL(blob)
+  })
 }

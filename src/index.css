@@ -357,3 +357,31 @@ a { color: var(--azul-700); }
 }
 
 .centro { display: flex; flex: 1; align-items: center; justify-content: center; }
+
+/* Login com Google: botão branco com a marca deles, como o guia da marca exige. */
+.bt-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+.bt-google svg { width: 18px; height: 18px; flex: none; }
+
+.separador {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--texto-secundario);
+  flex: none;
+}
+.separador::before, .separador::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--linha);
+}
+
+/* A foto do Google entra no mesmo círculo das iniciais. */
+img.av { object-fit: cover; padding: 0; }
