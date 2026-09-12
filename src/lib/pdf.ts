@@ -3,7 +3,28 @@ import { fmt } from './format'
 import { ehNativo } from './plataforma'
 
 const NAVY = '#0A2A6E'
+const AZUL = '#1B8FE8'
+const AZUL_CLARO = '#6CB4F0'
 const CINZA = '#5B7392'
+const LINHA = '#E1EAF6'
+const FUNDO = '#F5F8FC'
+
+// A marca do app: quatro barras empilhadas (ver components/Marca.tsx). Redesenhada aqui
+// como vetor em vez de virar imagem — um relatório de obra costuma terminar impresso, e
+// vetor não serrilha no papel.
+const BARRAS = [
+  { largura: 30, cor: AZUL },
+  { largura: 42, cor: AZUL_CLARO },
+  { largura: 38, cor: AZUL },
+  { largura: 45, cor: NAVY },
+]
+
+// Os rótulos do app são em caixa baixa de propósito, o que funciona na tela. Num
+// documento que vai ser impresso e mandado para cliente, começar frase em minúscula
+// parece descuido — aqui cada linha começa maiúscula.
+function primeiraMaiuscula(texto: string): string {
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
 
 // Relatório em PDF com a cara do app: navy nos títulos, cinza nos rótulos.
 // O jsPDF entra por import dinâmico: só quem exporta PDF paga o download da biblioteca.
@@ -12,113 +33,207 @@ const CINZA = '#5B7392'
 export async function gerarPdfRelatorio(nome: string, relatorio: Relatorio, aberto: number, subtitulo: string): Promise<Blob> {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+
   const margem = 48
-  const largura = doc.internal.pageSize.getWidth() - margem * 2
-  let y = margem
+  const paginaL = doc.internal.pageSize.getWidth()
+  const paginaA = doc.internal.pageSize.getHeight()
+  const largura = paginaL - margem * 2
+  const meio = paginaL / 2
+  const fimTexto = margem + largura
+  const limite = paginaA - 76 // abaixo disto começa a faixa do rodapé
+  let y = margem + 14
 
-  doc.setFillColor(NAVY)
-  doc.rect(margem, y, 34, 7, 'F')
-  doc.rect(margem, y + 10, 48, 7, 'F')
-  y += 38
-
-  doc.setTextColor(NAVY)
-  doc.setFontSize(20)
-  doc.text(nome, margem, y)
-  y += 20
-
-  doc.setFontSize(11)
-  doc.setTextColor(CINZA)
-  doc.text(`${subtitulo} · ${relatorio.titulo}`, margem, y)
-  y += 26
-
-  const linhaValor = (rotulo: string, valor: string, destaque = false) => {
-    doc.setFontSize(destaque ? 13 : 11)
-    doc.setTextColor(destaque ? NAVY : CINZA)
-    doc.text(rotulo, margem, y)
-    doc.setTextColor(NAVY)
-    doc.text(valor, margem + largura, y, { align: 'right' })
-    y += destaque ? 22 : 18
+  const novaPagina = (precisa: number) => {
+    if (y + precisa <= limite) return
+    doc.addPage()
+    y = margem + 14
   }
 
-  linhaValor('entradas no período', fmt(relatorio.entradas))
-  linhaValor('saídas no período', fmt(relatorio.saidas))
-  linhaValor('em aberto', fmt(aberto), true)
+  const secao = (texto: string) => {
+    novaPagina(50)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(12)
+    doc.setTextColor(NAVY)
+    doc.text(texto, margem, y)
+    y += 9
+    doc.setDrawColor(LINHA)
+    doc.setLineWidth(0.8)
+    doc.line(margem, y, fimTexto, y)
+    y += 18
+  }
 
-  doc.setDrawColor('#E1EAF6')
-  doc.line(margem, y, margem + largura, y)
+  // ---------------------------------------------------------------- cabeçalho
+
+  // A marca centralizada: cada barra tem largura própria, e é o eixo que as alinha.
+  BARRAS.forEach(b => {
+    doc.setFillColor(b.cor)
+    doc.rect(meio - b.largura / 2, y, b.largura, 7, 'F')
+    y += 10
+  })
   y += 24
 
-  // Só no consolidado: quanto cada obra puxou no período, antes de abrir por categoria.
-  if (relatorio.porObra.length) {
-    doc.setFontSize(13)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(21)
+  doc.setTextColor(NAVY)
+  doc.text(nome, meio, y, { align: 'center', maxWidth: largura })
+  y += 20
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10.5)
+  doc.setTextColor(CINZA)
+  doc.text(`${subtitulo} · ${relatorio.titulo}`, meio, y, { align: 'center' })
+  y += 32
+
+  // ---------------------------------------------------------------- resumo
+
+  // As três contas que respondem "como está a obra" ficam num cartão só, apartadas do
+  // resto: é o que a pessoa procura primeiro ao abrir o arquivo.
+  const alturaCartao = 104
+  doc.setFillColor(FUNDO)
+  doc.setDrawColor(LINHA)
+  doc.setLineWidth(1)
+  doc.roundedRect(margem, y, largura, alturaCartao, 10, 10, 'FD')
+
+  let yc = y + 28
+  const linhaResumo = (rotulo: string, valor: string) => {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(11)
+    doc.setTextColor(CINZA)
+    doc.text(rotulo, margem + 20, yc)
+    doc.setFont('helvetica', 'bold')
     doc.setTextColor(NAVY)
-    doc.text('Por obra', margem, y)
-    y += 18
-    relatorio.porObra.forEach(o => {
-      if (y > doc.internal.pageSize.getHeight() - 80) {
-        doc.addPage()
-        y = margem
-      }
-      doc.setFontSize(11)
-      doc.setTextColor(NAVY)
-      doc.text(o.nome, margem, y)
-      doc.setFontSize(10)
-      doc.setTextColor(CINZA)
-      doc.text(`entrou ${fmt(o.entradas)}`, margem + largura - 150, y, { align: 'right' })
-      doc.setTextColor(NAVY)
-      doc.text(`−${fmt(o.saidas)}`, margem + largura, y, { align: 'right' })
-      y += 17
-    })
-    y += 12
+    doc.text(valor, fimTexto - 20, yc, { align: 'right' })
+    yc += 21
   }
+
+  linhaResumo('Entradas no período', fmt(relatorio.entradas))
+  linhaResumo('Saídas no período', fmt(relatorio.saidas))
+
+  doc.setDrawColor(LINHA)
+  doc.setLineWidth(0.8)
+  doc.line(margem + 20, yc - 5, fimTexto - 20, yc - 5)
+  yc += 16
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(13)
+  doc.setTextColor(NAVY)
+  doc.text('Em aberto', margem + 20, yc)
+  doc.setFontSize(15)
+  doc.text(fmt(aberto), fimTexto - 20, yc, { align: 'right' })
+
+  y += alturaCartao + 34
+
+  // ---------------------------------------------------------------- por obra
+
+  // Só no consolidado: quanto cada obra puxou no período. Com uma obra só, a quebra
+  // seria uma linha repetindo o título — mesmo critério da tela.
+  if (relatorio.porObra.length > 1) {
+    secao('Por obra')
+    relatorio.porObra.forEach(o => {
+      novaPagina(20)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10.5)
+      doc.setTextColor(NAVY)
+      doc.text(doc.splitTextToSize(o.nome, largura - 200)[0], margem, y)
+      doc.setFontSize(9.5)
+      doc.setTextColor(CINZA)
+      doc.text(`Entrou ${fmt(o.entradas)}`, fimTexto - 112, y, { align: 'right' })
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10.5)
+      doc.setTextColor(NAVY)
+      doc.text(`− ${fmt(o.saidas)}`, fimTexto, y, { align: 'right' })
+      y += 19
+    })
+    y += 16
+  }
+
+  // ---------------------------------------------------------------- por categoria
 
   if (relatorio.porCategoria.length) {
-    doc.setFontSize(13)
-    doc.setTextColor(NAVY)
-    doc.text('Por categoria', margem, y)
-    y += 18
+    secao('Por categoria')
+    const xBarra = margem + 118
+    const larguraBarra = largura - 118 - 104
     relatorio.porCategoria.forEach(c => {
+      novaPagina(22)
+      doc.setFont('helvetica', 'normal')
       doc.setFontSize(10)
       doc.setTextColor(CINZA)
-      doc.text(c.nome, margem, y)
+      doc.text(doc.splitTextToSize(primeiraMaiuscula(c.nome), 108)[0], margem, y)
       doc.setFillColor('#E4EDF8')
-      doc.roundedRect(margem + 130, y - 7, largura - 220, 8, 4, 4, 'F')
-      doc.setFillColor('#1B8FE8')
-      doc.roundedRect(margem + 130, y - 7, ((largura - 220) * c.pct) / 100, 8, 4, 4, 'F')
+      doc.roundedRect(xBarra, y - 7, larguraBarra, 8, 4, 4, 'F')
+      if (c.pct > 0) {
+        // Mínimo de 8pt: abaixo disso o arredondamento come a barra e ela some.
+        doc.setFillColor(AZUL)
+        doc.roundedRect(xBarra, y - 7, Math.max((larguraBarra * c.pct) / 100, 8), 8, 4, 4, 'F')
+      }
+      doc.setFont('helvetica', 'bold')
       doc.setTextColor(NAVY)
-      doc.text(fmt(c.valor), margem + largura, y, { align: 'right' })
-      y += 18
+      doc.text(fmt(c.valor), fimTexto, y, { align: 'right' })
+      y += 21
     })
-    y += 10
+    y += 16
   }
 
-  relatorio.porPessoa.forEach(p => {
-    if (y > doc.internal.pageSize.getHeight() - 120) {
-      doc.addPage()
-      y = margem
-    }
-    doc.setFontSize(13)
-    doc.setTextColor(NAVY)
-    doc.text(p.nome, margem, y)
-    doc.text(fmt(p.total), margem + largura, y, { align: 'right' })
-    y += 16
-    doc.setFontSize(10)
-    doc.setTextColor(CINZA)
-    p.itens.forEach(i => {
-      if (y > doc.internal.pageSize.getHeight() - 60) {
-        doc.addPage()
-        y = margem
-      }
-      doc.text(i.esquerda, margem, y)
-      doc.text(i.direita, margem + largura, y, { align: 'right' })
-      y += 14
-    })
-    y += 14
-  })
+  // ---------------------------------------------------------------- por pessoa
 
-  doc.setFontSize(9)
-  doc.setTextColor(CINZA)
-  doc.text('Alicerce · obras e gastos no lugar certo', margem, doc.internal.pageSize.getHeight() - 32)
+  if (relatorio.porPessoa.length) {
+    secao('Por pessoa')
+    relatorio.porPessoa.forEach(p => {
+      // O nome e a primeira nota andam juntos: um nome sozinho no pé da página, com os
+      // gastos dele na página seguinte, é a quebra que mais atrapalha a leitura.
+      novaPagina(44)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11.5)
+      doc.setTextColor(NAVY)
+      doc.text(p.nome, margem, y)
+      doc.text(fmt(p.total), fimTexto, y, { align: 'right' })
+      y += 18
+
+      if (!p.itens.length) {
+        doc.setFont('helvetica', 'italic')
+        doc.setFontSize(9.5)
+        doc.setTextColor(CINZA)
+        doc.text('Sem saídas no período', margem + 14, y)
+        y += 16
+      }
+
+      p.itens.forEach(i => {
+        novaPagina(18)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(9.5)
+        doc.setTextColor(CINZA)
+        // Corta o que não cabe antes de esbarrar no valor, em vez de escrever por cima.
+        doc.text(doc.splitTextToSize(primeiraMaiuscula(i.esquerda), largura - 104)[0], margem + 14, y)
+        doc.setTextColor(NAVY)
+        doc.text(i.direita, fimTexto, y, { align: 'right' })
+        y += 15
+      })
+      y += 18
+    })
+  }
+
+  // ---------------------------------------------------------------- rodapé
+
+  // Por último: só depois de montar tudo se sabe quantas páginas o relatório tem.
+  const hoje = new Date().toLocaleDateString('pt-BR')
+  const paginas = doc.getNumberOfPages()
+  for (let i = 1; i <= paginas; i++) {
+    doc.setPage(i)
+    const yr = paginaA - 40
+    doc.setDrawColor(LINHA)
+    doc.setLineWidth(0.8)
+    doc.line(margem, yr - 16, fimTexto, yr - 16)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    doc.setTextColor(CINZA)
+    doc.text('Alicerce · obras e gastos no lugar certo', margem, yr)
+    doc.text(
+      paginas > 1 ? `Gerado em ${hoje} · Página ${i} de ${paginas}` : `Gerado em ${hoje}`,
+      fimTexto,
+      yr,
+      { align: 'right' },
+    )
+  }
 
   return doc.output('blob')
 }
