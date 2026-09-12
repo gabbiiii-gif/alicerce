@@ -123,7 +123,27 @@ export async function gerarPdfRelatorio(nome: string, relatorio: Relatorio, aber
   return doc.output('blob')
 }
 
+// Nome de arquivo sem acento, espaço ou pontuação.
+//
+// O nome sai do nome da obra, e "Casa Letícia e Gabriel" virava
+// alicerce-casa-letícia-e-gabriel.pdf. No Android o arquivo é entregue por URI, onde o
+// acento vira %C3%AD, e vários apps de destino — WhatsApp entre eles — engasgam com isso
+// ou salvam com o nome corrompido. O relatório é feito para ser mandado adiante, então o
+// nome tem de atravessar qualquer app.
+function nomeSeguro(nome: string): string {
+  return (
+    nome
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-zA-Z0-9.-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .toLowerCase() || 'relatorio'
+  )
+}
+
 export async function baixarOuCompartilhar(blob: Blob, nomeArquivo: string, titulo: string) {
+  nomeArquivo = nomeSeguro(nomeArquivo)
   // No APK/IPA não existe pasta de downloads nem link clicável: o PDF é gravado no
   // cache do app e entregue à folha de compartilhamento do sistema.
   if (ehNativo()) {
