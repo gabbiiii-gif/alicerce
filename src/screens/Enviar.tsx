@@ -7,6 +7,7 @@ import { useAviso } from '../components/Toast'
 import { fmt, isoParaBR } from '../lib/format'
 import { Carregando, Tela } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
+import type { Comprovante } from '../lib/types'
 
 export function Enviar() {
   const { obraId = '' } = useParams()
@@ -21,7 +22,11 @@ export function Enviar() {
   const inputArquivo = useRef<HTMLInputElement>(null)
 
   const daObra = (fila ?? []).filter(c => c.obra_id === obraId)
-  const lendo = daObra.some(c => c.status === 'lendo')
+  // Quem envia e fecha o app no meio do caminho não deixa ninguém para marcar a nota
+  // como erro, e ela ficaria girando. Passado esse tempo a fila desiste de esperar.
+  const parou = (c: Comprovante) =>
+    c.status === 'lendo' && Date.now() - new Date(c.created_at).getTime() > 2 * 60 * 1000
+  const lendo = daObra.some(c => c.status === 'lendo' && !parou(c))
 
   // Enquanto o agente lê, a fila se atualiza sozinha.
   useEffect(() => {
@@ -117,25 +122,31 @@ export function Enviar() {
         {daObra.map(c => {
           const pronto = c.status === 'pronto'
           const falhou = c.status === 'erro'
+          const parado = parou(c)
+          const daParaAbrir = pronto || falhou || parado
           return (
             <button
               key={c.id}
               className="li"
               onClick={() =>
-                pronto || falhou
-                  ? navigate(`/obra/${obraId}/revisar/${c.id}`)
-                  : avisar('O agente ainda está lendo')
+                daParaAbrir ? navigate(`/obra/${obraId}/revisar/${c.id}`) : avisar('O agente ainda está lendo')
               }
             >
               <div className="dsh" style={{ width: 34, height: 34, padding: 0, fontSize: 13 }}>nota</div>
               <div style={{ flex: 1 }}>
                 <b style={{ fontSize: 13.5 }}>
-                  {pronto ? c.extraido?.fornecedor || 'nota lida' : falhou ? 'não deu para ler' : 'lendo a nota…'}
+                  {pronto
+                    ? c.extraido?.fornecedor || 'nota lida'
+                    : falhou
+                      ? 'não deu para ler'
+                      : parado
+                        ? 'o agente não respondeu'
+                        : 'lendo a nota…'}
                 </b>
                 <div className="note">
                   {pronto
                     ? `${fmt(c.extraido?.valor ?? 0)} · ${c.extraido?.data ? isoParaBR(c.extraido.data) : 'sem data'}`
-                    : falhou
+                    : falhou || parado
                       ? 'preencha na mão'
                       : `chegou por ${c.origem}`}
                 </div>
@@ -144,7 +155,7 @@ export function Enviar() {
                 className={pronto ? 'chip bta' : 'chip'}
                 style={pronto ? { background: '#1B8FE8', borderColor: '#1B8FE8' } : { border: 'none', color: '#5B7392' }}
               >
-                {pronto ? 'revisar' : falhou ? 'conferir' : 'aguarde'}
+                {pronto ? 'revisar' : falhou || parado ? 'conferir' : 'aguarde'}
               </span>
             </button>
           )

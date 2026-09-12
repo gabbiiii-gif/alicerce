@@ -250,9 +250,28 @@ export async function enviarComprovante(dados: {
   if (error) throw error
 
   const comprovante = data as Comprovante
-  // O agente roda no servidor; a fila mostra "lendo a nota…" enquanto isso.
-  supabase.functions.invoke('ler-comprovante', { body: { comprovante_id: comprovante.id } }).catch(() => {})
+  chamarAgente(comprovante.id)
   return comprovante
+}
+
+// O agente roda no servidor; a fila mostra "lendo a nota…" enquanto isso.
+//
+// Se a chamada não chega de pé — função não publicada, sem chave, rede caiu —, ninguém
+// do outro lado vai mexer na linha, e a nota ficaria girando para sempre. Então quem
+// falha aqui marca a própria nota como erro: ela vira "preencha na mão" na fila, e o
+// usuário segue sem depender do agente.
+//
+// `invoke` devolve o erro no resultado em vez de lançar, então não basta um catch.
+function chamarAgente(comprovanteId: string) {
+  supabase.functions
+    .invoke('ler-comprovante', { body: { comprovante_id: comprovanteId } })
+    .then(({ error }) => {
+      if (error) throw error
+    })
+    .catch(async (e: unknown) => {
+      const motivo = e instanceof Error ? e.message : 'o agente não respondeu'
+      await supabase.from('comprovantes').update({ status: 'erro', erro: motivo }).eq('id', comprovanteId)
+    })
 }
 
 export async function descartarComprovante(id: string, storagePath: string) {

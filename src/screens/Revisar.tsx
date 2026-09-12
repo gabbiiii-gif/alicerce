@@ -98,7 +98,8 @@ export function Revisar() {
 
       <div className="row">
         <span className="chip bta" style={{ background: '#1B8FE8', borderColor: '#1B8FE8' }}>
-          {comprovante.status === 'erro' ? 'preencha na mão' : 'lido pelo agente'}
+          {/* Só 'pronto' veio do agente. 'lendo' aqui é a nota que travou e o usuário abriu na mão. */}
+          {comprovante.status === 'pronto' ? 'lido pelo agente' : 'preencha na mão'}
         </span>
         <span className="note">{obra.nome}</span>
       </div>
