@@ -145,6 +145,16 @@ create policy "sócio apaga a obra"
   on public.obras for delete to authenticated
   using (public.e_dono(id));
 
+-- ---------------------------------------------------------------- validade do convite
+
+-- SEGURANÇA — 24h, não mais 7 dias.
+--
+-- O convite deixou de dar acesso a uma obra e passou a dar acesso a tudo do grupo, para
+-- sempre. Um link esquecido num grupo de WhatsApp vale muito mais do que valia, então a
+-- janela em que ele serve para alguém precisa ser curta. Convites já emitidos mantêm a
+-- validade com que nasceram — encurtar agora derrubaria um convite em uso.
+alter table public.convites alter column expira_em set default now() + interval '24 hours';
+
 -- ---------------------------------------------------------------- convite junta os grupos
 
 create or replace function public.aceitar_convite(p_codigo text)

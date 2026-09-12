@@ -108,7 +108,11 @@ export function Equipe() {
               WhatsApp
             </a>
           </div>
-          <div className="ann">O convite vale por 7 dias e serve para uma pessoa.</div>
+          <div className="ann">
+            <b>Atenção:</b> quem aceitar este convite vira seu sócio no Alicerce — passa a ver
+            todas as suas obras, inclusive as que você criar depois, e pode lançar e editar
+            nelas. Não é acesso só a esta obra. O link vale 24 horas e serve para uma pessoa.
+          </div>
           <div className="note" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setLink(null)}>
             fechar
           </div>
