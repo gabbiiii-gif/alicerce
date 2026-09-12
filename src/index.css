@@ -12,6 +12,13 @@
   --borda-nav: #E4EDF8;
   --placeholder: #B9CFE8;
   --sheet-max: 460px;
+
+  /* Três papéis, três famílias. Fallbacks com nomes reais: se a fonte da web não chegar
+     (rede ruim, primeira abertura offline), o texto cai numa fonte do próprio sistema em
+     vez do Times New Roman do navegador. */
+  --fonte-titulo: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
+  --fonte-texto: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --fonte-dados: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -22,7 +29,7 @@ body {
   margin: 0;
   background: var(--fundo);
   color: var(--navy);
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--fonte-texto);
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
 }
@@ -63,7 +70,7 @@ a { color: var(--azul-700); }
   background: #fff;
 }
 
-.scr b { font-family: 'Instrument Sans', sans-serif; font-weight: 500; letter-spacing: -.01em; }
+.scr b { font-family: var(--fonte-titulo); font-weight: 500; letter-spacing: -.01em; }
 
 .nav {
   display: flex;
@@ -74,7 +81,7 @@ a { color: var(--azul-700); }
   flex: none;
 }
 
-.nav b, .big { font-family: 'Instrument Sans', sans-serif; font-weight: 500; letter-spacing: -.015em; }
+.nav b, .big { font-family: var(--fonte-titulo); font-weight: 500; letter-spacing: -.015em; }
 .nav b { font-size: 17px; line-height: 1.1; }
 
 .voltar {
@@ -134,7 +141,7 @@ a { color: var(--azul-700); }
   padding: 8px 12px;
   text-align: center;
   font-size: 15px;
-  font-family: 'Instrument Sans', sans-serif;
+  font-family: var(--fonte-titulo);
   font-weight: 500;
   letter-spacing: -.01em;
   flex: none;
@@ -172,7 +179,7 @@ a { color: var(--azul-700); }
   border-radius: 10px;
   padding: 7px 9px;
   font-size: 15px;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--fonte-texto);
   color: var(--navy);
   background: #fff;
   outline: none;
@@ -207,7 +214,7 @@ a { color: var(--azul-700); }
   background: #fff;
   flex: none;
   cursor: pointer;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--fonte-texto);
 }
 .chip.bta { color: #fff; }
 
@@ -248,7 +255,7 @@ a { color: var(--azul-700); }
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  font-family: 'Instrument Sans', sans-serif;
+  font-family: var(--fonte-titulo);
   font-weight: 500;
   flex: none;
 }
@@ -276,7 +283,7 @@ a { color: var(--azul-700); }
   cursor: pointer;
   background: none;
   border: none;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--fonte-texto);
   color: #8CA3BF;
 }
 .tb button.ativa { color: var(--navy); }
@@ -395,7 +402,7 @@ img.av { object-fit: cover; padding: 0; }
   margin: 0;
   font-size: 22px;
   font-weight: 500;
-  font-family: 'Instrument Sans', sans-serif;
+  font-family: var(--fonte-titulo);
   line-height: 1;
   letter-spacing: -.015em;
 }
@@ -412,3 +419,15 @@ img.av { object-fit: cover; padding: 0; }
 }
 .tiras::-webkit-scrollbar { display: none; }
 .tiras .chip { flex: none; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Números: mono com dígitos de largura fixa, para os valores alinharem em coluna. */
+.num {
+  font-family: var(--fonte-dados);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* O percentual da obra é dado, não rótulo. */
+.chip {
+  font-variant-numeric: tabular-nums;
+}

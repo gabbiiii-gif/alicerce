@@ -97,21 +97,21 @@ export function Painel() {
         <div className="cd">
           <div className="row">
             <span className="note">valor fechado</span>
-            <b style={{ fontSize: 14 }}>{fmt(obra.valor_fechado)}</b>
+            <b className="num" style={{ fontSize: 14 }}>{fmt(obra.valor_fechado)}</b>
           </div>
           <div className="row">
             <span className="note">+ aditivos ({dados.aditivos.length})</span>
-            <b style={{ fontSize: 14, color: '#2272CC' }}>{fmt(contas.aditivos)}</b>
+            <b className="num" style={{ fontSize: 14, color: '#2272CC' }}>{fmt(contas.aditivos)}</b>
           </div>
           <div className="row" style={{ borderTop: '1px solid #E1EAF6', paddingTop: 6 }}>
             <span style={{ fontSize: 14 }}>total</span>
             {/* Conta até o valor: é o número principal da tela, e a contagem faz o olho pousar nele. */}
-            <ValorAnimado className="big" valor={contas.total} formatar={fmt} />
+            <ValorAnimado className="big num" valor={contas.total} formatar={fmt} />
           </div>
           <Barra pct={contas.pct} cor="#0A2A6E" />
           <div className="row">
-            <span className="note">recebido {curto(contas.recebido)}</span>
-            <span className="note">em aberto {fmt(contas.aberto)}</span>
+            <span className="note">recebido <span className="num">{curto(contas.recebido)}</span></span>
+            <span className="note">em aberto <span className="num">{fmt(contas.aberto)}</span></span>
           </div>
         </div>
 
@@ -126,8 +126,8 @@ export function Painel() {
         </div>
 
         <div className="row">
-          <span style={{ fontSize: 15, fontWeight: 500, fontFamily: "'Instrument Sans', sans-serif" }}>Lançamentos da obra</span>
-          <span className="note">saídas {fmt(contas.saidas)}</span>
+          <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Lançamentos da obra</span>
+          <span className="note">saídas <span className="num">{fmt(contas.saidas)}</span></span>
         </div>
 
         {lancamentos.map((l, i) => (
@@ -148,7 +148,7 @@ export function Painel() {
                   (l.autor_id === userId ? 'você' : (l.autor?.nome ?? '').split(' ')[0] || 'equipe')}
               </div>
             </div>
-            <b style={{ fontSize: 13.5 }}>{(l.tipo === 'saida' ? '−' : '+') + semSimbolo(l.valor)}</b>
+            <b className="num" style={{ fontSize: 13.5 }}>{(l.tipo === 'saida' ? '−' : '+') + semSimbolo(l.valor)}</b>
           </motion.button>
         ))}
 
@@ -193,7 +193,7 @@ export function Painel() {
         <Sheet aoFechar={() => setSelecionado(null)}>
           <div className="row">
             <b style={{ fontSize: 17 }}>{selecionado.descricao}</b>
-            <b style={{ fontSize: 15 }}>{(selecionado.tipo === 'saida' ? '−' : '+') + fmt(selecionado.valor)}</b>
+            <b className="num" style={{ fontSize: 15 }}>{(selecionado.tipo === 'saida' ? '−' : '+') + fmt(selecionado.valor)}</b>
           </div>
           <div className="note">
             {(selecionado.categoria?.nome || 'entrada') + ' · ' + dataCurta(selecionado.data) + ' · enviado por ' +

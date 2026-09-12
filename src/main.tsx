@@ -27,7 +27,7 @@ function FaltaConfigurar() {
           <div style={{ alignSelf: 'center' }}>
             <Marca />
           </div>
-          <div style={{ textAlign: 'center', fontSize: 20, fontFamily: "'Instrument Sans', sans-serif" }}>
+          <div style={{ textAlign: 'center', fontSize: 20, fontFamily: 'var(--fonte-titulo)' }}>
             Falta ligar o servidor
           </div>
           <div className="ann">

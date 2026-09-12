@@ -47,8 +47,8 @@ export function Obras() {
             <div className="note">{obra.endereco || 'sem endereço'}</div>
             <Barra pct={obra.contas.pct} />
             <div className="row">
-              <span className="note">recebido {fmt(obra.contas.recebido)}</span>
-              <span className="note">em aberto {fmt(obra.contas.aberto)}</span>
+              <span className="note">recebido <span className="num">{fmt(obra.contas.recebido)}</span></span>
+              <span className="note">em aberto <span className="num">{fmt(obra.contas.aberto)}</span></span>
             </div>
           </motion.button>
         ))}

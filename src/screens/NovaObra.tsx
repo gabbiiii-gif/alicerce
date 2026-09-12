@@ -57,7 +57,7 @@ export function NovaObra() {
 
       {passo === 0 && (
         <>
-          <div style={{ fontSize: 19, fontWeight: 500, fontFamily: "'Instrument Sans', sans-serif", lineHeight: 1.1, marginTop: 4 }}>
+          <div style={{ fontSize: 19, fontWeight: 500, fontFamily: 'var(--fonte-titulo)', lineHeight: 1.1, marginTop: 4 }}>
             Do que se trata?
           </div>
           <input className="inp" placeholder="nome da obra" value={nome} onChange={e => setNome(e.target.value)} autoFocus />
@@ -69,7 +69,7 @@ export function NovaObra() {
 
       {passo === 1 && (
         <>
-          <div style={{ fontSize: 19, fontWeight: 500, fontFamily: "'Instrument Sans', sans-serif", lineHeight: 1.1, marginTop: 4 }}>
+          <div style={{ fontSize: 19, fontWeight: 500, fontFamily: 'var(--fonte-titulo)', lineHeight: 1.1, marginTop: 4 }}>
             Quanto entrou
             <br />
             para começar?
@@ -91,7 +91,7 @@ export function NovaObra() {
 
       {passo === 2 && (
         <>
-          <div style={{ fontSize: 19, fontWeight: 500, fontFamily: "'Instrument Sans', sans-serif", lineHeight: 1.1, marginTop: 4 }}>
+          <div style={{ fontSize: 19, fontWeight: 500, fontFamily: 'var(--fonte-titulo)', lineHeight: 1.1, marginTop: 4 }}>
             Confere?
           </div>
           <div className="cd">

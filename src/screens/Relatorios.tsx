@@ -100,7 +100,7 @@ export function Relatorios() {
     background: ativo ? '#0A2A6E' : '#fff',
     color: ativo ? '#fff' : '#0A2A6E',
     border: 'none',
-    fontFamily: "'Space Grotesk', sans-serif",
+    fontFamily: 'var(--fonte-texto)',
     fontSize: 13.5,
   })
 
@@ -148,15 +148,15 @@ export function Relatorios() {
         <div className="cd">
           <div className="row">
             <span className="note">entradas</span>
-            <b style={{ fontSize: 14 }}>+{curto(relatorio.entradas)}</b>
+            <b className="num" style={{ fontSize: 14 }}>+{curto(relatorio.entradas)}</b>
           </div>
           <div className="row">
             <span className="note">saídas</span>
-            <b style={{ fontSize: 14 }}>−{semSimbolo(relatorio.saidas)}</b>
+            <b className="num" style={{ fontSize: 14 }}>−{semSimbolo(relatorio.saidas)}</b>
           </div>
           <div className="row" style={{ borderTop: '1px solid #E1EAF6', paddingTop: 5 }}>
             <span style={{ fontSize: 14 }}>em aberto{!obraId && obras && obras.length > 1 ? ' (soma)' : ''}</span>
-            <b style={{ fontSize: 16 }}>{fmt(aberto)}</b>
+            <b className="num" style={{ fontSize: 16 }}>{fmt(aberto)}</b>
           </div>
         </div>
 
@@ -165,7 +165,7 @@ export function Relatorios() {
         {relatorio.porObra.length > 1 && (
           <>
             <div className="row" style={{ marginTop: 2 }}>
-              <span style={{ fontSize: 15, fontWeight: 500, fontFamily: "'Instrument Sans', sans-serif" }}>Por obra</span>
+              <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Por obra</span>
               <span className="note">no período</span>
             </div>
             {relatorio.porObra.map((o, i) => (
@@ -181,7 +181,7 @@ export function Relatorios() {
                   <b style={{ fontSize: 13.5 }}>{o.nome}</b>
                   <div className="note">entrou {curto(o.entradas)}</div>
                 </div>
-                <b style={{ fontSize: 13.5 }}>−{semSimbolo(o.saidas)}</b>
+                <b className="num" style={{ fontSize: 13.5 }}>−{semSimbolo(o.saidas)}</b>
               </motion.button>
             ))}
           </>
@@ -193,12 +193,12 @@ export function Relatorios() {
             <div style={{ flex: 1 }}>
               <Barra pct={c.pct} />
             </div>
-            <b style={{ fontSize: 12.5, width: 44, textAlign: 'right' }}>{curto(c.valor)}</b>
+            <b className="num" style={{ fontSize: 12.5, width: 44, textAlign: 'right' }}>{curto(c.valor)}</b>
           </div>
         ))}
 
         <div className="row" style={{ marginTop: 2 }}>
-          <span style={{ fontSize: 15, fontWeight: 500, fontFamily: "'Instrument Sans', sans-serif" }}>Por pessoa</span>
+          <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Por pessoa</span>
           <span className="note">nota a nota</span>
         </div>
 
@@ -209,12 +209,12 @@ export function Relatorios() {
                 <div className="av">{p.iniciais}</div>
                 <b style={{ fontSize: 14 }}>{p.nome}</b>
               </div>
-              <b style={{ fontSize: 14 }}>−{curto(p.total)}</b>
+              <b className="num" style={{ fontSize: 14 }}>−{curto(p.total)}</b>
             </div>
             {p.itens.map((i, idx) => (
               <div className="row" key={idx}>
                 <span className="note">{i.esquerda}</span>
-                <span className="note">{i.direita}</span>
+                <span className="note num">{i.direita}</span>
               </div>
             ))}
             {p.itens.length === 0 && <span className="note">sem saídas no período</span>}

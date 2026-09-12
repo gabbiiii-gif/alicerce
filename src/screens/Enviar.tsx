@@ -115,7 +115,7 @@ export function Enviar() {
         </div>
 
         <div className="row" style={{ marginTop: 4 }}>
-          <span style={{ fontSize: 15, fontWeight: 500, fontFamily: "'Instrument Sans', sans-serif" }}>Na fila</span>
+          <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Na fila</span>
           <span className="chip">{daObra.length}</span>
         </div>
 
