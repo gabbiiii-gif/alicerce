@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MesResumo } from '../lib/dashboard'
-import { COR_ENTRADA, COR_SAIDA } from '../lib/dashboard'
+import { COR_PREVISTO, COR_SAIDA } from '../lib/dashboard'
 import { curto } from '../lib/format'
 
 type Props = {
@@ -10,7 +10,13 @@ type Props = {
 
 type Rotulo = { chave: string; x: number; y: number; texto: string }
 
-// Entradas e saídas dos últimos meses, em barras 3D.
+// Gasto do mês contra o previsto do mês, em barras 3D.
+//
+// É a comparação que se faz em obra: o orçamento do mês foi respeitado? A barra âmbar
+// passando da cinza é o mês que estourou — dá para ver de longe, sem ler número.
+//
+// O cinza do previsto tem croma baixo de propósito. Ele não é uma série disputando
+// atenção com a outra: é a régua contra a qual a série é medida, e régua fica no fundo.
 //
 // Câmera ORTOGRÁFICA, e isso não é detalhe: numa câmera em perspectiva o que está à
 // frente aparece maior, então duas barras de mesmo valor desenhariam alturas diferentes
@@ -89,14 +95,16 @@ export function Grafico3D({ meses, maior }: Props) {
       const alturaMax = 5.1
       const x0 = -11 / 2 + passo / 2
 
-      type Barra = { malha: import('three').Mesh; alvo: number; mes: MesResumo; entrada: boolean }
+      type Barra = { malha: import('three').Mesh; alvo: number; mes: MesResumo }
       const barras: Barra[] = []
 
       meses.forEach((m, i) => {
         const base = x0 + i * passo
+        // Previsto à esquerda, gasto à direita: a ordem é sempre a mesma, então a
+        // comparação é a mesma leitura em todos os meses.
         ;([
-          { valor: m.entradas, cor: COR_ENTRADA, desloca: -largura * 0.62, entrada: true },
-          { valor: m.saidas, cor: COR_SAIDA, desloca: largura * 0.62, entrada: false },
+          { valor: m.previsto, cor: COR_PREVISTO, desloca: -largura * 0.62 },
+          { valor: m.saidas, cor: COR_SAIDA, desloca: largura * 0.62 },
         ] as const).forEach(b => {
           // Altura mínima visível: uma barra de valor pequeno mas não-zero precisa
           // aparecer, senão o mês parece vazio quando não está.
@@ -108,7 +116,7 @@ export function Grafico3D({ meses, maior }: Props) {
           malha.position.set(base + b.desloca, 0, 0)
           malha.scale.y = 0.0001
           cena.add(malha)
-          barras.push({ malha, alvo, mes: m, entrada: b.entrada })
+          barras.push({ malha, alvo, mes: m })
         })
       })
 
@@ -195,7 +203,7 @@ export function Grafico3D({ meses, maior }: Props) {
         {meses.map(m => (
           <div key={m.chave} style={{ flex: 1, textAlign: 'center' }}>
             <div className="row" style={{ alignItems: 'flex-end', gap: 3, height: 118, justifyContent: 'center' }}>
-              <div style={{ width: 10, borderRadius: '3px 3px 0 0', background: COR_ENTRADA, height: `${(m.entradas / maior) * 100}%` }} />
+              <div style={{ width: 10, borderRadius: '3px 3px 0 0', background: COR_PREVISTO, height: `${(m.previsto / maior) * 100}%` }} />
               <div style={{ width: 10, borderRadius: '3px 3px 0 0', background: COR_SAIDA, height: `${(m.saidas / maior) * 100}%` }} />
             </div>
             <div className="note" style={{ fontSize: 11 }}>{m.rotulo}</div>
@@ -227,13 +235,13 @@ export function Grafico3D({ meses, maior }: Props) {
       {/* Tabela escondida: o mesmo dado em texto, para leitor de tela e para quem
           precisar do número exato que a barra não diz. */}
       <table style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-        <caption>Entradas e saídas por mês</caption>
+        <caption>Gasto e previsto por mês</caption>
         <tbody>
           {meses.map(m => (
             <tr key={m.chave}>
               <th scope="row">{m.rotulo}</th>
-              <td>entradas {curto(m.entradas)}</td>
-              <td>saídas {curto(m.saidas)}</td>
+              <td>previsto {curto(m.previsto)}</td>
+              <td>gasto {curto(m.saidas)}</td>
             </tr>
           ))}
         </tbody>

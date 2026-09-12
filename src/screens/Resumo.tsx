@@ -5,13 +5,23 @@ import { carregarRelatorioGeral, listarObras } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
 import { useObraAtual } from '../lib/obraAtual'
-import { montarVisao, COR_ENTRADA, COR_SAIDA } from '../lib/dashboard'
+import { montarVisao, COR_PREVISTO, COR_SAIDA } from '../lib/dashboard'
 import { curto, dataCurta, fmt, semSimbolo } from '../lib/format'
 import { CURVA } from '../lib/animacao'
 import { Carregando, Tela, Vazio } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
 import { ValorAnimado } from '../components/ValorAnimado'
 import { Grafico3D } from '../components/Grafico3D'
+import { CurvaAvanco } from '../components/CurvaAvanco'
+
+function Titulo({ texto, nota }: { texto: string; nota?: string }) {
+  return (
+    <div className="row" style={{ marginTop: 6 }}>
+      <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>{texto}</span>
+      {nota && <span className="note">{nota}</span>}
+    </div>
+  )
+}
 
 export function Resumo() {
   const navigate = useNavigate()
@@ -23,10 +33,7 @@ export function Resumo() {
     return { obras, lancamentos: geral.lancamentos }
   }, [])
 
-  const visao = useMemo(
-    () => (dados ? montarVisao(dados.obras, dados.lancamentos) : null),
-    [dados],
-  )
+  const visao = useMemo(() => (dados ? montarVisao(dados.obras, dados.lancamentos) : null), [dados])
 
   if (!dados || !visao) {
     return (
@@ -45,8 +52,7 @@ export function Resumo() {
     )
   }
 
-  const saldoMes = visao.mesEntradas - visao.mesSaidas
-  const semNada = dados.obras.length === 0
+  const noVermelho = visao.margem < 0
 
   function abrirObra(id: string) {
     definir(id)
@@ -56,7 +62,7 @@ export function Resumo() {
   return (
     <>
       <Tela titulo="Resumo" comAbas acao={<div className="av">{perfil?.iniciais ?? '·'}</div>}>
-        {semNada ? (
+        {dados.obras.length === 0 ? (
           <Vazio>
             nada para resumir ainda
             <br />
@@ -64,32 +70,40 @@ export function Resumo() {
           </Vazio>
         ) : (
           <>
-            {/* O número que responde "como estou": o que ainda falta receber, somando
-                todas as obras. Tudo o mais na tela é detalhe deste. */}
+            {/* A margem vem primeiro, e não o faturamento: é ela que diz se a obra se
+                paga hoje. Negativa significa tocar a obra com dinheiro que ainda não
+                entrou — a informação que mais cedo muda uma decisão. */}
             <motion.div
               className="cd"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={CURVA}
-              style={{ background: 'var(--navy)', borderColor: 'var(--navy)', padding: '14px 14px 12px' }}
+              style={{
+                background: noVermelho ? '#7C2D12' : 'var(--navy)',
+                borderColor: noVermelho ? '#7C2D12' : 'var(--navy)',
+                padding: '14px 14px 12px',
+              }}
             >
-              <span className="note" style={{ color: '#9FC4F0' }}>a receber, somando todas as obras</span>
+              <span className="note" style={{ color: noVermelho ? '#FDBA74' : '#9FC4F0' }}>
+                {noVermelho ? 'no vermelho — gasto maior que o recebido' : 'sobra em caixa (recebido − gasto)'}
+              </span>
               <ValorAnimado
                 className="num"
-                valor={visao.aberto}
-                formatar={fmt}
+                valor={Math.abs(visao.margem)}
+                formatar={v => (noVermelho ? '−' : '') + fmt(v)}
                 style={{ fontSize: 30, color: '#fff', fontFamily: 'var(--fonte-dados)', letterSpacing: '-.03em' }}
               />
-              <span className="note" style={{ color: '#9FC4F0' }}>
-                {visao.obrasAtivas} {visao.obrasAtivas === 1 ? 'obra em andamento' : 'obras em andamento'}
-                {visao.obrasEncerradas > 0 && ` · ${visao.obrasEncerradas} encerrada${visao.obrasEncerradas > 1 ? 's' : ''}`}
+              <span className="note" style={{ color: noVermelho ? '#FDBA74' : '#9FC4F0' }}>
+                {visao.mesesDeFolego !== null
+                  ? `dá para ${visao.mesesDeFolego.toFixed(1).replace('.', ',')} ${visao.mesesDeFolego < 2 ? 'mês' : 'meses'} no ritmo atual`
+                  : `a receber ${fmt(visao.aberto)} · ${visao.obrasAtivas} ${visao.obrasAtivas === 1 ? 'obra' : 'obras'}`}
               </span>
             </motion.div>
 
             <div className="row" style={{ gap: 8, alignItems: 'stretch' }}>
               {[
-                { rotulo: 'já recebido', valor: visao.recebido },
-                { rotulo: 'já gasto', valor: visao.gasto },
+                { rotulo: 'a receber', valor: fmt(visao.aberto) },
+                { rotulo: 'ritmo mensal', valor: fmt(visao.ritmoMensal) },
               ].map((m, i) => (
                 <motion.div
                   key={m.rotulo}
@@ -100,26 +114,52 @@ export function Resumo() {
                   transition={{ ...CURVA, delay: 0.05 + i * 0.05 }}
                 >
                   <span className="note">{m.rotulo}</span>
-                  <b className="num" style={{ fontSize: 17 }}>{fmt(m.valor)}</b>
+                  <b className="num" style={{ fontSize: 17 }}>{m.valor}</b>
                 </motion.div>
               ))}
             </div>
 
-            {/* Evolução: seis meses lado a lado dizem o ritmo da obra, que nenhum número
-                sozinho diz. */}
-            <div className="row" style={{ marginTop: 6 }}>
-              <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Últimos 6 meses</span>
-              <span className="note">entrada e saída</span>
+            {/* Estouro do mês vem antes de qualquer gráfico: é o único item desta tela
+                em que ainda dá para agir, e mês fechado não se conserta. */}
+            {visao.emRisco.length > 0 && (
+              <>
+                <Titulo texto="Passou do previsto" nota="este mês" />
+                {visao.emRisco.map(o => (
+                  <button
+                    key={o.id}
+                    className="cd"
+                    onClick={() => abrirObra(o.id)}
+                    style={{ borderColor: COR_SAIDA, background: '#FFF7ED', textAlign: 'left', cursor: 'pointer', gap: 3 }}
+                  >
+                    <div className="row">
+                      <b style={{ fontSize: 14 }}>{o.nome}</b>
+                      <b className="num" style={{ fontSize: 14, color: '#9A3412' }}>+{semSimbolo(o.excesso)}</b>
+                    </div>
+                    <span className="note" style={{ color: '#9A3412' }}>
+                      gastou <span className="num">{curto(o.gastoMes)}</span> num mês previsto para{' '}
+                      <span className="num">{curto(o.previsto)}</span>
+                    </span>
+                  </button>
+                ))}
+              </>
+            )}
+
+            <Titulo texto="Avanço financeiro" nota="acumulado" />
+            <div className="cd" style={{ padding: '12px 10px 8px', gap: 4 }}>
+              <CurvaAvanco meses={visao.meses} maior={visao.maiorAcum} />
+              <div className="ann" style={{ marginTop: 2 }}>
+                Enquanto a faixa entre as duas linhas é larga, a obra se paga. Quando fecha, está
+                sendo tocada com dinheiro que ainda não entrou.
+              </div>
             </div>
 
+            <Titulo texto="Gasto x previsto" nota="mês a mês" />
             <div className="cd" style={{ padding: '10px 8px 6px', gap: 2 }}>
               <Grafico3D meses={visao.meses} maior={visao.maiorMes} />
-              {/* Legenda sempre presente com duas séries: a identidade nunca pode
-                  depender só da cor. */}
               <div className="row" style={{ justifyContent: 'center', gap: 16, paddingTop: 2 }}>
                 {[
-                  { cor: COR_ENTRADA, texto: 'entrou' },
-                  { cor: COR_SAIDA, texto: 'saiu' },
+                  { cor: COR_PREVISTO, texto: 'previsto' },
+                  { cor: COR_SAIDA, texto: 'gasto' },
                 ].map(l => (
                   <span key={l.texto} className="row" style={{ gap: 5, flex: 'none' }}>
                     <i style={{ width: 9, height: 9, borderRadius: 2, background: l.cor, display: 'block' }} />
@@ -131,27 +171,24 @@ export function Resumo() {
 
             <div className="cd" style={{ gap: 5 }}>
               <div className="row">
-                <span className="note">entrou este mês</span>
-                <b className="num" style={{ fontSize: 14, color: COR_ENTRADA }}>+{semSimbolo(visao.mesEntradas)}</b>
+                <span className="note">orçamento do mês</span>
+                <b className="num" style={{ fontSize: 14 }}>{fmt(visao.previstoMes)}</b>
               </div>
               <div className="row">
-                <span className="note">saiu este mês</span>
-                <b className="num" style={{ fontSize: 14, color: COR_SAIDA }}>−{semSimbolo(visao.mesSaidas)}</b>
+                <span className="note">gasto até agora</span>
+                <b className="num" style={{ fontSize: 14, color: visao.mesSaidas > visao.previstoMes && visao.previstoMes > 0 ? COR_SAIDA : undefined }}>
+                  {fmt(visao.mesSaidas)}
+                </b>
               </div>
               <div className="row" style={{ borderTop: '1px solid var(--linha)', paddingTop: 5 }}>
-                <span style={{ fontSize: 14 }}>saldo do mês</span>
-                <b className="num" style={{ fontSize: 16 }}>
-                  {saldoMes < 0 ? '−' : '+'}{semSimbolo(Math.abs(saldoMes))}
-                </b>
+                <span style={{ fontSize: 14 }}>do contrato já executado</span>
+                <b className="num" style={{ fontSize: 16 }}>{visao.executadoPct}%</b>
               </div>
             </div>
 
             {visao.categorias.length > 0 && (
               <>
-                <div className="row" style={{ marginTop: 6 }}>
-                  <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Onde o dinheiro foi</span>
-                  <span className="note">este mês</span>
-                </div>
+                <Titulo texto="Onde o dinheiro foi" nota="este mês" />
                 {visao.categorias.map((c, i) => (
                   <motion.div
                     key={c.nome}
@@ -177,10 +214,7 @@ export function Resumo() {
               </>
             )}
 
-            <div className="row" style={{ marginTop: 6 }}>
-              <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Suas obras</span>
-              <span className="note">{dados.obras.length}</span>
-            </div>
+            <Titulo texto="Suas obras" nota={String(dados.obras.length)} />
             {dados.obras.map(o => (
               <button key={o.id} className="li" onClick={() => abrirObra(o.id)}>
                 <div style={{ flex: 1 }}>
@@ -196,10 +230,7 @@ export function Resumo() {
 
             {visao.ultimos.length > 0 && (
               <>
-                <div className="row" style={{ marginTop: 6 }}>
-                  <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Último movimento</span>
-                  <span className="note">todas as obras</span>
-                </div>
+                <Titulo texto="Último movimento" nota="todas as obras" />
                 {visao.ultimos.map(l => (
                   <div className="row" key={l.id}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -210,7 +241,7 @@ export function Resumo() {
                         <span className="num">{dataCurta(l.data)}</span> · {l.obra?.nome ?? 'obra'}
                       </span>
                     </div>
-                    <b className="num" style={{ fontSize: 13, color: l.tipo === 'saida' ? COR_SAIDA : COR_ENTRADA }}>
+                    <b className="num" style={{ fontSize: 13, color: l.tipo === 'saida' ? COR_SAIDA : '#1B8FE8' }}>
                       {l.tipo === 'saida' ? '−' : '+'}{semSimbolo(l.valor)}
                     </b>
                   </div>
@@ -219,7 +250,8 @@ export function Resumo() {
             )}
 
             <div className="ann">
-              Os números somam todas as obras que você vê, inclusive as dos seus sócios.
+              Os números somam todas as obras que você vê, inclusive as dos seus sócios. O previsto
+              mensal de cada obra sai do painel dela.
             </div>
           </>
         )}
