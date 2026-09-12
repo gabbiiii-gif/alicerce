@@ -63,7 +63,7 @@ export function Grafico3D({ meses, maior }: Props) {
       // Mais baixa que antes: de cima demais as barras viram retângulos achatados e a
       // diferença de altura entre os meses, que é o dado, se perde.
       camera.position.set(6.5, 5.2, 11)
-      camera.lookAt(0, 1.9, 0)
+      camera.lookAt(0, 2.4, 0)
 
       cena.add(new THREE.AmbientLight(0xffffff, 0.72))
       const sol = new THREE.DirectionalLight(0xffffff, 0.85)
@@ -86,7 +86,7 @@ export function Grafico3D({ meses, maior }: Props) {
       const passo = 11 / n
       const largura = Math.min(passo * 0.3, 0.72)
       const prof = largura
-      const alturaMax = 4.1
+      const alturaMax = 5.1
       const x0 = -11 / 2 + passo / 2
 
       type Barra = { malha: import('three').Mesh; alvo: number; mes: MesResumo; entrada: boolean }

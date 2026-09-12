@@ -320,6 +320,19 @@ function chamarAgente(comprovanteId: string) {
     })
 }
 
+// Pede ao servidor que mande o resumo das obras por e-mail. Quem monta o conteúdo é a
+// função, com o token de quem chamou — o app não decide o que vai no e-mail.
+export async function enviarRelatorioPorEmail(para?: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('enviar-relatorio', {
+    body: para ? { para } : {},
+  })
+  if (error) throw error
+  // A função responde 200 mesmo quando o serviço de e-mail recusa, para a mensagem dele
+  // chegar inteira aqui em vez de virar um erro de rede sem explicação.
+  if (data?.erro) throw new Error(data.erro)
+  return (data?.para as string) ?? ''
+}
+
 export async function descartarComprovante(id: string, storagePath: string) {
   await supabase.storage.from('comprovantes').remove([storagePath])
   const { error } = await supabase.from('comprovantes').delete().eq('id', id)

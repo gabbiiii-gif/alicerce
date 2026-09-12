@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { listarObras } from '../data/api'
+import { enviarRelatorioPorEmail, listarObras } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useAuth, useUsuario } from '../lib/auth'
 import { useObraAtual } from '../lib/obraAtual'
@@ -14,6 +15,19 @@ export function Perfil() {
   const { obraId } = useObraAtual()
   const avisar = useAviso()
   const { dados: obras } = useAsync(listarObras, [])
+  const [enviando, setEnviando] = useState(false)
+
+  async function mandarEmail() {
+    setEnviando(true)
+    try {
+      const para = await enviarRelatorioPorEmail()
+      avisar(`Resumo enviado para ${para}`)
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : 'não deu para enviar o e-mail')
+    } finally {
+      setEnviando(false)
+    }
+  }
 
   const minhas = obras ?? []
   const souDono = minhas.some(o => o.dono_id === userId)
@@ -50,10 +64,13 @@ export function Perfil() {
           <b style={{ fontSize: 14 }}>Equipe da obra</b>
           <span className="note">›</span>
         </button>
-        <div className="li" style={{ cursor: 'default', opacity: .6 }}>
-          <b style={{ fontSize: 14 }}>Relatório por e-mail</b>
-          <span className="note">em breve</span>
-        </div>
+        <button className="li" onClick={mandarEmail} disabled={enviando}>
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <b style={{ fontSize: 14 }}>Relatório por e-mail</b>
+            <div className="note">{session?.user.email}</div>
+          </div>
+          <span className="note">{enviando ? 'enviando…' : 'enviar'}</span>
+        </button>
         <div className="li" style={{ cursor: 'default', opacity: .6 }}>
           <b style={{ fontSize: 14 }}>Resumo no WhatsApp</b>
           <span className="note">em breve</span>
