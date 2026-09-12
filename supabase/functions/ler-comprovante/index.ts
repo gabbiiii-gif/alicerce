@@ -3,7 +3,10 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.125.0'
 import { zodOutputFormat } from 'npm:@anthropic-ai/sdk@0.125.0/helpers/zod'
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { z } from 'npm:zod@3.25.76'
+// O subpath /v4 nao e detalhe: `zodOutputFormat` do SDK faz `import * as z from 'zod/v4'`,
+// e um schema montado com o namespace v3 chega la com outro formato interno — o erro que
+// aparecia na nota era exatamente isso ("cannot read properties of undefined (reading '_def')").
+import { z } from 'npm:zod@3.25.76/v4'
 
 const MODELO = Deno.env.get('ALICERCE_MODELO') ?? 'claude-sonnet-5'
 
