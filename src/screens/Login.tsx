@@ -14,17 +14,10 @@ import { NomeAnimado } from '../components/NomeAnimado'
 const MarcaTres = lazy(() => import('../components/MarcaTres'))
 
 export function Login() {
-  const { session, carregando, entrar, cadastrar, entrarComGoogle } = useAuth()
+  const { session, carregando, entrarComGoogle } = useAuth()
   const avisar = useAviso()
   const location = useLocation()
-  const [modo, setModo] = useState<'entrar' | 'criar'>('entrar')
-  const [nome, setNome] = useState('')
-  const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
-  const [enviando, setEnviando] = useState(false)
   const [comGoogle, setComGoogle] = useState(false)
-  // Quem entra por e-mail é minoria: o formulário fica guardado atrás de um toque.
-  const [comEmail, setComEmail] = useState(false)
 
   if (carregando) return <Carregando />
   if (session) {
@@ -36,24 +29,6 @@ export function Login() {
     if (lerDestino()) return <Carregando />
     // Via rápida de quem já estava dentro do app: o state do router não passa por storage.
     return <Navigate to={(location.state as { de?: string })?.de || '/'} replace />
-  }
-
-  async function enviar() {
-    if (!email.trim() || !senha) return avisar('Preencha e-mail e senha')
-    if (modo === 'criar' && !nome.trim()) return avisar('Diga o seu nome')
-    setEnviando(true)
-    try {
-      if (modo === 'entrar') {
-        await entrar(email, senha)
-      } else {
-        await cadastrar(nome, email, senha)
-        avisar('Conta criada — confirme o e-mail se for pedido')
-      }
-    } catch (e) {
-      avisar(e instanceof Error ? e.message : 'não deu para entrar')
-    } finally {
-      setEnviando(false)
-    }
   }
 
   async function google() {
@@ -82,66 +57,13 @@ export function Login() {
         </div>
         <div className="note" style={{ textAlign: 'center', marginBottom: 6 }}>obras e gastos no lugar certo</div>
 
-        <button className="bt bt-google" onClick={google} disabled={comGoogle || enviando}>
+        {/* Uma porta só. Entrar com Google não pede senha nova para decorar, já traz nome
+            e foto, e tira do app a responsabilidade de guardar senha de alguém. */}
+        <button className="bt bt-google" onClick={google} disabled={comGoogle}>
           <LogoGoogle />
           {comGoogle ? 'abrindo o Google…' : 'Continuar com Google'}
         </button>
 
-        {!comEmail ? (
-          <div className="note" style={{ textAlign: 'center' }}>
-            <a
-              href="#"
-              onClick={e => {
-                e.preventDefault()
-                setComEmail(true)
-              }}
-            >
-              entrar com e-mail e senha
-            </a>
-          </div>
-        ) : (
-          <>
-            <div className="separador">ou</div>
-
-            {modo === 'criar' && (
-              <input className="inp" placeholder="seu nome" value={nome} onChange={e => setNome(e.target.value)} autoComplete="name" />
-            )}
-            <input
-              className="inp"
-              type="email"
-              inputMode="email"
-              autoCapitalize="none"
-              placeholder="e-mail"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              autoComplete="email"
-            />
-            <input
-              className="inp"
-              type="password"
-              placeholder="senha"
-              value={senha}
-              onChange={e => setSenha(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && enviar()}
-              autoComplete={modo === 'entrar' ? 'current-password' : 'new-password'}
-            />
-            <button className="bt btp" onClick={enviar} disabled={enviando || comGoogle}>
-              {enviando ? 'aguarde…' : modo === 'entrar' ? 'Entrar' : 'Criar conta'}
-            </button>
-            <div className="note" style={{ textAlign: 'center' }}>
-              {modo === 'entrar' ? 'Primeira vez? ' : 'Já tem conta? '}
-              <a
-                href="#"
-                onClick={e => {
-                  e.preventDefault()
-                  setModo(modo === 'entrar' ? 'criar' : 'entrar')
-                }}
-              >
-                {modo === 'entrar' ? 'criar conta' : 'entrar'}
-              </a>
-            </div>
-          </>
-        )}
       </div>
     </motion.div>
   )
