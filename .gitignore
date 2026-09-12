@@ -6,3 +6,6 @@ dev-dist
 .DS_Store
 *.log
 *.tsbuildinfo
+
+# Cache local do CLI do Supabase
+supabase/.temp/

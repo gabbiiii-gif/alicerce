@@ -1,7 +1,7 @@
 // Agente do Alicerce: lê a nota enviada pelo usuário e devolve fornecedor, valor, data
 // e uma sugestão de categoria vinda da lista real da obra.
-import Anthropic from 'npm:@anthropic-ai/sdk@0.70.0'
-import { zodOutputFormat } from 'npm:@anthropic-ai/sdk@0.70.0/helpers/zod'
+import Anthropic from 'npm:@anthropic-ai/sdk@0.125.0'
+import { zodOutputFormat } from 'npm:@anthropic-ai/sdk@0.125.0/helpers/zod'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { z } from 'npm:zod@3.25.76'
 
