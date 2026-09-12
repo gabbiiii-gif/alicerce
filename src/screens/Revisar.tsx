@@ -25,6 +25,7 @@ export function Revisar() {
   }, [comprovanteId, obraId])
 
   const [fornecedor, setFornecedor] = useState('')
+  const [descricao, setDescricao] = useState('')
   const [valor, setValor] = useState(0)
   const [data, setData] = useState('')
   const [categoriaId, setCategoriaId] = useState<string | null>(null)
@@ -35,6 +36,7 @@ export function Revisar() {
     if (!dados) return
     const lido = dados.comprovante.extraido
     setFornecedor(lido?.fornecedor ?? '')
+    setDescricao('')
     setValor(lido?.valor ?? 0)
     setData(isoParaBR(lido?.data ?? hojeISO()))
     const sugerida = dados.categorias.find(c => c.nome.toLowerCase() === (lido?.categoria_sugerida ?? '').toLowerCase())
@@ -68,11 +70,12 @@ export function Revisar() {
 
     setSalvando(true)
     try {
+      const detalhe = descricao.trim()
       await registrarSaida({
         obraId,
         autorId: userId,
         valor,
-        descricao: fornecedor.trim(),
+        descricao: detalhe ? `${fornecedor.trim()} · ${detalhe}` : fornecedor.trim(),
         categoriaId,
         data: dataISO,
         comprovanteId: comprovante.id,
@@ -122,6 +125,15 @@ export function Revisar() {
 
       <div className="note">fornecedor</div>
       <input className="inp" value={fornecedor} onChange={e => setFornecedor(e.target.value)} />
+
+      <div className="note">descrição</div>
+      <input
+        className="inp"
+        placeholder="o que foi comprado (opcional)"
+        value={descricao}
+        onChange={e => setDescricao(e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && confirmar()}
+      />
 
       <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }}>
