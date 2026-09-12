@@ -76,7 +76,15 @@ Deno.serve(async req => {
     const { data: categorias } = await servico.from('categorias').select('nome').eq('dono_id', obra?.dono_id ?? '')
     const nomes = (categorias ?? []).map(c => c.nome as string)
 
-    const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY')! })
+    // Uma chave criada fora de um workspace não diz sozinha a qual workspace cobrar, e a
+    // API recusa com 400 pedindo o header. Com ANTHROPIC_WORKSPACE_ID definido, mandamos o
+    // header; sem ele, seguimos direto — que é o caminho de quem usa uma chave já criada
+    // dentro de um workspace, onde o header é desnecessário.
+    const workspace = Deno.env.get('ANTHROPIC_WORKSPACE_ID')
+    const anthropic = new Anthropic({
+      apiKey: Deno.env.get('ANTHROPIC_API_KEY')!,
+      ...(workspace ? { defaultHeaders: { 'anthropic-workspace-id': workspace } } : {}),
+    })
 
     const documento = mime === 'application/pdf'
       ? { type: 'document' as const, source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: base64 } }
