@@ -22,20 +22,27 @@ export function Relatorios() {
   const avisar = useAviso()
   const [periodo, setPeriodo] = useState<Periodo>('semana')
 
-  const { dados: obras } = useAsync(listarObras, [])
-
-  const { dados, carregando } = useAsync(async () => {
+  // Uma carga só para a tela inteira. As obras servem aos chips e, no consolidado, à soma
+  // do "em aberto" — que antes vinha de um segundo select idêntico dentro do relatório.
+  const { dados, carregando, erro, recarregar } = useAsync(async () => {
     if (obraId) {
-      const uma = await carregarObra(obraId)
+      const [obras, uma] = await Promise.all([listarObras(), carregarObra(obraId)])
       return {
+        obras,
         nome: uma.obra.nome,
         lancamentos: uma.lancamentos,
         membros: uma.membros,
         aberto: uma.contas.aberto,
       }
     }
-    const geral = await carregarRelatorioGeral()
-    return { nome: TODAS, lancamentos: geral.lancamentos, membros: geral.membros, aberto: geral.aberto }
+    const [obras, geral] = await Promise.all([listarObras(), carregarRelatorioGeral()])
+    return {
+      obras,
+      nome: TODAS,
+      lancamentos: geral.lancamentos,
+      membros: geral.membros,
+      aberto: obras.reduce((soma, o) => soma + o.contas.aberto, 0),
+    }
   }, [obraId])
 
   const relatorio = useMemo(
@@ -43,9 +50,27 @@ export function Relatorios() {
     [dados, periodo],
   )
 
-  if (carregando || !dados || !relatorio) return <Carregando />
+  // Tela e TabBar ficam montadas em todo estado — o padrão de Obras.tsx. Devolver só um
+  // spinner deixava quem caísse aqui sem abas para sair: bastava a resposta não chegar
+  // (sinal caindo, conexão pendurada, sem rejeitar) para prender a pessoa até matar o app.
+  if (!dados || !relatorio) {
+    return (
+      <>
+        <Tela titulo="Relatório" comAbas>
+          {carregando && <Carregando />}
+          {erro && !carregando && (
+            <>
+              <div className="ann">Não deu para montar o relatório: {erro}</div>
+              <button className="bt" onClick={() => recarregar()}>tentar de novo</button>
+            </>
+          )}
+        </Tela>
+        <TabBar ativa="relatorios" />
+      </>
+    )
+  }
 
-  const { nome, aberto } = dados
+  const { obras, nome, aberto } = dados
   const rotulo = periodo === 'semana' ? 'Semana' : 'Mês'
 
   async function exportarPdf() {
@@ -82,6 +107,13 @@ export function Relatorios() {
   return (
     <>
       <Tela titulo="Relatório" comAbas acao={<span className="note">{rotulo}</span>}>
+        {erro && (
+          <div className="ann">
+            Não deu para atualizar: {erro}{' '}
+            <a href="#" onClick={e => { e.preventDefault(); recarregar() }}>tentar de novo</a>
+          </div>
+        )}
+
         {/* Escolha do recorte: tudo junto, ou uma obra de cada vez. */}
         <div className="tiras">
           <button

@@ -83,25 +83,22 @@ export async function carregarObra(obraId: string): Promise<ObraCompleta> {
 export type RelatorioGeral = {
   lancamentos: Lancamento[]
   membros: Membro[]
-  aberto: number
 }
 
 // Relatório consolidado: tudo de todas as obras que eu participo, de uma vez.
 // A RLS já limita às minhas obras, então não é preciso filtrar por obra aqui.
 export async function carregarRelatorioGeral(): Promise<RelatorioGeral> {
-  const [lancRes, membrosRes, obrasRes] = await Promise.all([
+  const [lancRes, membrosRes] = await Promise.all([
     supabase
       .from('lancamentos')
       .select('*, autor:profiles(id, nome, iniciais), categoria:categorias(id, nome), obra:obras(id, nome)')
       .order('data', { ascending: false })
       .order('created_at', { ascending: false }),
     supabase.from('obra_membros').select('obra_id, user_id, papel, profile:profiles(id, nome, iniciais)'),
-    supabase.from('obras').select('*, lancamentos(tipo, valor), aditivos(valor)'),
   ])
 
   if (lancRes.error) throw lancRes.error
   if (membrosRes.error) throw membrosRes.error
-  if (obrasRes.error) throw obrasRes.error
 
   // A mesma pessoa aparece uma vez por obra que dividimos; no consolidado ela é uma só.
   const porPessoa = new Map<string, Membro>()
@@ -109,19 +106,12 @@ export async function carregarRelatorioGeral(): Promise<RelatorioGeral> {
     if (!porPessoa.has(m.user_id)) porPessoa.set(m.user_id, m)
   })
 
-  // "Em aberto" consolidado: a soma do que falta receber em cada obra.
-  const aberto = (obrasRes.data ?? []).reduce((soma, linha) => {
-    const { lancamentos = [], aditivos = [], ...obra } = linha as unknown as Obra & {
-      lancamentos: { tipo: string; valor: number }[]
-      aditivos: { valor: number }[]
-    }
-    return soma + calcContas(obra.valor_fechado, aditivos, lancamentos).aberto
-  }, 0)
-
+  // O "em aberto" consolidado nao sai daqui: e a soma do `contas.aberto` das obras que a
+  // tela ja carregou para montar os chips. Repetir o select de obras custava a query mais
+  // pesada da tela duas vezes, e as duas copias podiam discordar se uma escrita caisse no meio.
   return {
     lancamentos: (lancRes.data ?? []) as unknown as Lancamento[],
     membros: [...porPessoa.values()],
-    aberto,
   }
 }
 

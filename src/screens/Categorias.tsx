@@ -22,13 +22,27 @@ export function Categorias() {
   const [selecionada, setSelecionada] = useState<Categoria | null>(null)
   const [apagando, setApagando] = useState(false)
 
-  const { dados, carregando, recarregar } = useAsync(async () => {
+  const { dados, carregando, erro, recarregar } = useAsync(async () => {
     const completa = await carregarObra(obraId)
     const categorias = await listarCategorias(completa.obra.dono_id)
     return { completa, categorias }
   }, [obraId])
 
-  if (carregando || !dados) return <Carregando />
+  // Sem isto a tela girava para sempre quando a carga falhava: `erro` nao era lido e
+  // `dados` nulo caia no mesmo if do `carregando`, sem cabecalho nem caminho de volta.
+  if (!dados) {
+    return (
+      <Tela titulo="Categorias" voltar={`/obra/${obraId}`}>
+        {carregando && <Carregando />}
+        {erro && !carregando && (
+          <>
+            <div className="ann">Não deu para abrir as categorias: {erro}</div>
+            <button className="bt" onClick={() => recarregar()}>tentar de novo</button>
+          </>
+        )}
+      </Tela>
+    )
+  }
 
   const { completa, categorias } = dados
   const gastoPorCategoria = new Map<string, number>()

@@ -12,10 +12,24 @@ export function Encerrar() {
   const { obraId = '' } = useParams()
   const navigate = useNavigate()
   const avisar = useAviso()
-  const { dados, carregando } = useAsync(() => carregarObra(obraId), [obraId])
+  const { dados, carregando, erro, recarregar } = useAsync(() => carregarObra(obraId), [obraId])
   const [encerrando, setEncerrando] = useState(false)
 
-  if (carregando || !dados) return <Carregando />
+  // Sem isto a tela girava para sempre quando a carga falhava: `erro` nao era lido e
+  // `dados` nulo caia no mesmo if do `carregando`, sem cabecalho nem caminho de volta.
+  if (!dados) {
+    return (
+      <Tela titulo="Encerrar obra" voltar={`/obra/${obraId}`}>
+        {carregando && <Carregando />}
+        {erro && !carregando && (
+          <>
+            <div className="ann">Não deu para abrir a obra: {erro}</div>
+            <button className="bt" onClick={() => recarregar()}>tentar de novo</button>
+          </>
+        )}
+      </Tela>
+    )
+  }
 
   const { obra, contas, lancamentos, membros } = dados
   const sobra = contas.recebido - contas.saidas

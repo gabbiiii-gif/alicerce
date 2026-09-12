@@ -94,7 +94,7 @@ export function textoResumo(nome: string, relatorio: Relatorio, aberto: number):
     `Em aberto: ${fmt(aberto)}`,
   ]
 
-  if (relatorio.porObra.length) {
+  if (relatorio.porObra.length > 1) {
     linhas.push('', 'Por obra:')
     relatorio.porObra.forEach(o => linhas.push(`${o.nome}: −${fmt(o.saidas)}`))
   }

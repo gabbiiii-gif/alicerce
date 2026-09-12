@@ -17,7 +17,7 @@ export function Revisar() {
   const { userId } = useUsuario()
   const avisar = useAviso()
 
-  const { dados, carregando } = useAsync(async () => {
+  const { dados, carregando, erro, recarregar } = useAsync(async () => {
     const [comprovante, obraCompleta] = await Promise.all([carregarComprovante(comprovanteId), carregarObra(obraId)])
     const categorias = await listarCategorias(obraCompleta.obra.dono_id)
     const url = await urlComprovante(comprovante.storage_path)
@@ -41,7 +41,21 @@ export function Revisar() {
     setCategoriaId(sugerida?.id ?? null)
   }, [dados])
 
-  if (carregando || !dados) return <Carregando />
+  // Sem isto a tela girava para sempre quando a carga falhava: `erro` nao era lido e
+  // `dados` nulo caia no mesmo if do `carregando`, sem cabecalho nem caminho de volta.
+  if (!dados) {
+    return (
+      <Tela titulo="Conferir lançamento" voltar={`/obra/${obraId}/enviar`}>
+        {carregando && <Carregando />}
+        {erro && !carregando && (
+          <>
+            <div className="ann">Não deu para abrir o comprovante: {erro}</div>
+            <button className="bt" onClick={() => recarregar()}>tentar de novo</button>
+          </>
+        )}
+      </Tela>
+    )
+  }
 
   const { comprovante, obra, categorias, url } = dados
   const ehImagem = (comprovante.mime ?? '').startsWith('image/')

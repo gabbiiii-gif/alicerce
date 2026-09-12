@@ -37,7 +37,14 @@ export function Painel() {
   }, [obraId, definir])
 
   if (carregando) return <Carregando />
-  if (erro || !dados) return <div className="ann" style={{ margin: 14 }}>Não deu para abrir a obra: {erro}</div>
+  if (erro || !dados) {
+    return (
+      <Tela titulo="Obra" voltar="/">
+        <div className="ann">Não deu para abrir a obra: {erro}</div>
+        <button className="bt" onClick={() => recarregar()}>tentar de novo</button>
+      </Tela>
+    )
+  }
 
   const { obra, lancamentos, contas } = dados
 

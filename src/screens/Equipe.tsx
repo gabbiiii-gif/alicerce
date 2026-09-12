@@ -4,6 +4,7 @@ import { carregarObra, criarConvite } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
 import { useAviso } from '../components/Toast'
+import { urlPublica } from '../lib/plataforma'
 import { Carregando, Tela } from '../components/Tela'
 import { Sheet } from '../components/Sheet'
 
@@ -11,11 +12,25 @@ export function Equipe() {
   const { obraId = '' } = useParams()
   const { userId } = useUsuario()
   const avisar = useAviso()
-  const { dados, carregando } = useAsync(() => carregarObra(obraId), [obraId])
+  const { dados, carregando, erro, recarregar } = useAsync(() => carregarObra(obraId), [obraId])
   const [link, setLink] = useState<string | null>(null)
   const [gerando, setGerando] = useState(false)
 
-  if (carregando || !dados) return <Carregando />
+  // Sem isto a tela girava para sempre quando a carga falhava: `erro` nao era lido e
+  // `dados` nulo caia no mesmo if do `carregando`, sem cabecalho nem caminho de volta.
+  if (!dados) {
+    return (
+      <Tela titulo="Quem está na obra" voltar={`/obra/${obraId}`}>
+        {carregando && <Carregando />}
+        {erro && !carregando && (
+          <>
+            <div className="ann">Não deu para abrir a equipe: {erro}</div>
+            <button className="bt" onClick={() => recarregar()}>tentar de novo</button>
+          </>
+        )}
+      </Tela>
+    )
+  }
 
   const { obra, membros } = dados
   const souDono = obra.dono_id === userId
@@ -25,7 +40,7 @@ export function Equipe() {
     setGerando(true)
     try {
       const convite = await criarConvite(obraId, userId)
-      setLink(`${window.location.origin}/e/${convite.codigo}`)
+      setLink(urlPublica(`/e/${convite.codigo}`))
     } catch (e) {
       avisar(e instanceof Error ? e.message : 'não deu para gerar o convite')
     } finally {

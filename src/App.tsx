@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { AnimatePresence } from 'motion/react'
 import { useAuth } from './lib/auth'
+import { guardarDestino } from './lib/destino'
 import { Carregando } from './components/Tela'
 import { Login } from './screens/Login'
 import { Obras } from './screens/Obras'
@@ -20,7 +21,12 @@ function Protegida({ children }: { children: ReactNode }) {
   const { session, carregando } = useAuth()
   const location = useLocation()
   if (carregando) return <Carregando />
-  if (!session) return <Navigate to="/login" replace state={{ de: location.pathname }} />
+  if (!session) {
+    // Escrito aqui, e nao num efeito: o <Navigate> abaixo desmonta esta tela no mesmo
+    // ciclo, e um efeito poderia nao chegar a rodar. A escrita e idempotente.
+    guardarDestino(location.pathname)
+    return <Navigate to="/login" replace state={{ de: location.pathname }} />
+  }
   return <>{children}</>
 }
 
