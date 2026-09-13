@@ -1,3 +1,18 @@
+// Primeira letra maiúscula no que a pessoa escreveu.
+//
+// Nome de obra, categoria e descrição são digitados no celular, correndo, muitas vezes em
+// campo com teclado que não capitaliza. Depois esse texto aparece como título na lista,
+// no relatório e no PDF que vai para o cliente — e "roberto" no cabeçalho de um documento
+// parece descuido de quem mandou, não de quem digitou.
+//
+// Só a primeira letra: o resto é como a pessoa escreveu. Mexer no meio estragaria siglas
+// e nomes compostos — "Depósito São João" não pode virar "Depósito são joão".
+export function comoNome(texto: string): string {
+  const limpo = texto.trim()
+  if (!limpo) return limpo
+  return limpo.charAt(0).toUpperCase() + limpo.slice(1)
+}
+
 export function fmt(valor: number | null | undefined): string {
   return 'R$ ' + Math.round(valor || 0).toLocaleString('pt-BR')
 }

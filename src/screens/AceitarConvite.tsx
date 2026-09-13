@@ -39,7 +39,7 @@ export function AceitarConvite() {
           <button className="bt" onClick={() => navigate('/obras')}>Ir para as obras</button>
         </>
       ) : (
-        <div className="note" style={{ textAlign: 'center' }}>entrando na obra…</div>
+        <div className="note" style={{ textAlign: 'center' }}>Entrando na obra…</div>
       )}
     </Tela>
   )

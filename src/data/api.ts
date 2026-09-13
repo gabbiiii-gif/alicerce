@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase'
 import type {
   Aditivo, Categoria, Comprovante, ContasObra, Convite, Lancamento, Membro, Obra, Profile,
 } from '../lib/types'
-import { hojeISO } from '../lib/format'
+import { comoNome, hojeISO } from '../lib/format'
 
 export type ObraComContas = Obra & { contas: ContasObra }
 
@@ -143,8 +143,8 @@ export async function criarObra(dados: {
   const { data, error } = await supabase
     .from('obras')
     .insert({
-      nome: dados.nome,
-      endereco: dados.endereco || null,
+      nome: comoNome(dados.nome),
+      endereco: dados.endereco ? comoNome(dados.endereco) : null,
       valor_fechado: dados.valorFechado,
       // Previsto mensal de partida: 3% do valor fechado, ajustável depois.
       // Zero: o app não trabalha mais com teto mensal. A coluna continua no banco por
@@ -172,7 +172,7 @@ export async function registrarEntrada(dados: {
     obra_id: dados.obraId,
     autor_id: dados.autorId,
     tipo: 'entrada',
-    descricao: dados.descricao || 'Entrada',
+    descricao: comoNome(dados.descricao) || 'Entrada',
     valor: dados.valor,
     data: hojeISO(),
     comprovante_id: dados.comprovanteId ?? null,
@@ -194,7 +194,7 @@ export async function registrarSaida(dados: {
     obra_id: dados.obraId,
     autor_id: dados.autorId,
     tipo: 'saida',
-    descricao: dados.descricao,
+    descricao: comoNome(dados.descricao),
     categoria_id: dados.categoriaId,
     valor: dados.valor,
     data: dados.data,
@@ -212,7 +212,7 @@ export async function criarAditivo(dados: { obraId: string; autorId: string; des
   const { error } = await supabase.from('aditivos').insert({
     obra_id: dados.obraId,
     autor_id: dados.autorId,
-    descricao: dados.descricao || 'Aditivo',
+    descricao: comoNome(dados.descricao) || 'Aditivo',
     valor: dados.valor,
   })
   if (error) throw error
@@ -267,7 +267,7 @@ export async function criarCategoria(dados: { donoId: string; criadoPor: string;
   const { error } = await supabase.from('categorias').insert({
     dono_id: dados.donoId,
     criado_por: dados.criadoPor,
-    nome: dados.nome,
+    nome: comoNome(dados.nome),
   })
   if (error) throw error
 }

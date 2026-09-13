@@ -60,9 +60,9 @@ export function NovaObra() {
           <div style={{ fontSize: 19, fontWeight: 500, fontFamily: 'var(--fonte-titulo)', lineHeight: 1.1, marginTop: 4 }}>
             Do que se trata?
           </div>
-          <input className="inp" placeholder="nome da obra" value={nome} onChange={e => setNome(e.target.value)} autoFocus />
-          <input className="inp" placeholder="endereço" value={endereco} onChange={e => setEndereco(e.target.value)} />
-          <div className="note">valor fechado com o cliente</div>
+          <input className="inp" placeholder="Nome da obra" value={nome} onChange={e => setNome(e.target.value)} autoFocus />
+          <input className="inp" placeholder="Endereço" value={endereco} onChange={e => setEndereco(e.target.value)} />
+          <div className="note">Valor fechado com o cliente</div>
           <MoedaInput valor={valor} aoMudar={setValor} />
         </>
       )}
@@ -96,19 +96,19 @@ export function NovaObra() {
           </div>
           <div className="cd">
             <div className="row">
-              <span className="note">obra</span>
+              <span className="note">Obra</span>
               <b style={{ fontSize: 14 }}>{nome || 'obra sem nome'}</b>
             </div>
             <div className="row">
-              <span className="note">valor fechado</span>
+              <span className="note">Valor fechado</span>
               <b style={{ fontSize: 14 }}>{fmt(valor)}</b>
             </div>
             <div className="row">
-              <span className="note">entrada</span>
+              <span className="note">Entrada</span>
               <b style={{ fontSize: 14 }}>{fmt(entrada)}</b>
             </div>
             <div className="row" style={{ borderTop: '1px solid #E1EAF6', paddingTop: 6 }}>
-              <span style={{ fontSize: 14 }}>fica em aberto</span>
+              <span style={{ fontSize: 14 }}>Fica em aberto</span>
               <span className="big">{fmt(aberto)}</span>
             </div>
           </div>

@@ -37,7 +37,7 @@ export function Categorias() {
         {erro && !carregando && (
           <>
             <div className="ann">Não deu para abrir as categorias: {erro}</div>
-            <button className="bt" onClick={() => recarregar()}>tentar de novo</button>
+            <button className="bt" onClick={() => recarregar()}>Tentar de novo</button>
           </>
         )}
       </Tela>
@@ -88,7 +88,7 @@ export function Categorias() {
         <div className="row" style={{ gap: 7 }}>
           <input
             className="inp"
-            placeholder="nova categoria"
+            placeholder="Nova categoria"
             value={nova}
             onChange={e => setNova(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && adicionar()}

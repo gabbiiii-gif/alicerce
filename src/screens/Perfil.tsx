@@ -100,11 +100,11 @@ export function Perfil() {
             resto — função, envio, folha de destinatário — continua inteiro. */}
         <div className="li" style={{ cursor: 'default', opacity: .6 }}>
           <b style={{ fontSize: 14 }}>Relatório por e-mail</b>
-          <span className="note">em breve</span>
+          <span className="note">Em breve</span>
         </div>
         <div className="li" style={{ cursor: 'default', opacity: .6 }}>
           <b style={{ fontSize: 14 }}>Resumo no WhatsApp</b>
-          <span className="note">em breve</span>
+          <span className="note">Em breve</span>
         </div>
 
         {socios.length > 0 && (
@@ -170,7 +170,7 @@ export function Perfil() {
             type="email"
             inputMode="email"
             autoCapitalize="none"
-            placeholder="para quem?"
+            placeholder="Para quem?"
             value={destino}
             onChange={e => setDestino(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && mandarEmail(destino)}

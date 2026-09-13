@@ -89,7 +89,7 @@ export function Enviar() {
           <div className="dsh" style={{ width: 40, height: 40, padding: 0 }}>📷</div>
           <div>
             <b style={{ fontSize: 15 }}>Tirar foto da nota</b>
-            <div className="note">mais rápido</div>
+            <div className="note">Mais rápido</div>
           </div>
         </button>
 
@@ -142,7 +142,7 @@ export function Enviar() {
                 daParaAbrir ? navigate(`/obra/${obraId}/revisar/${c.id}`) : avisar('O agente ainda está lendo')
               }
             >
-              <div className="dsh" style={{ width: 34, height: 34, padding: 0, fontSize: 13 }}>nota</div>
+              <div className="dsh" style={{ width: 34, height: 34, padding: 0, fontSize: 13 }}>Nota</div>
               <div style={{ flex: 1 }}>
                 <b style={{ fontSize: 13.5 }}>
                   {pronto
@@ -172,7 +172,7 @@ export function Enviar() {
         })}
         </AnimatePresence>
 
-        {!carregando && daObra.length === 0 && <div className="dsh" style={{ padding: 18 }}>fila vazia — mande uma nota</div>}
+        {!carregando && daObra.length === 0 && <div className="dsh" style={{ padding: 18 }}>Fila vazia — mande uma nota</div>}
 
         <div className="ann">O agente lê fornecedor, valor e data da nota. Você confere antes de virar lançamento.</div>
       </Tela>

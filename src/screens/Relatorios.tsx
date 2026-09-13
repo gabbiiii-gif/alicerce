@@ -61,7 +61,7 @@ export function Relatorios() {
           {erro && !carregando && (
             <>
               <div className="ann">Não deu para montar o relatório: {erro}</div>
-              <button className="bt" onClick={() => recarregar()}>tentar de novo</button>
+              <button className="bt" onClick={() => recarregar()}>Tentar de novo</button>
             </>
           )}
         </Tela>
@@ -110,7 +110,7 @@ export function Relatorios() {
         {erro && (
           <div className="ann">
             Não deu para atualizar: {erro}{' '}
-            <a href="#" onClick={e => { e.preventDefault(); recarregar() }}>tentar de novo</a>
+            <a href="#" onClick={e => { e.preventDefault(); recarregar() }}>Tentar de novo</a>
           </div>
         )}
 
@@ -147,11 +147,11 @@ export function Relatorios() {
 
         <div className="cd">
           <div className="row">
-            <span className="note">entradas</span>
+            <span className="note">Entradas</span>
             <b className="num" style={{ fontSize: 14 }}>+{curto(relatorio.entradas)}</b>
           </div>
           <div className="row">
-            <span className="note">saídas</span>
+            <span className="note">Saídas</span>
             <b className="num" style={{ fontSize: 14 }}>−{semSimbolo(relatorio.saidas)}</b>
           </div>
           <div className="row" style={{ borderTop: '1px solid #E1EAF6', paddingTop: 5 }}>
@@ -166,7 +166,7 @@ export function Relatorios() {
           <>
             <div className="row" style={{ marginTop: 2 }}>
               <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Por obra</span>
-              <span className="note">no período</span>
+              <span className="note">No período</span>
             </div>
             {relatorio.porObra.map((o, i) => (
               <motion.button
@@ -199,7 +199,7 @@ export function Relatorios() {
 
         <div className="row" style={{ marginTop: 2 }}>
           <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Por pessoa</span>
-          <span className="note">nota a nota</span>
+          <span className="note">Nota a nota</span>
         </div>
 
         {relatorio.porPessoa.map(p => (
@@ -217,7 +217,7 @@ export function Relatorios() {
                 <span className="note num">{i.direita}</span>
               </div>
             ))}
-            {p.itens.length === 0 && <span className="note">sem saídas no período</span>}
+            {p.itens.length === 0 && <span className="note">Sem saídas no período</span>}
           </div>
         ))}
 

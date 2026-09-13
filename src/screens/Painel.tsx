@@ -41,7 +41,7 @@ export function Painel() {
     return (
       <Tela titulo="Obra" voltar="/">
         <div className="ann">Não deu para abrir a obra: {erro}</div>
-        <button className="bt" onClick={() => recarregar()}>tentar de novo</button>
+        <button className="bt" onClick={() => recarregar()}>Tentar de novo</button>
       </Tela>
     )
   }
@@ -90,7 +90,7 @@ export function Painel() {
       <Tela titulo={obra.nome} voltar="/" comAbas acao={<div className="av">{perfil?.iniciais ?? '·'}</div>}>
         <div className="cd">
           <div className="row">
-            <span className="note">valor fechado</span>
+            <span className="note">Valor fechado</span>
             <b className="num" style={{ fontSize: 14 }}>{fmt(obra.valor_fechado)}</b>
           </div>
           <div className="row">
@@ -98,14 +98,14 @@ export function Painel() {
             <b className="num" style={{ fontSize: 14, color: '#2272CC' }}>{fmt(contas.aditivos)}</b>
           </div>
           <div className="row" style={{ borderTop: '1px solid #E1EAF6', paddingTop: 6 }}>
-            <span style={{ fontSize: 14 }}>total</span>
+            <span style={{ fontSize: 14 }}>Total</span>
             {/* Conta até o valor: é o número principal da tela, e a contagem faz o olho pousar nele. */}
             <ValorAnimado className="big num" valor={contas.total} formatar={fmt} />
           </div>
           <Barra pct={contas.pct} cor="#0A2A6E" />
           <div className="row">
-            <span className="note">recebido <span className="num">{curto(contas.recebido)}</span></span>
-            <span className="note">em aberto <span className="num">{fmt(contas.aberto)}</span></span>
+            <span className="note">Recebido <span className="num">{curto(contas.recebido)}</span></span>
+            <span className="note">Em aberto <span className="num">{fmt(contas.aberto)}</span></span>
           </div>
         </div>
 
@@ -117,7 +117,7 @@ export function Painel() {
 
         <div className="row">
           <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Lançamentos da obra</span>
-          <span className="note">saídas <span className="num">{fmt(contas.saidas)}</span></span>
+          <span className="note">Saídas <span className="num">{fmt(contas.saidas)}</span></span>
         </div>
 
         {lancamentos.map((l, i) => (
@@ -142,7 +142,7 @@ export function Painel() {
           </motion.button>
         ))}
 
-        {lancamentos.length === 0 && <div className="dsh" style={{ padding: 18 }}>nenhum lançamento nesta obra ainda</div>}
+        {lancamentos.length === 0 && <div className="dsh" style={{ padding: 18 }}>Nenhum lançamento nesta obra ainda</div>}
 
         <div className="row" style={{ gap: 8, paddingTop: 4 }}>
           <button className="bt" style={{ flex: 1 }} onClick={() => abrirSheet('entrada')}>+ entrada</button>
@@ -161,7 +161,7 @@ export function Painel() {
           <MoedaInput valor={valor} aoMudar={setValor} style={{ fontSize: 25, textAlign: 'center', padding: 12 }} autoFocus />
           <input
             className="inp"
-            placeholder={sheet === 'aditivo' ? 'motivo (troca de piso…)' : 'descrição (parcela 3…)'}
+            placeholder={sheet === 'aditivo' ? 'Motivo (troca de piso…)' : 'Descrição (parcela 3…)'}
             value={descricao}
             onChange={e => setDescricao(e.target.value)}
           />

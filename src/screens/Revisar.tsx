@@ -52,7 +52,7 @@ export function Revisar() {
         {erro && !carregando && (
           <>
             <div className="ann">Não deu para abrir o comprovante: {erro}</div>
-            <button className="bt" onClick={() => recarregar()}>tentar de novo</button>
+            <button className="bt" onClick={() => recarregar()}>Tentar de novo</button>
           </>
         )}
       </Tela>
@@ -123,13 +123,13 @@ export function Revisar() {
 
       {comprovante.status === 'erro' && comprovante.erro && <div className="ann">O agente não conseguiu ler: {comprovante.erro}</div>}
 
-      <div className="note">fornecedor</div>
+      <div className="note">Fornecedor</div>
       <input className="inp" value={fornecedor} onChange={e => setFornecedor(e.target.value)} />
 
-      <div className="note">descrição</div>
+      <div className="note">Descrição</div>
       <input
         className="inp"
-        placeholder="o que foi comprado (opcional)"
+        placeholder="O que foi comprado (opcional)"
         value={descricao}
         onChange={e => setDescricao(e.target.value)}
         onKeyDown={e => e.key === 'Enter' && confirmar()}
@@ -137,16 +137,16 @@ export function Revisar() {
 
       <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }}>
-          <div className="note">valor</div>
+          <div className="note">Valor</div>
           <MoedaInput valor={valor} aoMudar={setValor} />
         </div>
         <div style={{ flex: 1 }}>
-          <div className="note">data</div>
+          <div className="note">Data</div>
           <input className="inp" inputMode="numeric" placeholder="dd/mm/aaaa" value={data} onChange={e => setData(e.target.value)} />
         </div>
       </div>
 
-      <div className="note">categoria</div>
+      <div className="note">Categoria</div>
       <div className="row" style={{ flexWrap: 'wrap', gap: 6, justifyContent: 'flex-start' }}>
         {categorias.map(c => (
           <button

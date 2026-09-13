@@ -124,8 +124,8 @@ export function Intro({ aoTerminar }: { aoTerminar: () => void }) {
                     <div style={{ flex: 38 }} />
                   </div>
                   <div className="row">
-                    <span className="note">entrada + parcelas</span>
-                    <span className="note">em aberto</span>
+                    <span className="note">Entrada + parcelas</span>
+                    <span className="note">Em aberto</span>
                   </div>
                 </div>
               )}
@@ -137,8 +137,8 @@ export function Intro({ aoTerminar }: { aoTerminar: () => void }) {
                     <b className="num" style={{ fontSize: 14 }}>R$ 1.240</b>
                   </div>
                   <div className="row">
-                    <span className="chip">material</span>
-                    <span className="note">lido da nota</span>
+                    <span className="chip">Material</span>
+                    <span className="note">Lido da nota</span>
                   </div>
                 </div>
               )}
@@ -147,7 +147,7 @@ export function Intro({ aoTerminar }: { aoTerminar: () => void }) {
                 <div className="row" style={{ justifyContent: 'flex-start', gap: 8, paddingTop: 6 }}>
                   <div className="av">JP</div>
                   <div className="av">MR</div>
-                  <span className="note">um histórico, dois nomes</span>
+                  <span className="note">Um histórico, dois nomes</span>
                 </div>
               )}
             </motion.div>

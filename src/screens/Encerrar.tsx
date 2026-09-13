@@ -39,7 +39,7 @@ export function Encerrar() {
         {erro && !carregando && (
           <>
             <div className="ann">Não deu para abrir a obra: {erro}</div>
-            <button className="bt" onClick={() => recarregar()}>tentar de novo</button>
+            <button className="bt" onClick={() => recarregar()}>Tentar de novo</button>
           </>
         )}
       </Tela>
@@ -95,15 +95,15 @@ export function Encerrar() {
 
       <div className="cd">
         <div className="row">
-          <span className="note">total com aditivos</span>
+          <span className="note">Total com aditivos</span>
           <b style={{ fontSize: 14 }}>{fmt(contas.total)}</b>
         </div>
         <div className="row">
-          <span className="note">recebido</span>
+          <span className="note">Recebido</span>
           <b style={{ fontSize: 14 }}>{fmt(contas.recebido)}</b>
         </div>
         <div className="row" style={{ borderTop: '1px solid #E1EAF6', paddingTop: 6 }}>
-          <span style={{ fontSize: 14 }}>em aberto</span>
+          <span style={{ fontSize: 14 }}>Em aberto</span>
           <span className="big">{fmt(contas.aberto)}</span>
         </div>
       </div>
@@ -114,7 +114,7 @@ export function Encerrar() {
           <b style={{ fontSize: 14 }}>{fmt(contas.saidas)}</b>
         </div>
         <div className="row">
-          <span className="note">sobra</span>
+          <span className="note">Sobra</span>
           <b style={{ fontSize: 16 }}>{fmt(sobra)}</b>
         </div>
       </div>

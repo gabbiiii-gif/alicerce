@@ -28,7 +28,7 @@ export function Equipe() {
         {erro && !carregando && (
           <>
             <div className="ann">Não deu para abrir a equipe: {erro}</div>
-            <button className="bt" onClick={() => recarregar()}>tentar de novo</button>
+            <button className="bt" onClick={() => recarregar()}>Tentar de novo</button>
           </>
         )}
       </Tela>

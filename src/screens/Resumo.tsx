@@ -42,7 +42,7 @@ export function Resumo() {
           {erro && !carregando && (
             <>
               <div className="ann">Não deu para montar o resumo: {erro}</div>
-              <button className="bt" onClick={() => recarregar()}>tentar de novo</button>
+              <button className="bt" onClick={() => recarregar()}>Tentar de novo</button>
             </>
           )}
         </Tela>
@@ -65,7 +65,7 @@ export function Resumo() {
           <Vazio>
             nada para resumir ainda
             <br />
-            <span style={{ fontSize: 12 }}>cadastre uma obra para ver seus números aqui</span>
+            <span style={{ fontSize: 12 }}>Cadastre uma obra para ver seus números aqui</span>
           </Vazio>
         ) : (
           <>
@@ -136,15 +136,15 @@ export function Resumo() {
 
             <div className="cd" style={{ gap: 5 }}>
               <div className="row">
-                <span className="note">entrou este mês</span>
+                <span className="note">Entrou este mês</span>
                 <b className="num" style={{ fontSize: 14, color: COR_ENTRADA }}>+{semSimbolo(visao.mesEntradas)}</b>
               </div>
               <div className="row">
-                <span className="note">saiu este mês</span>
+                <span className="note">Saiu este mês</span>
                 <b className="num" style={{ fontSize: 14, color: COR_SAIDA }}>−{semSimbolo(visao.mesSaidas)}</b>
               </div>
               <div className="row" style={{ borderTop: '1px solid var(--linha)', paddingTop: 5 }}>
-                <span style={{ fontSize: 14 }}>do contrato já executado</span>
+                <span style={{ fontSize: 14 }}>Do contrato já executado</span>
                 <b className="num" style={{ fontSize: 16 }}>{visao.executadoPct}%</b>
               </div>
             </div>

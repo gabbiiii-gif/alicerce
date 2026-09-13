@@ -47,8 +47,8 @@ export function Obras() {
             <div className="note">{obra.endereco || 'sem endereço'}</div>
             <Barra pct={obra.contas.pct} />
             <div className="row">
-              <span className="note">recebido <span className="num">{fmt(obra.contas.recebido)}</span></span>
-              <span className="note">em aberto <span className="num">{fmt(obra.contas.aberto)}</span></span>
+              <span className="note">Recebido <span className="num">{fmt(obra.contas.recebido)}</span></span>
+              <span className="note">Em aberto <span className="num">{fmt(obra.contas.aberto)}</span></span>
             </div>
           </motion.button>
         ))}
@@ -57,7 +57,7 @@ export function Obras() {
           <Vazio>
             nenhuma obra ainda
             <br />
-            <span style={{ fontSize: 12 }}>toque no + para cadastrar</span>
+            <span style={{ fontSize: 12 }}>Toque no + para cadastrar</span>
           </Vazio>
         )}
       </Tela>
