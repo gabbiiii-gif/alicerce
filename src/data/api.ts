@@ -218,6 +218,32 @@ export async function criarAditivo(dados: { obraId: string; autorId: string; des
   if (error) throw error
 }
 
+// Apaga a obra e tudo que pendura nela. O banco cuida do resto por cascata:
+// lançamentos, aditivos, comprovantes, membros e convites somem junto.
+//
+// Só o dono e os sócios conseguem — quem decide é a policy de delete em obras, não esta
+// função.
+export async function apagarObra(obraId: string) {
+  // Os arquivos no storage NÃO somem com a cascata do banco: as linhas de comprovante
+  // desaparecem e as fotos ficam ocupando espaço para sempre, apontadas por nada. Por
+  // isso os caminhos são lidos antes de a obra deixar de existir.
+  const { data: comprovantes } = await supabase
+    .from('comprovantes')
+    .select('storage_path')
+    .eq('obra_id', obraId)
+  const arquivos = (comprovantes ?? []).map(c => c.storage_path).filter(Boolean) as string[]
+
+  const { error } = await supabase.from('obras').delete().eq('id', obraId)
+  if (error) throw error
+
+  // Depois da obra, e sem travar em caso de falha: se a limpeza do storage não for, o que
+  // sobra é espaço ocupado — nada que justifique dizer à pessoa que não deu para apagar
+  // uma obra que já foi apagada.
+  if (arquivos.length) {
+    await supabase.storage.from('comprovantes').remove(arquivos).catch(() => {})
+  }
+}
+
 export async function encerrarObra(obraId: string) {
   const { error } = await supabase
     .from('obras')
