@@ -80,6 +80,20 @@ export function Enviar() {
           }}
         />
 
+        {/* Primeiro da lista: nem toda compra tem nota para fotografar, e quem já sabe os
+            dados chega mais rápido digitando do que esperando o agente ler. */}
+        <button
+          className="cd"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, cursor: 'pointer', textAlign: 'left' }}
+          onClick={() => navigate(`/obra/${obraId}/lancar`)}
+        >
+          <div className="dsh" style={{ width: 40, height: 40, padding: 0 }}>✎</div>
+          <div>
+            <b style={{ fontSize: 15 }}>Colocar os dados na mão</b>
+            <div className="note">Sem foto, sem esperar o agente</div>
+          </div>
+        </button>
+
         <button
           className="cd"
           style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, cursor: 'pointer', textAlign: 'left' }}

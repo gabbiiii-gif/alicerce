@@ -13,6 +13,7 @@ import { NovaObra } from './screens/NovaObra'
 import { Painel } from './screens/Painel'
 import { Enviar } from './screens/Enviar'
 import { Revisar } from './screens/Revisar'
+import { Lancar } from './screens/Lancar'
 import { Relatorios } from './screens/Relatorios'
 import { Perfil } from './screens/Perfil'
 import { Categorias } from './screens/Categorias'
@@ -88,6 +89,7 @@ export function App() {
           <Route path="/obra/:obraId" element={<Protegida><Painel /></Protegida>} />
           <Route path="/obra/:obraId/enviar" element={<Protegida><Enviar /></Protegida>} />
           <Route path="/obra/:obraId/revisar/:comprovanteId" element={<Protegida><Revisar /></Protegida>} />
+          <Route path="/obra/:obraId/lancar" element={<Protegida><Lancar /></Protegida>} />
           <Route path="/obra/:obraId/relatorios" element={<Protegida><Relatorios /></Protegida>} />
           <Route path="/obra/:obraId/categorias" element={<Protegida><Categorias /></Protegida>} />
           <Route path="/obra/:obraId/equipe" element={<Protegida><Equipe /></Protegida>} />
