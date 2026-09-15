@@ -69,16 +69,18 @@ salvar, senão nada muda.
 Painel do Supabase → **Authentication → URL Configuration**:
 
 - **Site URL**: `https://appalicerce.com.br`
-- **Redirect URLs**: mantenha o endereço antigo e **acrescente** o novo:
+- **Redirect URLs**: mantenha o endereço antigo e **acrescente** os novos:
   ```
   https://appalicerce.com.br/**
+  https://www.appalicerce.com.br/**
   https://alicerceobras.vercel.app/**
   app.alicerce://login
   ```
 
-Os três precisam estar lá. O primeiro é o domínio novo, o segundo mantém funcionando quem
-abre pelo endereço antigo (inclusive os APKs instalados), e o terceiro é o esquema pelo
-qual o Android reabre o app depois do login com Google.
+Os quatro precisam estar lá. Os dois primeiros são o domínio novo com e sem `www` — mesmo
+com um redirecionando para o outro, vale ter os dois enquanto a transição não terminar. O
+terceiro mantém funcionando quem abre pelo endereço antigo, inclusive os APKs já
+instalados. O quarto é o esquema pelo qual o Android reabre o app depois do login Google.
 
 Endereço fora dessa lista não dá erro claro: o Supabase simplesmente devolve a pessoa no
 Site URL, e o login parece ter dado certo no lugar errado.
@@ -87,7 +89,19 @@ Site URL, e o login parece ter dado certo no lugar errado.
 
 Console do Google → **APIs e serviços → Credenciais** → o Client ID OAuth do Alicerce.
 
-Em **Origens JavaScript autorizadas**, acrescente `https://appalicerce.com.br`.
+Em **Origens JavaScript autorizadas**, acrescente as duas:
+
+```
+https://appalicerce.com.br
+https://www.appalicerce.com.br
+```
+
+Sem o `www`, quem digitar o endereço com ele leva recusa do Google — a origem que o
+navegador manda é a da página onde está, não a do destino do redirecionamento.
+
+Na **Tela de permissão OAuth**, o campo *Domínios autorizados* exige que o Google confirme
+que o domínio é seu, pelo **Google Search Console** (registro TXT no DNS). É um passo à
+parte, com espera de propagação — comece cedo.
 
 O **URI de redirecionamento** continua sendo o do Supabase
 (`https://ryygkiehthqjaivtafkg.supabase.co/auth/v1/callback`) — esse não muda com o
