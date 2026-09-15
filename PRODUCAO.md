@@ -18,9 +18,13 @@ Confira que continua valendo:
   existe.
 - O projeto Supabase (`ryygkiehthqjaivtafkg`) fica na organização **Gabdev2**, que é de
   outra conta. O acesso vem de convite.
-- **Gravar secret exige papel de Owner ou Administrador.** Se sua conta estiver como
-  Desenvolvedor na Gabdev2, suba o papel antes da Parte 2 e baixe depois — lembrando que
-  ser Owner lá conta no limite de projetos grátis.
+- **O papel de Desenvolvedor na Gabdev2 basta** para tudo o que está aqui: `secrets set`,
+  `secrets list` e `functions deploy` funcionam (verificado em 15/09/2026). A descrição do
+  papel no painel diz "não é possível alterar configurações", mas isso não cobre secrets de
+  Edge Function. Não precisa subir para Owner — e não convém, porque ser Owner na Gabdev2
+  conta no seu limite de projetos grátis e trava o downgrade da `gabb dev`.
+- **Rode os comandos de dentro de `alicerce/`.** Os caminhos das funções são relativos à
+  pasta: da raiz do repositório, o deploy falha com "Entrypoint path does not exist".
 
 ---
 
@@ -95,9 +99,9 @@ chega sem mensagem que ajude.
 
 ### 1.5 Endereço de retorno do pagamento
 
-O checkout devolve a pessoa para `/plano` no endereço que a função conhece. Ele vem do
-secret `ALICERCE_SITE`, que hoje não existe — então a função usa o padrão antigo, escrito
-no código.
+O checkout devolve a pessoa para `/plano` no endereço que a função conhece: o secret
+`ALICERCE_SITE`, ou o padrão escrito no código, que já é o domínio novo. **Feito em
+15/09/2026** — fica aqui para o dia em que o endereço mudar de novo.
 
 ```powershell
 supabase secrets set ALICERCE_SITE=https://appalicerce.com.br --project-ref ryygkiehthqjaivtafkg
@@ -267,13 +271,11 @@ on conflict (grupo_id) do update
 set status = 'cortesia', vale_ate = excluded.vale_ate, atualizado_em = now();
 ```
 
-### Voltar o papel na Gabdev2
+### Papel na Gabdev2
 
-Se você subiu para Owner só para gravar os secrets, baixe de volta para **Desenvolvedor** —
-senão os projetos da Gabdev2 voltam a contar no seu limite de projetos grátis e o plano da
-`gabb dev` trava de novo.
-
-Deploy de função continua funcionando como Desenvolvedor. Só secret exige papel maior.
+Continue como **Desenvolvedor**. É o bastante para secret e para deploy, e evita que os
+projetos da Gabdev2 contem no seu limite de projetos grátis — o que travaria de novo o
+downgrade da `gabb dev`.
 
 ---
 
