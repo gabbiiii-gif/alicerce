@@ -14,7 +14,7 @@ const PRECO = Deno.env.get('STRIPE_PRICE_ID')!
 
 // Para onde o Stripe devolve a pessoa. Fixo no servidor, não vindo do app: endereço de
 // retorno que o cliente escolhe é porta aberta para mandar gente pagando para outro lugar.
-const SITE = Deno.env.get('ALICERCE_SITE') ?? 'https://alicerceobras.vercel.app'
+const SITE = Deno.env.get('ALICERCE_SITE') ?? 'https://appalicerce.com.br'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',

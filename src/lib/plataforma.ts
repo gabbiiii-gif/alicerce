@@ -33,7 +33,7 @@ export function urlDeRetorno(): string {
 // Vem do .env como o resto da configuração de ambiente: com o valor fixo no código, trocar
 // de domínio deixaria todo APK já instalado gerando convite para um endereço morto, e só
 // recompilar e reinstalar em cada celular consertaria.
-export const SITE = import.meta.env.VITE_SITE_URL || 'https://alicerceobras.vercel.app'
+export const SITE = import.meta.env.VITE_SITE_URL || 'https://appalicerce.com.br'
 
 export function urlPublica(caminho: string): string {
   // Sem window (teste em node, prerender) não há origin para usar — e um link montado fora

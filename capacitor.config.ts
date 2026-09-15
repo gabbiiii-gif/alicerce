@@ -6,6 +6,9 @@ import type { CapacitorConfig } from '@capacitor/cli'
 // 1. ALICERCE_DEV_URL — o PC de quem está desenvolvendo (`npm run android:vivo`).
 //    Salvar um arquivo atualiza o celular na hora, pelo cabo.
 //
+//    ATENÇÃO: este endereço fica gravado DENTRO do APK. APK gerado antes desta linha
+//    mudar continua carregando de alicerceobras.vercel.app, e só reinstalando troca.
+//
 // 2. O site publicado (padrão) — é o que faz um APK já instalado na mão de outra pessoa
 //    acompanhar as mudanças: sai um deploy, e na próxima vez que ela abrir o app já está
 //    novo, sem reinstalar nada. O service worker do PWA guarda os arquivos no aparelho,
@@ -15,7 +18,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 //    Abre sem nunca ter visto a rede, mas aí cada correção exige gerar e reinstalar o APK
 //    em cada celular. Use para uma demonstração sem internet, não para distribuir.
 const urlDeDesenvolvimento = process.env.ALICERCE_DEV_URL
-const site = process.env.ALICERCE_SITE_URL ?? 'https://alicerceobras.vercel.app'
+const site = process.env.ALICERCE_SITE_URL ?? 'https://appalicerce.com.br'
 const deOndeCarrega = urlDeDesenvolvimento ?? (process.env.ALICERCE_APK_OFFLINE ? null : site)
 
 const config: CapacitorConfig = {
