@@ -94,18 +94,18 @@ export function Perfil() {
           <b style={{ fontSize: 14 }}>Equipe da obra</b>
           <span className="note">›</span>
         </button>
-        {/* Trancado por enquanto.
-            Funciona de ponta a ponta, mas o Resend só entrega na caixa do dono da conta
-            enquanto não houver um domínio próprio verificado — então, para qualquer outra
-            pessoa, o botão só produziria uma mensagem de erro. Melhor não oferecer do que
-            oferecer quebrado.
-            Para religar: trocar este bloco pelo <button> com onClick={() =>
-            setDestino(session?.user.email ?? '')}, que está no histórico deste arquivo. O
-            resto — função, envio, folha de destinatário — continua inteiro. */}
-        <div className="li" style={{ cursor: 'default', opacity: .6 }}>
-          <b style={{ fontSize: 14 }}>Relatório por e-mail</b>
-          <span className="note">Em breve</span>
-        </div>
+        {/* Religado: mail.appalicerce.com.br verificado no Resend em 15/09/2026. Antes
+            disso o serviço só entregava na caixa do dono da conta, e o botão produziria
+            erro para qualquer outra pessoa. Quem define o remetente é o secret
+            RESEND_FROM — sem ele, a função cai no endereço compartilhado e a limitação
+            antiga volta. */}
+        <button className="li" onClick={() => setDestino(session?.user.email ?? '')} disabled={enviando}>
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <b style={{ fontSize: 14 }}>Relatório por e-mail</b>
+            <div className="note">resumo das obras, na hora</div>
+          </div>
+          <span className="note">{enviando ? 'enviando…' : '›'}</span>
+        </button>
         <div className="li" style={{ cursor: 'default', opacity: .6 }}>
           <b style={{ fontSize: 14 }}>Resumo no WhatsApp</b>
           <span className="note">Em breve</span>
