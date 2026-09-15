@@ -3,10 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { carregarObra, enviarComprovante, listarFila } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
+import { usePlano } from '../lib/plano'
 import { useAviso } from '../components/Toast'
 import { fmt, isoParaBR } from '../lib/format'
 import { Carregando, Tela } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
+import { AvisoPlano } from '../components/AvisoPlano'
 import { AnimatePresence, motion } from 'motion/react'
 import { CURVA } from '../lib/animacao'
 import type { Comprovante } from '../lib/types'
@@ -16,6 +18,7 @@ export function Enviar() {
   const navigate = useNavigate()
   const { userId } = useUsuario()
   const avisar = useAviso()
+  const { vale } = usePlano()
 
   const { dados: obra } = useAsync(async () => (await carregarObra(obraId)).obra, [obraId])
   const { dados: fila, carregando, recarregar } = useAsync(() => listarFila(userId), [userId])
@@ -54,6 +57,8 @@ export function Enviar() {
   return (
     <>
       <Tela titulo="Enviar comprovante" voltar={`/obra/${obraId}`} comAbas>
+        <AvisoPlano />
+
         <div className="fld">
           obra <b>{obra?.nome ?? '…'}</b>
         </div>
@@ -86,6 +91,7 @@ export function Enviar() {
           className="cd"
           style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, cursor: 'pointer', textAlign: 'left' }}
           onClick={() => navigate(`/obra/${obraId}/lancar`)}
+          disabled={!vale}
         >
           <div className="dsh" style={{ width: 40, height: 40, padding: 0 }}>✎</div>
           <div>
@@ -98,7 +104,7 @@ export function Enviar() {
           className="cd"
           style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, cursor: 'pointer', textAlign: 'left' }}
           onClick={() => inputFoto.current?.click()}
-          disabled={enviando}
+          disabled={enviando || !vale}
         >
           <div className="dsh" style={{ width: 40, height: 40, padding: 0 }}>📷</div>
           <div>
@@ -111,7 +117,7 @@ export function Enviar() {
           className="cd"
           style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, cursor: 'pointer', textAlign: 'left' }}
           onClick={() => inputArquivo.current?.click()}
-          disabled={enviando}
+          disabled={enviando || !vale}
         >
           <div className="dsh" style={{ width: 40, height: 40, padding: 0 }}>PDF</div>
           <div>

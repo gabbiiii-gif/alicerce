@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { abrirPagamento, carregarPlano, planoVale } from '../data/api'
-import { useAsync } from '../lib/hooks'
+import { abrirPagamento } from '../data/api'
+import { usePlano } from '../lib/plano'
 import { useUsuario } from '../lib/auth'
 import { useAviso } from '../components/Toast'
 import { isoParaBR } from '../lib/format'
@@ -11,23 +11,24 @@ export function Plano() {
   const [params, setParams] = useSearchParams()
   const voltandoDoPagamento = params.get('pago') === '1'
   const { userId } = useUsuario()
-  const { dados, carregando, erro, recarregar } = useAsync(carregarPlano, [])
+  // Mesma fonte que a faixa de aviso das outras telas: pagar aqui tem que apagar o
+  // aviso lá, e duas cargas separadas discordariam até a próxima navegação.
+  const { plano: dados, carregando, erro, vale, ehCortesia, recarregar } = usePlano()
   const [abrindo, setAbrindo] = useState(false)
   const avisar = useAviso()
 
   const assinatura = dados?.assinatura ?? null
   const titular = dados?.titular ?? null
 
-  const vale = planoVale(assinatura)
   const status = assinatura?.status ?? 'sem_assinatura'
   const ate = assinatura?.vale_ate ? isoParaBR(assinatura.vale_ate.slice(0, 10)) : null
 
-  // Cortesia é acesso sem cartão, de quem já usava o app antes de existir plano. Vale
-  // como plano, mas não há nada para gerenciar no Stripe: o que essa pessoa precisa ver
-  // é o convite para assinar, antes de a cortesia acabar.
-  const ehCortesia = status === 'cortesia'
   // Convidado: usa o plano de quem pagou, e nunca mexe nele.
   const souConvidado = !!(vale && assinatura?.titular_id && assinatura.titular_id !== userId)
+
+  // Só o titular gerencia. Cortesia fica de fora porque é acesso sem cartão — não existe
+  // assinatura no Stripe para abrir; o que essa pessoa precisa é do convite para assinar
+  // antes que a cortesia acabe.
   const podeGerenciar = vale && !ehCortesia && !souConvidado
 
   // Voltando do Stripe, o pagamento já passou — mas o webhook é outro caminho e pode

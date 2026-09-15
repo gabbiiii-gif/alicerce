@@ -4,10 +4,12 @@ import { apagarLancamento, carregarObra, criarAditivo, registrarEntrada } from '
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
 import { useObraAtual } from '../lib/obraAtual'
+import { usePlano } from '../lib/plano'
 import { useAviso } from '../components/Toast'
 import { curto, dataCurta, fmt, semSimbolo } from '../lib/format'
 import { Carregando, Tela } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
+import { AvisoPlano } from '../components/AvisoPlano'
 import { ValorAnimado } from '../components/ValorAnimado'
 import { Barra } from '../components/Barra'
 import { Sheet } from '../components/Sheet'
@@ -23,6 +25,7 @@ export function Painel() {
   const navigate = useNavigate()
   const { userId, perfil } = useUsuario()
   const { definir } = useObraAtual()
+  const { vale } = usePlano()
   const avisar = useAviso()
 
   const { dados, carregando, erro, recarregar } = useAsync(() => carregarObra(obraId), [obraId])
@@ -88,6 +91,7 @@ export function Painel() {
   return (
     <>
       <Tela titulo={obra.nome} voltar="/" comAbas acao={<div className="av">{perfil?.iniciais ?? '·'}</div>}>
+        <AvisoPlano />
         <div className="cd">
           <div className="row">
             <span className="note">Valor fechado</span>
@@ -144,10 +148,13 @@ export function Painel() {
 
         {lancamentos.length === 0 && <div className="dsh" style={{ padding: 18 }}>Nenhum lançamento nesta obra ainda</div>}
 
+        {/* Desligados sem plano: a policy de insert vai recusar de qualquer jeito, e é
+            melhor a pessoa ver o botão apagado com a faixa explicando do que preencher o
+            lançamento inteiro para levar um erro de banco no fim. */}
         <div className="row" style={{ gap: 8, paddingTop: 4 }}>
-          <button className="bt" style={{ flex: 1 }} onClick={() => abrirSheet('entrada')}>+ entrada</button>
-          <button className="bt" style={{ flex: 1 }} onClick={() => abrirSheet('aditivo')}>+ aditivo</button>
-          <button className="bt bta" style={{ flex: 1 }} onClick={() => navigate(`/obra/${obraId}/enviar`)}>+ saída</button>
+          <button className="bt" style={{ flex: 1 }} disabled={!vale} onClick={() => abrirSheet('entrada')}>+ entrada</button>
+          <button className="bt" style={{ flex: 1 }} disabled={!vale} onClick={() => abrirSheet('aditivo')}>+ aditivo</button>
+          <button className="bt bta" style={{ flex: 1 }} disabled={!vale} onClick={() => navigate(`/obra/${obraId}/enviar`)}>+ saída</button>
         </div>
       </Tela>
 

@@ -10,6 +10,7 @@ import { curto, dataCurta, fmt, semSimbolo } from '../lib/format'
 import { CURVA } from '../lib/animacao'
 import { Carregando, Tela, Vazio } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
+import { AvisoPlano } from '../components/AvisoPlano'
 import { ValorAnimado } from '../components/ValorAnimado'
 import { Grafico3D } from '../components/Grafico3D'
 
@@ -61,6 +62,7 @@ export function Resumo() {
   return (
     <>
       <Tela titulo="Resumo" comAbas acao={<div className="av">{perfil?.iniciais ?? '·'}</div>}>
+        <AvisoPlano />
         {dados.obras.length === 0 ? (
           <Vazio>
             nada para resumir ainda

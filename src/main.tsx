@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { MotionConfig } from 'motion/react'
 import { AuthProvider } from './lib/auth'
+import { PlanoProvider } from './lib/plano'
 import { ToastProvider } from './components/Toast'
 import { configurado } from './lib/supabase'
 import { ehNativo } from './lib/plataforma'
@@ -47,9 +48,11 @@ createRoot(document.getElementById('root')!).render(
       <MotionConfig reducedMotion="user">
         <BrowserRouter>
           <AuthProvider>
-            <ToastProvider>
-              <App />
-            </ToastProvider>
+            <PlanoProvider>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </PlanoProvider>
           </AuthProvider>
         </BrowserRouter>
       </MotionConfig>

@@ -3,15 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import { criarObra } from '../data/api'
 import { useUsuario } from '../lib/auth'
 import { useObraAtual } from '../lib/obraAtual'
+import { usePlano } from '../lib/plano'
 import { useAviso } from '../components/Toast'
 import { fmt } from '../lib/format'
 import { Tela } from '../components/Tela'
+import { AvisoPlano } from '../components/AvisoPlano'
 import { MoedaInput } from '../components/MoedaInput'
 
 export function NovaObra() {
   const navigate = useNavigate()
   const { userId } = useUsuario()
   const { definir } = useObraAtual()
+  const { vale } = usePlano()
   const avisar = useAviso()
 
   const [passo, setPasso] = useState(0)
@@ -29,6 +32,13 @@ export function NovaObra() {
   }
 
   async function avancar() {
+    // Antes de tudo: a obra e a entrada dela são dois inserts, os dois barrados pela
+    // policy sem plano. Deixar a pessoa preencher três passos para falhar no último é a
+    // pior forma possível de contar que a assinatura venceu.
+    if (!vale) {
+      avisar('Seu plano venceu — assine para criar obras')
+      return navigate('/plano')
+    }
     if (passo === 0 && (!nome.trim() || valor <= 0)) return avisar('Falta nome e valor fechado')
     if (passo === 1 && entrada <= 0) return avisar('A obra só começa com entrada')
     if (passo < 2) return setPasso(passo + 1)
@@ -54,6 +64,8 @@ export function NovaObra() {
           <div key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: corPasso(i) }} />
         ))}
       </div>
+
+      <AvisoPlano />
 
       {passo === 0 && (
         <>

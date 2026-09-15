@@ -1,7 +1,7 @@
 -- O GATE: sem plano, o app vira modo leitura.
 --
 -- ⚠️  Esta é a migration que corta o acesso de quem já usa o app. Antes de rodar, decida
---     a linha marcada com ESCOLHA AQUI, lá embaixo — é quantos dias de cortesia todo
+--     a linha marcada com ESCOLHA AQUI, logo abaixo — é quantos dias de cortesia todo
 --     grupo existente ganha. Sem isso, todo mundo que usa o Alicerce hoje abre o app
 --     amanhã e não consegue lançar nada, sem aviso.
 --
@@ -12,6 +12,19 @@
 --
 -- DELETE também fica livre: os dados são da pessoa, e prender dados de quem parou de
 -- pagar é o tipo de coisa que rende reclamação no lugar errado.
+
+-- ---------------------------------------------------------------- quem já usa o app
+-- PRIMEIRO de tudo, e não por capricho: se o SQL Editor não rodar o arquivo inteiro numa
+-- transação só, com a cortesia no fim existiria uma janela — segundos que fossem — em que
+-- o gate já vale e ninguém tem plano. Nessa janela, quem estivesse lançando levaria erro.
+--
+-- ⚠️  ESCOLHA AQUI: quantos dias de cortesia todo grupo existente ganha.
+--
+-- Grupos que já tiverem linha em assinaturas ficam como estão.
+insert into public.assinaturas (grupo_id, status, vale_ate)
+select distinct p.grupo_id, 'cortesia', now() + interval '30 days'
+from public.profiles p
+on conflict (grupo_id) do nothing;
 
 -- ---------------------------------------------------------------- cortesia
 
@@ -152,14 +165,3 @@ create policy "membro envia comprovante da obra"
     and ((storage.foldername(name))[2])::uuid = auth.uid()
     and public.plano_ativo()
   );
-
--- ---------------------------------------------------------------- quem já usa o app
-
--- ⚠️  ESCOLHA AQUI: quantos dias de cortesia todo grupo existente ganha.
---
--- Roda ANTES de o gate valer para eles, na mesma transação desta migration. Grupos que
--- já tiverem linha em assinaturas (o seu, do teste) ficam como estão.
-insert into public.assinaturas (grupo_id, status, vale_ate)
-select distinct p.grupo_id, 'cortesia', now() + interval '30 days'
-from public.profiles p
-on conflict (grupo_id) do nothing;
