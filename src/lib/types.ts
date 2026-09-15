@@ -110,4 +110,6 @@ export type Assinatura = {
   grupo_id: string
   status: string
   vale_ate: string | null
+  // Quem passou o cartão. Os outros do grupo usam o plano, mas não mexem nele.
+  titular_id: string | null
 }

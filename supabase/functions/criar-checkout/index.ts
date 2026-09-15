@@ -55,7 +55,7 @@ Deno.serve(async req => {
 
   const { data: assinatura } = await servico
     .from('assinaturas')
-    .select('stripe_customer_id, status, vale_ate')
+    .select('stripe_customer_id, stripe_subscription_id, status, vale_ate, titular_id')
     .eq('grupo_id', grupoId)
     .maybeSingle()
 
@@ -64,6 +64,11 @@ Deno.serve(async req => {
     // gerenciar — quem nunca pagou cai no checkout.
     if (acao === 'gerenciar') {
       if (!assinatura?.stripe_customer_id) return responde({ erro: 'você ainda não tem assinatura' }, 400)
+      // A tela já esconde o botão do convidado, mas esconder não é impedir: quem chamar
+      // a função direto passaria do mesmo jeito e cancelaria o plano de quem paga.
+      if (assinatura.titular_id && assinatura.titular_id !== auth.user.id) {
+        return responde({ erro: 'só quem assinou pode gerenciar o plano' }, 403)
+      }
       const portal = await stripe.billingPortal.sessions.create({
         customer: assinatura.stripe_customer_id,
         return_url: `${SITE}/plano`,
@@ -84,10 +89,14 @@ Deno.serve(async req => {
     if (!cliente) {
       const novo = await stripe.customers.create({
         email: auth.user.email ?? undefined,
-        metadata: { grupo_id: grupoId },
+        metadata: { grupo_id: grupoId, titular_id: auth.user.id },
       })
       cliente = novo.id
     }
+
+    // Sete dias de teste, UMA vez por grupo. Sem esta checagem, cancelar e assinar de
+    // novo renderia mais sete dias a cada volta — de graça, para sempre.
+    const primeiraVez = !assinatura?.stripe_subscription_id
 
     const sessao = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -98,7 +107,12 @@ Deno.serve(async req => {
       // client_reference_id chega no checkout.session.completed, e o metadata fica
       // colado na assinatura para todos os eventos seguintes.
       client_reference_id: grupoId,
-      subscription_data: { metadata: { grupo_id: grupoId } },
+      subscription_data: {
+        // titular_id é quem passou o cartão. É o que impede o convidado, que lê a
+        // mesma linha de assinatura, de abrir o portal e cancelar o plano alheio.
+        metadata: { grupo_id: grupoId, titular_id: auth.user.id },
+        ...(primeiraVez ? { trial_period_days: 7 } : {}),
+      },
       success_url: `${SITE}/plano?pago=1`,
       cancel_url: `${SITE}/plano`,
     })

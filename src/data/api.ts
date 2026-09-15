@@ -421,20 +421,34 @@ export async function aceitarConvite(codigo: string): Promise<string> {
 // A RLS já limita ao grupo de quem pergunta, então não há filtro aqui — só existe uma
 // linha visível. As colunas vão pelo nome de propósito: o grant é por coluna, e um
 // select('*') bate em "permission denied" mesmo com a linha sendo sua.
-export async function carregarAssinatura(): Promise<Assinatura | null> {
+export type PlanoDoGrupo = { assinatura: Assinatura | null; titular: Profile | null }
+
+export async function carregarPlano(): Promise<PlanoDoGrupo> {
   const { data, error } = await supabase
     .from('assinaturas')
-    .select('grupo_id, status, vale_ate')
+    .select('grupo_id, status, vale_ate, titular_id')
     .maybeSingle()
   if (error) throw error
-  return (data as Assinatura) ?? null
+
+  const assinatura = (data as Assinatura) ?? null
+  if (!assinatura?.titular_id) return { assinatura, titular: null }
+
+  // O perfil de quem paga e legivel porque dividimos o grupo — a mesma policy que mostra
+  // o nome de quem lancou no historico da obra.
+  const { data: perfil } = await supabase
+    .from('profiles')
+    .select('id, nome, iniciais, avatar_url')
+    .eq('id', assinatura.titular_id)
+    .maybeSingle()
+
+  return { assinatura, titular: (perfil as Profile) ?? null }
 }
 
 export function planoVale(a: Assinatura | null): boolean {
   if (!a?.vale_ate) return false
   // past_due conta: é o estado em que o Stripe ainda está retentando o cartão. Quem
   // encerra o acesso é a data, não a primeira recusa. Mesma regra do plano_ativo() no banco.
-  return ['trialing', 'active', 'past_due'].includes(a.status) && new Date(a.vale_ate) > new Date()
+  return ['trialing', 'active', 'past_due', 'cortesia'].includes(a.status) && new Date(a.vale_ate) > new Date()
 }
 
 // Quem monta a sessão de pagamento é o servidor, a partir da sessão de quem chamou. O app

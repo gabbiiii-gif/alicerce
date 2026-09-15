@@ -71,6 +71,8 @@ async function grupoDe(assinatura: Stripe.Subscription): Promise<string | null> 
 }
 
 async function gravar(grupoId: string, assinatura: Stripe.Subscription) {
+  const titular = assinatura.metadata?.titular_id
+
   const { error } = await banco.from('assinaturas').upsert(
     {
       grupo_id: grupoId,
@@ -78,6 +80,10 @@ async function gravar(grupoId: string, assinatura: Stripe.Subscription) {
       stripe_subscription_id: assinatura.id,
       status: assinatura.status,
       vale_ate: valeAte(assinatura),
+      // Só escreve quando o evento traz: a coluna que não entra no upsert mantém o valor
+      // que já estava. Mandar undefined apagaria o titular no primeiro evento sem
+      // metadata, e o convidado passaria a ver o botão de cancelar.
+      ...(titular ? { titular_id: titular } : {}),
       atualizado_em: new Date().toISOString(),
     },
     { onConflict: 'grupo_id' },
