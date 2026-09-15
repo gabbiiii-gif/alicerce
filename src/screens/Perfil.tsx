@@ -82,6 +82,10 @@ export function Perfil() {
           </div>
         </div>
 
+        <button className="li" onClick={() => navigate('/plano')}>
+          <b style={{ fontSize: 14 }}>Plano e cobrança</b>
+          <span className="note">›</span>
+        </button>
         <button className="li" onClick={() => abrir('categorias')}>
           <b style={{ fontSize: 14 }}>Categorias de gasto</b>
           <span className="note">›</span>

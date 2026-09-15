@@ -103,3 +103,11 @@ export type ContasObra = {
   pct: number
   saidas: number
 }
+
+// Assinatura do GRUPO, não da pessoa: quem entrou por convite herda o plano de quem pagou.
+// Só estas três colunas são legíveis pelo app — os ids do Stripe ficam no servidor.
+export type Assinatura = {
+  grupo_id: string
+  status: string
+  vale_ate: string | null
+}

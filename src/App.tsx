@@ -16,6 +16,7 @@ import { Revisar } from './screens/Revisar'
 import { Lancar } from './screens/Lancar'
 import { Relatorios } from './screens/Relatorios'
 import { Perfil } from './screens/Perfil'
+import { Plano } from './screens/Plano'
 import { Categorias } from './screens/Categorias'
 import { Equipe } from './screens/Equipe'
 import { Encerrar } from './screens/Encerrar'
@@ -96,6 +97,7 @@ export function App() {
           <Route path="/obra/:obraId/encerrar" element={<Protegida><Encerrar /></Protegida>} />
           <Route path="/relatorios" element={<Protegida><Relatorios /></Protegida>} />
           <Route path="/perfil" element={<Protegida><Perfil /></Protegida>} />
+          <Route path="/plano" element={<Protegida><Plano /></Protegida>} />
           <Route path="/e/:codigo" element={<Protegida><AceitarConvite /></Protegida>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
