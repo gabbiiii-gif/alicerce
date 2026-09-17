@@ -66,6 +66,24 @@ export function brParaISO(br: string): string | null {
   return `${ano}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
 }
 
+// Intervalo escolhido à mão, de ponta a ponta.
+//
+// Diferente de semanaDe e mesDe, aqui as duas pontas vêm da pessoa — e vêm trocadas com
+// frequência, porque digitar "de 20 a 14" é erro fácil. Ordenar em vez de recusar devolve
+// o relatório que ela quis pedir; recusar devolveria um período vazio, que parece obra sem
+// lançamento em vez de data invertida.
+export function periodoDe(a: string, b: string): { inicio: string; fim: string; titulo: string } {
+  const [inicio, fim] = a <= b ? [a, b] : [b, a]
+  const mesmoAno = inicio.slice(0, 4) === fim.slice(0, 4)
+  const titulo =
+    inicio === fim
+      ? isoParaBR(inicio)
+      : mesmoAno
+        ? `${dataCurta(inicio)} – ${dataCurta(fim)}`
+        : `${isoParaBR(inicio)} – ${isoParaBR(fim)}`
+  return { inicio, fim, titulo }
+}
+
 // Semana de segunda a domingo que contém a data.
 export function semanaDe(base: Date): { inicio: string; fim: string; titulo: string } {
   const d = new Date(base)

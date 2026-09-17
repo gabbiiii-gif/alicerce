@@ -1,8 +1,10 @@
 import type { Lancamento, Membro } from './types'
 import { fmt, isoParaBR } from './format'
-import { mesDe, semanaDe } from './format'
+import { mesDe, periodoDe, semanaDe } from './format'
 
-export type Periodo = 'semana' | 'mes'
+export type Periodo = 'semana' | 'mes' | 'personalizado'
+
+export type Intervalo = { inicio: string; fim: string }
 
 export type ResumoPessoa = {
   userId: string
@@ -36,8 +38,16 @@ export function montarRelatorio(
   membros: Membro[],
   periodo: Periodo,
   base = new Date(),
+  intervalo?: Intervalo | null,
 ): Relatorio {
-  const janela = periodo === 'semana' ? semanaDe(base) : mesDe(base)
+  // Sem intervalo, 'personalizado' cai na semana em vez de quebrar: é o estado de quem
+  // tocou na aba e ainda não escolheu as datas.
+  const janela =
+    periodo === 'personalizado' && intervalo
+      ? periodoDe(intervalo.inicio, intervalo.fim)
+      : periodo === 'mes'
+        ? mesDe(base)
+        : semanaDe(base)
   const doPeriodo = lancamentos.filter(l => l.data >= janela.inicio && l.data <= janela.fim)
 
   const entradas = doPeriodo.filter(l => l.tipo === 'entrada').reduce((s, l) => s + Number(l.valor), 0)

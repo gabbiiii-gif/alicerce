@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { carregarObra, carregarRelatorioGeral, listarObras } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useAviso } from '../components/Toast'
-import { curto, fmt, semSimbolo } from '../lib/format'
-import { montarRelatorio, textoResumo, type Periodo } from '../lib/relatorio'
+import { brParaISO, curto, fmt, hojeISO, isoParaBR, semSimbolo } from '../lib/format'
+import { montarRelatorio, textoResumo, type Intervalo, type Periodo } from '../lib/relatorio'
 import { baixarOuCompartilhar, gerarPdfRelatorio } from '../lib/pdf'
 import { CURVA } from '../lib/animacao'
 import { Carregando, Tela } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
 import { Barra } from '../components/Barra'
+import { Sheet } from '../components/Sheet'
 
 const TODAS = 'Todas as obras'
 
@@ -21,6 +22,10 @@ export function Relatorios() {
   const navigate = useNavigate()
   const avisar = useAviso()
   const [periodo, setPeriodo] = useState<Periodo>('semana')
+  const [intervalo, setIntervalo] = useState<Intervalo | null>(null)
+  const [escolhendo, setEscolhendo] = useState(false)
+  const [de, setDe] = useState('')
+  const [ate, setAte] = useState('')
 
   // Uma carga só para a tela inteira. As obras servem aos chips e, no consolidado, à soma
   // do "em aberto" — que antes vinha de um segundo select idêntico dentro do relatório.
@@ -46,8 +51,8 @@ export function Relatorios() {
   }, [obraId])
 
   const relatorio = useMemo(
-    () => (dados ? montarRelatorio(dados.lancamentos, dados.membros, periodo) : null),
-    [dados, periodo],
+    () => (dados ? montarRelatorio(dados.lancamentos, dados.membros, periodo, new Date(), intervalo) : null),
+    [dados, periodo, intervalo],
   )
 
   // Tela e TabBar ficam montadas em todo estado — o padrão de Obras.tsx. Devolver só um
@@ -71,7 +76,7 @@ export function Relatorios() {
   }
 
   const { obras, nome, aberto } = dados
-  const rotulo = periodo === 'semana' ? 'Semana' : 'Mês'
+  const rotulo = periodo === 'semana' ? 'Semana' : periodo === 'mes' ? 'Mês' : 'Período'
 
   async function exportarPdf() {
     try {
@@ -85,6 +90,32 @@ export function Relatorios() {
     } catch {
       avisar('não deu para gerar o PDF')
     }
+  }
+
+  // Abre a folha já preenchida: com o intervalo em uso, se houver; senão do dia 1 do mês
+  // até hoje, que é o recorte que mais se pede. Folha em branco obrigaria a digitar duas
+  // datas completas antes de ver qualquer coisa.
+  function abrirEscolha() {
+    if (intervalo) {
+      setDe(isoParaBR(intervalo.inicio))
+      setAte(isoParaBR(intervalo.fim))
+    } else {
+      const hoje = hojeISO()
+      setDe(isoParaBR(`${hoje.slice(0, 8)}01`))
+      setAte(isoParaBR(hoje))
+    }
+    setEscolhendo(true)
+  }
+
+  function aplicarPeriodo() {
+    const inicio = brParaISO(de)
+    const fim = brParaISO(ate)
+    if (!inicio || !fim) return avisar('Datas no formato dia/mês/ano')
+    // Não conferimos qual é a maior: periodoDe ordena. Recusar "de 20 a 14" seria exigir
+    // que a pessoa entendesse a ordem em vez de entregar o que ela quis pedir.
+    setIntervalo({ inicio, fim })
+    setPeriodo('personalizado')
+    setEscolhendo(false)
   }
 
   function mandarWhatsApp() {
@@ -138,6 +169,11 @@ export function Relatorios() {
         <div className="row" style={{ border: '1px solid #D5E2F2', borderRadius: 10, overflow: 'hidden', gap: 0 }}>
           <button style={seg(periodo === 'semana')} onClick={() => setPeriodo('semana')}>Semana</button>
           <button style={seg(periodo === 'mes')} onClick={() => setPeriodo('mes')}>Mês</button>
+          {/* Tocar aqui já abre a escolha, mesmo com o período ativo: é assim que se troca
+              as datas sem ter que passar por outra aba e voltar. */}
+          <button style={seg(periodo === 'personalizado')} onClick={abrirEscolha}>
+            {periodo === 'personalizado' ? 'Período' : 'Escolher'}
+          </button>
         </div>
 
         <div className="row">
@@ -232,6 +268,48 @@ export function Relatorios() {
             : 'Todas as suas obras somadas no período. Toque numa obra acima para ver ela sozinha.'}
         </div>
       </Tela>
+
+      <AnimatePresence>
+        {escolhendo && (
+          <Sheet aoFechar={() => setEscolhendo(false)}>
+            <div className="row">
+              <b style={{ fontSize: 17 }}>Escolher período</b>
+              <span className="note">dia/mês/ano</span>
+            </div>
+
+            <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <div className="note">De</div>
+                <input
+                  className="inp"
+                  inputMode="numeric"
+                  placeholder="dd/mm/aaaa"
+                  value={de}
+                  onChange={e => setDe(e.target.value)}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div className="note">Até</div>
+                <input
+                  className="inp"
+                  inputMode="numeric"
+                  placeholder="dd/mm/aaaa"
+                  value={ate}
+                  onChange={e => setAte(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && aplicarPeriodo()}
+                />
+              </div>
+            </div>
+
+            <button className="bt btp" onClick={aplicarPeriodo}>Ver este período</button>
+
+            <div className="note" style={{ textAlign: 'center' }}>
+              As duas pontas entram na conta, inclusive o próprio dia escolhido.
+            </div>
+          </Sheet>
+        )}
+      </AnimatePresence>
+
       <TabBar ativa="relatorios" />
     </>
   )
