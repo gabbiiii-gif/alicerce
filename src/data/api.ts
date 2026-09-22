@@ -157,7 +157,10 @@ export async function criarObra(dados: {
   if (error) throw error
 
   const obraId = data.id as string
-  await registrarEntrada({ obraId, autorId: dados.autorId, valor: dados.entrada, descricao: 'Entrada' })
+  // Sem entrada a obra nasce só com o valor fechado; o recebimento entra depois pelo painel.
+  if (dados.entrada > 0) {
+    await registrarEntrada({ obraId, autorId: dados.autorId, valor: dados.entrada, descricao: 'Entrada' })
+  }
   return obraId
 }
 
