@@ -11,12 +11,11 @@ import { isoParaBR } from '../lib/format'
 export function AvisoPlano() {
   const navigate = useNavigate()
   const { userId } = useUsuario()
-  const { plano, carregando, vale, ehCortesia, diasRestantes } = usePlano()
+  const { plano, carregando, vale, diasRestantes } = usePlano()
 
   if (carregando) return null
 
   const assinatura = plano?.assinatura ?? null
-  const status = assinatura?.status ?? 'sem_assinatura'
   const ate = assinatura?.vale_ate ? isoParaBR(assinatura.vale_ate.slice(0, 10)) : null
   const dias = diasRestantes ?? 0
 
@@ -31,26 +30,13 @@ export function AvisoPlano() {
 
   if (!vale) {
     tom = 'parado'
-    texto =
-      status === 'canceled'
-        ? 'Assinatura cancelada. Você continua vendo tudo, mas não dá para lançar.'
-        : 'Sem plano ativo. Você continua vendo tudo, mas não dá para lançar.'
-    acao = 'Assinar'
-  } else if (status === 'past_due') {
+    texto = 'Sem plano ativo. Você continua vendo tudo, mas não dá para lançar.'
+    acao = 'Pagar com Pix'
+  } else if (dias <= 3) {
+    // Sem renovação automática: se ninguém avisar, o prazo acaba no meio de um lançamento.
     tom = 'atencao'
-    texto = `O último pagamento falhou. Atualize o cartão até ${ate} para não parar.`
-    acao = 'Atualizar cartão'
-  } else if (ehCortesia) {
-    tom = 'atencao'
-    texto =
-      dias <= 1
-        ? 'Seu acesso de cortesia termina hoje. Assine para continuar lançando.'
-        : `Seu acesso de cortesia termina em ${dias} dias, em ${ate}.`
-    acao = 'Assinar'
-  } else if (status === 'trialing' && dias <= 3) {
-    tom = 'atencao'
-    texto = dias <= 1 ? 'Seu teste grátis termina hoje.' : `Seu teste grátis termina em ${dias} dias.`
-    acao = 'Ver o plano'
+    texto = dias <= 1 ? 'Seu plano termina hoje.' : `Seu plano termina em ${dias} dias, em ${ate}.`
+    acao = 'Renovar'
   }
 
   if (!tom) return null

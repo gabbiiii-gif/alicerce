@@ -5,11 +5,3 @@ verify_jwt = true
 
 [functions.enviar-relatorio]
 verify_jwt = true
-
-# O Stripe não manda JWT do Supabase. Sem isto o webhook leva 401 antes de rodar:
-# a cobrança passa, a assinatura nunca ativa, e não aparece erro em lugar óbvio.
-[functions.stripe-webhook]
-verify_jwt = false
-
-[functions.criar-checkout]
-verify_jwt = true

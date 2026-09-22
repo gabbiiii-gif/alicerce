@@ -3,7 +3,6 @@ import type {
   Aditivo, Assinatura, Categoria, Comprovante, ContasObra, Convite, Lancamento, Membro, Obra, Profile,
 } from '../lib/types'
 import { comoNome, hojeISO } from '../lib/format'
-import { ehNativo } from '../lib/plataforma'
 
 export type ObraComContas = Obra & { contas: ContasObra }
 
@@ -446,35 +445,6 @@ export async function carregarPlano(): Promise<PlanoDoGrupo> {
 
 export function planoVale(a: Assinatura | null): boolean {
   if (!a?.vale_ate) return false
-  // past_due conta: é o estado em que o Stripe ainda está retentando o cartão. Quem
-  // encerra o acesso é a data, não a primeira recusa. Mesma regra do plano_ativo() no banco.
-  return ['trialing', 'active', 'past_due', 'cortesia'].includes(a.status) && new Date(a.vale_ate) > new Date()
-}
-
-// Quem monta a sessão de pagamento é o servidor, a partir da sessão de quem chamou. O app
-// só diz o que quer fazer e recebe uma URL para abrir.
-export async function urlDePagamento(acao: 'assinar' | 'gerenciar'): Promise<string> {
-  const { data, error } = await supabase.functions.invoke('criar-checkout', { body: { acao } })
-  if (error) {
-    // `invoke` transforma qualquer status fora do 2xx em erro genérico e joga fora o corpo
-    // da resposta. Sem ler o `context`, a pessoa veria "Edge Function returned a non-2xx
-    // status code" no lugar de "seu grupo já tem plano ativo".
-    const resposta = (error as { context?: Response }).context
-    const corpo = resposta ? await resposta.json().catch(() => null) : null
-    throw new Error(corpo?.erro ?? error.message)
-  }
-  if (data?.erro) throw new Error(data.erro)
-  return data.url as string
-}
-
-export async function abrirPagamento(acao: 'assinar' | 'gerenciar') {
-  const url = await urlDePagamento(acao)
-  // No APK não dá para trocar a página: o app sumiria e o Stripe abriria por cima do nada.
-  // O navegador do sistema abre em cima e fecha de volta no app, como no login do Google.
-  if (ehNativo()) {
-    const { Browser } = await import('@capacitor/browser')
-    await Browser.open({ url, presentationStyle: 'popover' })
-    return
-  }
-  window.location.href = url
+  // Mesma regra do plano_ativo() no banco (0013): Pix confirmado ou cortesia, dentro do prazo.
+  return ['pix', 'cortesia'].includes(a.status) && new Date(a.vale_ate) > new Date()
 }

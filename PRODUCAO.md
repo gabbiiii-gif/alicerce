@@ -1,7 +1,6 @@
 # Virada para produção
 
-Como sair do sandbox e começar a receber de verdade, e como ligar o domínio
-`appalicerce.com.br`. O [SETUP.md](SETUP.md) monta o Alicerce do zero; este arquivo é só a
+Como ligar o domínio `appalicerce.com.br` e como receber e liberar pagamentos por Pix. O [SETUP.md](SETUP.md) monta o Alicerce do zero; este arquivo é só a
 virada.
 
 Faça na ordem. Cada parte tem uma verificação no fim — se ela não passar, pare ali em vez
@@ -14,7 +13,7 @@ de seguir, porque o erro só piora escondido atrás do próximo passo.
 Confira que continua valendo:
 
 - O banco **não tem histórico de migrations**. Migration vai **colada no SQL Editor**,
-  nunca por `supabase db push` — ele tentaria aplicar as doze do zero por cima do que já
+  nunca por `supabase db push` — ele tentaria aplicar todas do zero por cima do que já
   existe.
 - O projeto Supabase (`ryygkiehthqjaivtafkg`) fica na organização **Gabdev2**, que é de
   outra conta. O acesso vem de convite.
@@ -111,21 +110,7 @@ Aproveite e confira que a tela de consentimento está **Em produção**, não "T
 teste, o Google recusa o login de quem não estiver na lista de testadores — e a recusa
 chega sem mensagem que ajude.
 
-### 1.5 Endereço de retorno do pagamento
-
-O checkout devolve a pessoa para `/plano` no endereço que a função conhece: o secret
-`ALICERCE_SITE`, ou o padrão escrito no código, que já é o domínio novo. **Feito em
-15/09/2026** — fica aqui para o dia em que o endereço mudar de novo.
-
-```powershell
-supabase secrets set ALICERCE_SITE=https://appalicerce.com.br --project-ref ryygkiehthqjaivtafkg
-supabase functions deploy criar-checkout --project-ref ryygkiehthqjaivtafkg
-```
-
-**O deploy não é opcional.** Secret gravado só vale para a função depois de republicada —
-sem isso, a função continua rodando com o valor antigo e nada indica o problema.
-
-### 1.6 APK novo (quando for gerar)
+### 1.5 APK novo (quando for gerar)
 
 ```powershell
 $env:ALICERCE_SITE_URL = "https://appalicerce.com.br"
@@ -141,139 +126,85 @@ antigo, e por isso ele precisa continuar no ar (1.1).
 2. `https://alicerceobras.vercel.app` **também** abre
 3. Login com Google pelo domínio novo entra e volta para dentro do app
 4. Um convite gerado em *Quem está na obra* sai com `appalicerce.com.br` no link
-5. Em **Perfil → Plano**, clicar em Assinar abre o Stripe e o botão de voltar retorna para
-   `appalicerce.com.br/plano`
 
 ---
 
-## Parte 2 — Stripe de verdade
+## Parte 2 — Pagamento por Pix
 
-Até aqui tudo roda na **área restrita** (sandbox). Cartão real é recusado.
+Não há checkout nem webhook. A pessoa paga o Pix, você confere o extrato e libera o grupo
+no SQL Editor. Quem barra sem plano continua sendo `plano_ativo()` (`0013`).
 
-> Teste e produção são mundos separados no Stripe. Produto, preço, chaves e webhook **não
-> passam de um para o outro**. Tudo abaixo é criar de novo, no modo live.
+### 2.1 Aplicar a `0013`
 
-### 2.1 Ativar a conta
+Cole `supabase/migrations/0013_pagamento_pix.sql` no SQL Editor. Antes, decida a linha
+**ESCOLHA AQUI**: até quando vale o que os grupos existentes já pagaram (padrão: 30 dias a
+partir de hoje; quem já tinha prazo maior fica com o maior).
 
-Painel do Stripe → **Ativar conta** (ou "Obtenha sua conta de produção").
+Ela passa **todo** grupo existente para `pix`. Os status do Stripe (`active`, `trialing`,
+`past_due`) deixam de valer.
 
-Pedem CPF ou CNPJ, endereço, descrição do negócio, site e conta bancária brasileira. Com
-CNPJ costuma ser mais rápido.
+### 2.2 Chave Pix na Vercel
 
-Na análise, o Stripe abre o seu site e espera encontrar: **o que é vendido, por quanto,
-termos de uso, política de privacidade e um contato**. Site sem isso é a causa número um
-de ativação travada — resolva antes de mandar, não depois.
+`VITE_PIX_CHAVE` em **Settings → Environment Variables**, depois **Redeploy**. Sem ela, a
+tela de Plano mostra preço e prazo, mas não onde pagar.
 
-> O Stripe **não emite nota fiscal brasileira**. Cobrando R$ 150/mês de gente no Brasil, a
-> NF é problema seu, resolvido fora do Stripe.
+### 2.3 Desligar o Stripe
 
-### 2.2 Produto e preço no modo live
-
-Com a conta já em produção, troque para a conta de produção no seletor do topo e crie de
-novo:
-
-- **Catálogo de produtos → Adicionar produto**
-- Nome `Alicerce`, descrição `Acesso ao app para você e mais uma pessoa da sua equipe`
-- Imagem: o mesmo PNG navy do logo
-- **R$ 150,00 · Recorrente · Mensal · BRL**
-
-Copie o **ID do preço** (`price_...`). É **outro**, diferente do de teste.
-
-### 2.3 Webhook no modo live
-
-**Desenvolvedores → Webhooks → Adicionar endpoint**:
-
-```
-https://ryygkiehthqjaivtafkg.supabase.co/functions/v1/stripe-webhook
-```
-
-Eventos:
-
-```
-checkout.session.completed
-customer.subscription.created
-customer.subscription.updated
-customer.subscription.deleted
-```
-
-A URL é a mesma do sandbox — a função é uma só. O que muda é o **segredo**: este endpoint
-gera um `whsec_` novo, e é ele que passa a valer.
-
-### 2.4 Trocar os três secrets
-
-Chave secreta em **Desenvolvedores → Chaves de API**, agora no modo live: começa com
-`sk_live_`.
+As funções saíram do repositório, mas continuam publicadas até serem apagadas:
 
 ```powershell
-supabase secrets set `
-  STRIPE_SECRET_KEY=sk_live_... `
-  STRIPE_WEBHOOK_SECRET=whsec_... `
-  STRIPE_PRICE_ID=price_... `
-  --project-ref ryygkiehthqjaivtafkg
-
-supabase functions deploy stripe-webhook --project-ref ryygkiehthqjaivtafkg
-supabase functions deploy criar-checkout --project-ref ryygkiehthqjaivtafkg
+supabase functions delete criar-checkout --project-ref ryygkiehthqjaivtafkg
+supabase functions delete stripe-webhook --project-ref ryygkiehthqjaivtafkg
+supabase secrets unset STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET STRIPE_PRICE_ID ALICERCE_SITE --project-ref ryygkiehthqjaivtafkg
 ```
 
-Os dois deploys são obrigatórios, pelo mesmo motivo de sempre: secret só vale depois de
-republicar.
+No painel do Stripe: **cancele as assinaturas ativas** (senão o cartão continua sendo
+cobrado) e apague o endpoint do webhook.
 
-Não cole a `sk_live_` em conversa, arquivo ou commit. Do painel para o terminal, direto.
+### 2.4 Liberar um Pix recebido
 
-### 2.5 Limpar a assinatura de teste
+Ache o grupo de quem pagou:
 
-A sua linha em `assinaturas` aponta para uma assinatura do sandbox, que o Stripe de
-produção nunca vai mencionar. Ela ficaria `active` até a data vencer e depois congelaria
-sem nunca receber evento.
+```sql
+select p.grupo_id, p.nome, a.status, a.vale_ate
+from public.profiles p
+left join public.assinaturas a on a.grupo_id = p.grupo_id
+where p.nome ilike '%NOME%';
+```
 
-No SQL Editor, achando o seu grupo:
+Libere 30 dias a partir do fim do prazo atual (ou de hoje, se já venceu):
+
+```sql
+insert into public.assinaturas (grupo_id, status, vale_ate, titular_id)
+values ('GRUPO', 'pix', now() + interval '30 days', 'ID_DE_QUEM_PAGOU')
+on conflict (grupo_id) do update
+set status = 'pix',
+    vale_ate = greatest(public.assinaturas.vale_ate, now()) + interval '30 days',
+    titular_id = coalesce(public.assinaturas.titular_id, excluded.titular_id),
+    atualizado_em = now();
+```
+
+O app avisa o titular 3 dias antes de vencer. Vencido, o grupo vira modo leitura até o
+próximo Pix.
+
+### ✅ Verificação da Parte 2
+
+1. **Perfil → Plano** mostra o chip **pago**, a data e a chave Pix com botão Copiar
+2. Um convidado vê "Você é convidado" e nenhuma chave
+3. Quem vence consegue ver as obras mas não lançar
+
+---
+
+## Parte 3 — Rotina
+
+### Quem vence nos próximos dias
 
 ```sql
 select a.grupo_id, a.status, a.vale_ate, p.nome
 from public.assinaturas a
-join public.profiles p on p.grupo_id = a.grupo_id
-order by a.atualizado_em desc;
-
--- confira qual é a sua antes de rodar
-delete from public.assinaturas where grupo_id = 'SEU_GRUPO_AQUI';
-```
-
-Depois assine de novo pelo app, com cartão de verdade. É o teste real do fluxo em
-produção — e a primeira receita.
-
-### ✅ Verificação da Parte 2
-
-1. **Perfil → Plano** → Assinar abre um checkout **sem** o aviso de modo de teste
-2. Pagar com cartão de verdade cobra R$ 0,00 hoje (os 7 dias de teste) e guarda o cartão
-3. A tela volta e o chip vira **em teste**, com a data do fim do período
-4. No Stripe, **Desenvolvedores → Eventos**, o `checkout.session.completed` mostra
-   resposta **200** do nosso endpoint
-5. No SQL Editor, a linha em `assinaturas` tem `status` e `titular_id` preenchidos
-
-Se o passo 3 travar em "confirmando", o webhook falhou. Olhe o evento no Stripe: ele
-mostra o que foi enviado e o que a função respondeu.
-
----
-
-## Parte 3 — Depois da virada
-
-### A cortesia de quem já usa
-
-Todo grupo que existia quando a `0012` rodou ganhou acesso de cortesia com prazo. Confira
-quanto falta:
-
-```sql
-select count(*) as grupos, min(vale_ate) as primeiro_a_vencer
-from public.assinaturas where status = 'cortesia';
-```
-
-Quando essa data chegar, essas pessoas param de conseguir lançar. **Avise antes.** Se
-precisar de mais tempo:
-
-```sql
-update public.assinaturas
-set vale_ate = now() + interval '15 days', atualizado_em = now()
-where status = 'cortesia';
+join public.profiles p on p.id = a.titular_id
+where a.vale_ate < now() + interval '7 days'
+order by a.vale_ate;
 ```
 
 E para liberar alguém na mão, sem cobrar:
@@ -298,16 +229,13 @@ downgrade da `gabb dev`.
 | O que | Onde vive |
 |---|---|
 | Endereço público do app (convites) | `VITE_SITE_URL` na Vercel |
-| Endereço de retorno do pagamento | secret `ALICERCE_SITE` no Supabase |
 | Endereço gravado no APK | `ALICERCE_SITE_URL` na hora de gerar |
-| Chave e preço do Stripe | secrets no Supabase |
-| Segredo do webhook | secret no Supabase, vindo do endpoint no Stripe |
-| Quem tem plano | tabela `assinaturas`, só o webhook escreve |
-| Quem barra sem plano | `plano_ativo()` nas policies de insert (`0012`) |
+| Chave Pix mostrada no app | `VITE_PIX_CHAVE` na Vercel |
+| Quem tem plano | tabela `assinaturas`, liberada na mão pelo SQL Editor |
+| Quem barra sem plano | `plano_ativo()` nas policies de insert (`0012`, regra em `0013`) |
 
 ## O que nunca fazer
 
 - `supabase db push` neste projeto
 - Tirar `alicerceobras.vercel.app` do ar
 - Gravar secret sem republicar a função depois
-- Colar `sk_live_` em qualquer lugar que não seja o terminal
