@@ -1,9 +1,7 @@
 -- Pagamento por Pix no lugar do Stripe.
 --
--- Não existe mais checkout nem webhook: a pessoa paga o Pix, a gente confere o extrato e
--- libera o grupo na mão (SQL no fim de PRODUCAO.md). O status novo é 'pix' — acesso pago,
--- com prazo, que ninguém renova sozinho. Quando vence, o grupo volta a modo leitura até o
--- próximo Pix ser confirmado.
+-- O status novo é 'pix' — acesso pago, com prazo, que ninguém renova sozinho. Quando vence,
+-- o grupo volta a modo leitura até o próximo Pix ser confirmado (pelo Mercado Pago, 0014).
 --
 -- As colunas stripe_* ficam na tabela, paradas. Apagar não ganha nada e perde o histórico
 -- de quem assinou pelo cartão.
@@ -15,9 +13,10 @@
 -- Todos os grupos existentes já pagaram por Pix. Todo mundo vira 'pix', e quem já tinha
 -- prazo maior fica com o maior — ninguém perde dias nesta troca.
 --
--- ⚠️  ESCOLHA AQUI: até quando vale o que eles já pagaram.
+-- Pagaram em 22/09/2026 e vale 30 dias: o acesso vai até o fim do dia 22/10 no horário de
+-- Brasília. A partir daí o vencimento é todo dia 22 (0014 soma um mês a cada Pix).
 insert into public.assinaturas (grupo_id, status, vale_ate)
-select distinct p.grupo_id, 'pix', now() + interval '30 days'
+select distinct p.grupo_id, 'pix', timestamptz '2026-10-22 23:59:59-03'
 from public.profiles p
 on conflict (grupo_id) do update
 set status = 'pix',

@@ -59,6 +59,12 @@ export function isoParaBR(iso: string): string {
   return `${dia}/${mes}/${ano}`
 }
 
+// Data de um timestamptz no horário de Brasília. O plano vence às 23:59 do dia 22, que em
+// UTC já é dia 23 — cortar a string mostraria o dia errado.
+export function dataBR(ts: string): string {
+  return new Date(ts).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+}
+
 export function brParaISO(br: string): string | null {
   const m = br.trim().match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/)
   if (!m) return null

@@ -129,28 +129,48 @@ antigo, e por isso ele precisa continuar no ar (1.1).
 
 ---
 
-## Parte 2 — Pagamento por Pix
+## Parte 2 — Pix pelo Mercado Pago
 
-Não há checkout nem webhook. A pessoa paga o Pix, você confere o extrato e libera o grupo
-no SQL Editor. Quem barra sem plano continua sendo `plano_ativo()` (`0013`).
+O titular gera o Pix na tela **Perfil → Plano**, paga no banco e o plano estende um mês
+sozinho. Dois caminhos confirmam o pagamento: o aviso do Mercado Pago (`mercadopago-webhook`)
+e a própria tela, que confere a cada 5 segundos enquanto o QR está aberto. Qualquer um dos
+dois basta; a `creditar_pix()` garante que o mês é somado uma vez só.
 
-### 2.1 Aplicar a `0013`
+**Vencimento:** todo dia 22. Quem pagou em 22/09 fica até o fim de 22/10. Cada Pix soma um
+mês ao fim do prazo atual — pagar adiantado não perde dias. Quem deixa vencer e paga depois
+ganha um mês a partir do dia do pagamento (o dia de vencimento muda para o dele).
 
-Cole `supabase/migrations/0013_pagamento_pix.sql` no SQL Editor. Antes, decida a linha
-**ESCOLHA AQUI**: até quando vale o que os grupos existentes já pagaram (padrão: 30 dias a
-partir de hoje; quem já tinha prazo maior fica com o maior).
+### 2.1 Aplicar as migrations, nesta ordem
 
-Ela passa **todo** grupo existente para `pix`. Os status do Stripe (`active`, `trialing`,
-`past_due`) deixam de valer.
+Cole no SQL Editor:
 
-### 2.2 Chave Pix na Vercel
+1. `supabase/migrations/0013_pagamento_pix.sql` — todos os grupos viram `pix`, pagos até 22/10
+2. `supabase/migrations/0014_mercado_pago.sql` — tabela `pagamentos` e `creditar_pix()`
 
-`VITE_PIX_CHAVE` em **Settings → Environment Variables**, depois **Redeploy**. Sem ela, a
-tela de Plano mostra preço e prazo, mas não onde pagar.
+Se a `0013` já tinha rodado com o prazo antigo, a `0014` acerta a data para 22/10.
 
-### 2.3 Desligar o Stripe
+### 2.2 Conta do Mercado Pago
 
-As funções saíram do repositório, mas continuam publicadas até serem apagadas:
+1. A conta precisa ter **uma chave Pix cadastrada** (app do Mercado Pago → Pix → Minhas
+   chaves). Sem ela, a API recusa gerar o QR.
+2. [Suas integrações](https://www.mercadopago.com.br/developers/panel/app) → **Criar
+   aplicação** → tipo *Pagamentos online*, *Checkout Transparente*.
+3. Na aplicação, **Credenciais de produção** → copie o **Access Token** (`APP_USR-...`).
+
+### 2.3 Secret e deploy
+
+```powershell
+supabase secrets set MP_ACCESS_TOKEN=APP_USR-... --project-ref ryygkiehthqjaivtafkg
+supabase functions deploy pix --project-ref ryygkiehthqjaivtafkg
+supabase functions deploy mercadopago-webhook --project-ref ryygkiehthqjaivtafkg --no-verify-jwt
+```
+
+Não precisa configurar webhook no painel do Mercado Pago: cada Pix já leva o endereço de
+aviso. Não cole o `APP_USR-` em conversa, arquivo ou commit.
+
+### 2.4 Desligar o Stripe
+
+As funções antigas continuam publicadas até serem apagadas:
 
 ```powershell
 supabase functions delete criar-checkout --project-ref ryygkiehthqjaivtafkg
@@ -161,37 +181,17 @@ supabase secrets unset STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET STRIPE_PRICE_ID A
 No painel do Stripe: **cancele as assinaturas ativas** (senão o cartão continua sendo
 cobrado) e apague o endpoint do webhook.
 
-### 2.4 Liberar um Pix recebido
-
-Ache o grupo de quem pagou:
-
-```sql
-select p.grupo_id, p.nome, a.status, a.vale_ate
-from public.profiles p
-left join public.assinaturas a on a.grupo_id = p.grupo_id
-where p.nome ilike '%NOME%';
-```
-
-Libere 30 dias a partir do fim do prazo atual (ou de hoje, se já venceu):
-
-```sql
-insert into public.assinaturas (grupo_id, status, vale_ate, titular_id)
-values ('GRUPO', 'pix', now() + interval '30 days', 'ID_DE_QUEM_PAGOU')
-on conflict (grupo_id) do update
-set status = 'pix',
-    vale_ate = greatest(public.assinaturas.vale_ate, now()) + interval '30 days',
-    titular_id = coalesce(public.assinaturas.titular_id, excluded.titular_id),
-    atualizado_em = now();
-```
-
-O app avisa o titular 3 dias antes de vencer. Vencido, o grupo vira modo leitura até o
-próximo Pix.
-
 ### ✅ Verificação da Parte 2
 
-1. **Perfil → Plano** mostra o chip **pago**, a data e a chave Pix com botão Copiar
-2. Um convidado vê "Você é convidado" e nenhuma chave
-3. Quem vence consegue ver as obras mas não lançar
+1. **Perfil → Plano** mostra o chip **pago** e "Pago até 22/10/2026"
+2. **Pagar o próximo mês com Pix** mostra o QR e o botão de copiar
+3. Pague com o seu banco (R$ 150 de verdade — vira mais um mês no seu próprio plano)
+4. Em alguns segundos a tela diz "Pagamento confirmado. Plano até 22/11/2026"
+5. No SQL Editor, `select status, pago_em, vale_ate_concedido from pagamentos order by criado_em desc limit 1;`
+   mostra `approved` com as datas preenchidas
+
+Se o passo 4 não acontecer: **Edge Functions → pix → Logs** mostra o que o Mercado Pago
+respondeu.
 
 ---
 
@@ -206,6 +206,9 @@ join public.profiles p on p.id = a.titular_id
 where a.vale_ate < now() + interval '7 days'
 order by a.vale_ate;
 ```
+
+Pix que caiu na conta mas não liberou (raro — os dois caminhos falharam): ache o
+`mp_payment_id` no app do Mercado Pago e rode `select public.creditar_pix('ID', 150);`.
 
 E para liberar alguém na mão, sem cobrar:
 
@@ -230,8 +233,9 @@ downgrade da `gabb dev`.
 |---|---|
 | Endereço público do app (convites) | `VITE_SITE_URL` na Vercel |
 | Endereço gravado no APK | `ALICERCE_SITE_URL` na hora de gerar |
-| Chave Pix mostrada no app | `VITE_PIX_CHAVE` na Vercel |
-| Quem tem plano | tabela `assinaturas`, liberada na mão pelo SQL Editor |
+| Token do Mercado Pago | secret `MP_ACCESS_TOKEN` no Supabase |
+| Quem tem plano | tabela `assinaturas`, estendida por `creditar_pix()` (`0014`) |
+| Histórico de Pix | tabela `pagamentos` |
 | Quem barra sem plano | `plano_ativo()` nas policies de insert (`0012`, regra em `0013`) |
 
 ## O que nunca fazer

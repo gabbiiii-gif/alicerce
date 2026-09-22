@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { usePlano } from '../lib/plano'
 import { useUsuario } from '../lib/auth'
-import { isoParaBR } from '../lib/format'
+import { dataBR } from '../lib/format'
 
 // A faixa que explica por que os botões estão desligados — ou que avisa antes de
 // desligarem. Sem ela, quem perde o plano descobre isso preenchendo um lançamento
@@ -16,7 +16,7 @@ export function AvisoPlano() {
   if (carregando) return null
 
   const assinatura = plano?.assinatura ?? null
-  const ate = assinatura?.vale_ate ? isoParaBR(assinatura.vale_ate.slice(0, 10)) : null
+  const ate = assinatura?.vale_ate ? dataBR(assinatura.vale_ate) : null
   const dias = diasRestantes ?? 0
 
   // Convidado nunca vê aviso de cobrança: o plano não é dele, e não há nada que ele possa

@@ -448,3 +448,32 @@ export function planoVale(a: Assinatura | null): boolean {
   // Mesma regra do plano_ativo() no banco (0013): Pix confirmado ou cortesia, dentro do prazo.
   return ['pix', 'cortesia'].includes(a.status) && new Date(a.vale_ate) > new Date()
 }
+
+// ---------------------------------------------------------------- pix
+
+export type Pix = {
+  status: string
+  valor: number
+  qr_code: string
+  qr_code_base64: string
+  expira_em: string
+}
+
+async function chamarPix<T>(acao: 'gerar' | 'conferir'): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('pix', { body: { acao } })
+  if (error) {
+    // `invoke` transforma qualquer status fora do 2xx em erro genérico e joga fora o corpo.
+    // Sem ler o `context`, a pessoa veria "non-2xx status code" no lugar do motivo.
+    const resposta = (error as { context?: Response }).context
+    const corpo = resposta ? await resposta.json().catch(() => null) : null
+    throw new Error(corpo?.erro ?? error.message)
+  }
+  if (data?.erro) throw new Error(data.erro)
+  return data as T
+}
+
+// Devolve o Pix em aberto se ainda houver um válido, ou gera outro.
+export const gerarPix = () => chamarPix<Pix>('gerar')
+
+// Pergunta ao Mercado Pago se o Pix em aberto já foi pago — e, se foi, o servidor credita.
+export const conferirPix = () => chamarPix<{ status: string; vale_ate: string | null }>('conferir')

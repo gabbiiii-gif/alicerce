@@ -5,3 +5,11 @@ verify_jwt = true
 
 [functions.enviar-relatorio]
 verify_jwt = true
+
+[functions.pix]
+verify_jwt = true
+
+# O Mercado Pago não manda JWT do Supabase. Sem isto o aviso leva 401 antes de rodar e o
+# Pix pago só libera o plano quando a pessoa volta na tela.
+[functions.mercadopago-webhook]
+verify_jwt = false
