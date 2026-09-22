@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type {
-  Aditivo, Assinatura, Categoria, Comprovante, ContasObra, Convite, Lancamento, Membro, Obra, Profile,
+  Aditivo, Assinatura, Categoria, Comprovante, ContasObra, Convite, Lancamento, Membro, Obra, Profile, Repasse,
 } from '../lib/types'
 import { comoNome, hojeISO } from '../lib/format'
 
@@ -46,11 +46,16 @@ export type ObraCompleta = {
   membros: Membro[]
   aditivos: Aditivo[]
   lancamentos: Lancamento[]
+  repasses: Repasse[]
   contas: ContasObra
 }
 
+// As duas pontas do repasse apontam para profiles; o nome da FK diz qual é qual.
+const SELECT_REPASSE =
+  '*, de:profiles!repasses_de_id_fkey(id, nome, iniciais), para:profiles!repasses_para_id_fkey(id, nome, iniciais)'
+
 export async function carregarObra(obraId: string): Promise<ObraCompleta> {
-  const [obraRes, membrosRes, aditivosRes, lancRes] = await Promise.all([
+  const [obraRes, membrosRes, aditivosRes, lancRes, repRes] = await Promise.all([
     supabase.from('obras').select('*').eq('id', obraId).single(),
     supabase.from('obra_membros').select('obra_id, user_id, papel, profile:profiles(id, nome, iniciais)').eq('obra_id', obraId),
     supabase.from('aditivos').select('*').eq('obra_id', obraId).order('created_at', { ascending: false }),
@@ -60,12 +65,20 @@ export async function carregarObra(obraId: string): Promise<ObraCompleta> {
       .eq('obra_id', obraId)
       .order('data', { ascending: false })
       .order('created_at', { ascending: false }),
+    supabase
+      .from('repasses')
+      .select(SELECT_REPASSE)
+      .eq('obra_id', obraId)
+      .order('data', { ascending: false })
+      .order('created_at', { ascending: false }),
   ])
 
   if (obraRes.error) throw obraRes.error
   if (membrosRes.error) throw membrosRes.error
   if (aditivosRes.error) throw aditivosRes.error
   if (lancRes.error) throw lancRes.error
+  // Sem a 0016 aplicada a tabela não existe: a obra abre assim mesmo, só sem repasses.
+  if (repRes.error) console.warn('repasses indisponíveis', repRes.error.message)
 
   const obra = obraRes.data as Obra
   const aditivos = (aditivosRes.data ?? []) as Aditivo[]
@@ -76,6 +89,7 @@ export async function carregarObra(obraId: string): Promise<ObraCompleta> {
     membros: (membrosRes.data ?? []) as unknown as Membro[],
     aditivos,
     lancamentos,
+    repasses: repRes.error ? [] : ((repRes.data ?? []) as unknown as Repasse[]),
     contas: calcContas(obra.valor_fechado, aditivos, lancamentos),
   }
 }
@@ -83,18 +97,24 @@ export async function carregarObra(obraId: string): Promise<ObraCompleta> {
 export type RelatorioGeral = {
   lancamentos: Lancamento[]
   membros: Membro[]
+  repasses: Repasse[]
 }
 
 // Relatório consolidado: tudo de todas as obras que eu participo, de uma vez.
 // A RLS já limita às minhas obras, então não é preciso filtrar por obra aqui.
 export async function carregarRelatorioGeral(): Promise<RelatorioGeral> {
-  const [lancRes, membrosRes] = await Promise.all([
+  const [lancRes, membrosRes, repRes] = await Promise.all([
     supabase
       .from('lancamentos')
       .select('*, autor:profiles(id, nome, iniciais), categoria:categorias(id, nome), obra:obras(id, nome)')
       .order('data', { ascending: false })
       .order('created_at', { ascending: false }),
     supabase.from('obra_membros').select('obra_id, user_id, papel, profile:profiles(id, nome, iniciais)'),
+    supabase
+      .from('repasses')
+      .select(`${SELECT_REPASSE}, obra:obras(id, nome)`)
+      .order('data', { ascending: false })
+      .order('created_at', { ascending: false }),
   ])
 
   if (lancRes.error) throw lancRes.error
@@ -112,6 +132,7 @@ export async function carregarRelatorioGeral(): Promise<RelatorioGeral> {
   return {
     lancamentos: (lancRes.data ?? []) as unknown as Lancamento[],
     membros: [...porPessoa.values()],
+    repasses: repRes.error ? [] : ((repRes.data ?? []) as unknown as Repasse[]),
   }
 }
 
@@ -219,6 +240,33 @@ export async function criarAditivo(dados: { obraId: string; autorId: string; des
     valor: dados.valor,
   })
   if (error) throw error
+}
+
+export async function criarRepasse(dados: {
+  obraId: string
+  autorId: string
+  deId: string
+  paraId: string
+  valor: number
+  data: string
+  descricao: string
+}) {
+  const { error } = await supabase.from('repasses').insert({
+    obra_id: dados.obraId,
+    autor_id: dados.autorId,
+    de_id: dados.deId,
+    para_id: dados.paraId,
+    valor: dados.valor,
+    data: dados.data,
+    descricao: dados.descricao.trim() || null,
+  })
+  if (error) throw error
+}
+
+export async function apagarRepasse(id: string) {
+  const { data, error } = await supabase.from('repasses').delete().eq('id', id).select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('só quem registrou o repasse pode apagar')
 }
 
 export async function apagarAditivo(id: string) {
@@ -352,6 +400,33 @@ export async function listarNotas(obraId: string): Promise<NotaEnviada[]> {
     url: urlPorCaminho.get(c.storage_path) ?? null,
     lancamento: lancPorNota.get(c.id) ?? null,
   }))
+}
+
+// A nota de cada lançamento do relatório, com link assinado. Só volta o que a RLS deixa
+// ver: as notas da pessoa e as já lançadas pelo sócio (0015). Lançamento sem nota, ou com
+// nota fora do alcance, simplesmente não aparece no mapa — e o relatório mostra só os dados.
+export type NotaDoRelatorio = { url: string; mime: string | null }
+
+export async function notasDosLancamentos(
+  comprovanteIds: string[],
+  validadeSegundos = 60 * 60,
+): Promise<Map<string, NotaDoRelatorio>> {
+  const mapa = new Map<string, NotaDoRelatorio>()
+  const ids = [...new Set(comprovanteIds.filter(Boolean))]
+  if (!ids.length) return mapa
+
+  const { data, error } = await supabase.from('comprovantes').select('id, storage_path, mime').in('id', ids)
+  if (error || !data?.length) return mapa
+
+  const { data: urls } = await supabase.storage
+    .from('comprovantes')
+    .createSignedUrls(data.map(c => c.storage_path as string), validadeSegundos)
+  const porCaminho = new Map((urls ?? []).map(u => [u.path, u.signedUrl]))
+  data.forEach(c => {
+    const url = porCaminho.get(c.storage_path as string)
+    if (url) mapa.set(c.id as string, { url, mime: (c.mime as string | null) ?? null })
+  })
+  return mapa
 }
 
 // Envia o arquivo, cria a linha na fila e dispara o agente que lê a nota.
