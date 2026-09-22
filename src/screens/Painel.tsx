@@ -47,10 +47,11 @@ export function Painel() {
   }, [obraId, definir])
 
   // O link da nota é buscado ao abrir o lançamento, não no toque do botão: aberto depois de
-  // um await, o navegador trata como pop-up e bloqueia. Só o autor lê a própria nota (RLS).
+  // um await, o navegador trata como pop-up e bloqueia. Nota lançada é visível para todo
+  // mundo da obra (0015), então vale também para o lançamento do sócio.
   useEffect(() => {
     setNotaUrl(null)
-    if (!selecionado?.comprovante_id || selecionado.autor_id !== userId) return
+    if (!selecionado?.comprovante_id) return
     let ativo = true
     carregarComprovante(selecionado.comprovante_id)
       .then(c => urlComprovante(c.storage_path))
@@ -59,7 +60,7 @@ export function Painel() {
     return () => {
       ativo = false
     }
-  }, [selecionado, userId])
+  }, [selecionado])
 
   if (carregando) return <Carregando />
   if (erro || !dados) {

@@ -308,42 +308,44 @@ export async function urlComprovante(path: string): Promise<string | null> {
   return data.signedUrl
 }
 
-// As notas que a pessoa mandou nesta obra, com o link do arquivo já assinado. Quando a nota
-// virou lançamento, valem os dados do lançamento — é o que a pessoa conferiu e corrigiu,
-// não o chute do agente.
+// As notas fiscais da obra, com o link do arquivo já assinado: todas as da pessoa (inclusive
+// as que ainda estão na fila) e as já lançadas por quem mais participa da obra (0015).
+// Quando a nota virou lançamento, valem os dados do lançamento — é o que foi conferido e
+// corrigido, não o chute do agente.
 export type NotaEnviada = {
   comprovante: Comprovante
+  autor: Profile | null
   url: string | null
   lancamento: { descricao: string; valor: number; data: string } | null
 }
 
-export async function listarNotas(obraId: string, autorId: string): Promise<NotaEnviada[]> {
-  // A RLS só mostra a própria fila, então o filtro por autor é o que ela deixaria de
-  // qualquer jeito — escrito aqui para a intenção ficar clara.
+export async function listarNotas(obraId: string): Promise<NotaEnviada[]> {
+  // Sem filtro de autor de propósito: quem recorta é a RLS — a própria fila inteira, e do
+  // sócio só o que já foi lançado.
   const { data, error } = await supabase
     .from('comprovantes')
-    .select('*')
+    .select('*, autor:profiles(id, nome, iniciais)')
     .eq('obra_id', obraId)
-    .eq('autor_id', autorId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  const comprovantes = (data ?? []) as Comprovante[]
-  if (!comprovantes.length) return []
+  const linhas = (data ?? []) as (Comprovante & { autor: Profile | null })[]
+  if (!linhas.length) return []
 
   const [urls, lancamentos] = await Promise.all([
     // Uma chamada para todos os links. Uma hora de validade: a tela fica aberta enquanto a
     // pessoa confere nota por nota.
-    supabase.storage.from('comprovantes').createSignedUrls(comprovantes.map(c => c.storage_path), 60 * 60),
+    supabase.storage.from('comprovantes').createSignedUrls(linhas.map(c => c.storage_path), 60 * 60),
     supabase
       .from('lancamentos')
       .select('comprovante_id, descricao, valor, data')
-      .in('comprovante_id', comprovantes.map(c => c.id)),
+      .in('comprovante_id', linhas.map(c => c.id)),
   ])
   const urlPorCaminho = new Map((urls.data ?? []).map(u => [u.path, u.signedUrl]))
   const lancPorNota = new Map((lancamentos.data ?? []).map(l => [l.comprovante_id as string, l]))
 
-  return comprovantes.map(c => ({
+  return linhas.map(({ autor, ...c }) => ({
     comprovante: c,
+    autor,
     url: urlPorCaminho.get(c.storage_path) ?? null,
     lancamento: lancPorNota.get(c.id) ?? null,
   }))

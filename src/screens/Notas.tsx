@@ -7,13 +7,13 @@ import { dataCurta, semSimbolo } from '../lib/format'
 import { CURVA } from '../lib/animacao'
 import { Carregando, Tela } from '../components/Tela'
 
-// Todas as notas que a pessoa mandou nesta obra, num lugar só. Antes, depois de lançada, a
-// nota sumia da fila e não havia como ver o arquivo de novo.
+// As notas fiscais da obra num lugar só: as da pessoa, e as que o sócio já lançou (0015).
+// Antes, depois de lançada, a nota sumia da fila e não havia como ver o arquivo de novo.
 export function Notas() {
   const { obraId = '' } = useParams()
   const navigate = useNavigate()
   const { userId } = useUsuario()
-  const { dados, carregando, erro, recarregar } = useAsync(() => listarNotas(obraId, userId), [obraId, userId])
+  const { dados, carregando, erro, recarregar } = useAsync(() => listarNotas(obraId), [obraId])
 
   return (
     <Tela titulo="Notas fiscais" voltar={`/obra/${obraId}`}>
@@ -37,7 +37,7 @@ export function Notas() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ ...CURVA, delay: Math.min(i, 8) * 0.035 }}
         >
-          <LinhaNota nota={nota} aoConferir={() => navigate(`/obra/${obraId}/revisar/${nota.comprovante.id}`)} />
+          <LinhaNota nota={nota} userId={userId} aoConferir={() => navigate(`/obra/${obraId}/revisar/${nota.comprovante.id}`)} />
         </motion.div>
       ))}
 
@@ -48,14 +48,16 @@ export function Notas() {
   )
 }
 
-function LinhaNota({ nota, aoConferir }: { nota: NotaEnviada; aoConferir: () => void }) {
-  const { comprovante: c, url, lancamento } = nota
+function LinhaNota({ nota, userId, aoConferir }: { nota: NotaEnviada; userId: string; aoConferir: () => void }) {
+  const { comprovante: c, autor, url, lancamento } = nota
+  const quem = c.autor_id === userId ? 'você' : (autor?.nome ?? '').split(' ')[0] || 'equipe'
   const lido = c.extraido
   const titulo = lancamento?.descricao || lido?.fornecedor || 'Nota enviada'
   const valor = lancamento?.valor ?? lido?.valor ?? null
   const data = lancamento?.data ? dataCurta(lancamento.data) : dataCurta(c.created_at.slice(0, 10))
   const ehImagem = (c.mime ?? '').startsWith('image/')
-  const pendente = c.status !== 'confirmado'
+  // Pendente só aparece da própria fila: a do sócio a RLS não entrega.
+  const pendente = c.status !== 'confirmado' && c.autor_id === userId
 
   return (
     <div className="li" style={{ gap: 10, cursor: 'default' }}>
@@ -92,7 +94,7 @@ function LinhaNota({ nota, aoConferir }: { nota: NotaEnviada; aoConferir: () => 
             {titulo}
           </b>
           <div className="note">
-            {data}
+            {data + ' · ' + quem}
             {valor != null && ` · ${semSimbolo(valor)}`}
             {!url && ' · arquivo indisponível'}
           </div>
