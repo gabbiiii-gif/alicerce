@@ -159,6 +159,20 @@ Se a `0013` já tinha rodado com o prazo antigo, a `0014` acerta a data para 22/
 
 ### 2.3 Secret e deploy
 
+**Sem terminal (pelo painel do Supabase).** Cada função é um arquivo só, feito para colar:
+
+1. **Edge Functions → Secrets** → adicionar `MP_ACCESS_TOKEN` com o `APP_USR-...`
+2. **Edge Functions → Deploy a new function → Via Editor**, nome `pix`. Apague o código de
+   exemplo, cole `supabase/functions/pix/index.ts` inteiro e publique.
+3. Mesma coisa com o nome `mercadopago-webhook` e o arquivo
+   `supabase/functions/mercadopago-webhook/index.ts`.
+4. Na `mercadopago-webhook`, em **Details**, **desligue a verificação de JWT** e salve.
+   Ligada, o aviso do Mercado Pago leva 401 e o plano só libera com a tela aberta.
+5. Apague `criar-checkout` e `stripe-webhook` na lista de funções.
+
+**Com terminal** (precisa do Node; sem a CLI instalada, use `npx supabase` no lugar de
+`supabase`):
+
 ```powershell
 supabase secrets set MP_ACCESS_TOKEN=APP_USR-... --project-ref ryygkiehthqjaivtafkg
 supabase functions deploy pix --project-ref ryygkiehthqjaivtafkg
