@@ -3,7 +3,6 @@ import type {
   Aditivo, Assinatura, Categoria, Comprovante, ContasObra, Convite, Lancamento, Membro, Obra, Profile,
 } from '../lib/types'
 import { comoNome, hojeISO } from '../lib/format'
-import { ehNativo } from '../lib/plataforma'
 
 export type ObraComContas = Obra & { contas: ContasObra }
 
@@ -219,6 +218,14 @@ export async function criarAditivo(dados: { obraId: string; autorId: string; des
   if (error) throw error
 }
 
+export async function apagarAditivo(id: string) {
+  const { data, error } = await supabase.from('aditivos').delete().eq('id', id).select('id')
+  if (error) throw error
+  // A RLS recusa em silêncio: sem linha de volta, o aditivo não era de quem pediu e
+  // continua somando no total. Dizer "removido" aqui seria mentir.
+  if (!data?.length) throw new Error('só quem lançou o aditivo pode remover')
+}
+
 // Apaga a obra e tudo que pendura nela. O banco cuida do resto por cascata:
 // lançamentos, aditivos, comprovantes, membros e convites somem junto.
 //
@@ -299,6 +306,49 @@ export async function urlComprovante(path: string): Promise<string | null> {
   const { data, error } = await supabase.storage.from('comprovantes').createSignedUrl(path, 60 * 10)
   if (error) return null
   return data.signedUrl
+}
+
+// As notas fiscais da obra, com o link do arquivo já assinado: todas as da pessoa (inclusive
+// as que ainda estão na fila) e as já lançadas por quem mais participa da obra (0015).
+// Quando a nota virou lançamento, valem os dados do lançamento — é o que foi conferido e
+// corrigido, não o chute do agente.
+export type NotaEnviada = {
+  comprovante: Comprovante
+  autor: Profile | null
+  url: string | null
+  lancamento: { descricao: string; valor: number; data: string } | null
+}
+
+export async function listarNotas(obraId: string): Promise<NotaEnviada[]> {
+  // Sem filtro de autor de propósito: quem recorta é a RLS — a própria fila inteira, e do
+  // sócio só o que já foi lançado.
+  const { data, error } = await supabase
+    .from('comprovantes')
+    .select('*, autor:profiles(id, nome, iniciais)')
+    .eq('obra_id', obraId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  const linhas = (data ?? []) as (Comprovante & { autor: Profile | null })[]
+  if (!linhas.length) return []
+
+  const [urls, lancamentos] = await Promise.all([
+    // Uma chamada para todos os links. Uma hora de validade: a tela fica aberta enquanto a
+    // pessoa confere nota por nota.
+    supabase.storage.from('comprovantes').createSignedUrls(linhas.map(c => c.storage_path), 60 * 60),
+    supabase
+      .from('lancamentos')
+      .select('comprovante_id, descricao, valor, data')
+      .in('comprovante_id', linhas.map(c => c.id)),
+  ])
+  const urlPorCaminho = new Map((urls.data ?? []).map(u => [u.path, u.signedUrl]))
+  const lancPorNota = new Map((lancamentos.data ?? []).map(l => [l.comprovante_id as string, l]))
+
+  return linhas.map(({ autor, ...c }) => ({
+    comprovante: c,
+    autor,
+    url: urlPorCaminho.get(c.storage_path) ?? null,
+    lancamento: lancPorNota.get(c.id) ?? null,
+  }))
 }
 
 // Envia o arquivo, cria a linha na fila e dispara o agente que lê a nota.
@@ -446,35 +496,35 @@ export async function carregarPlano(): Promise<PlanoDoGrupo> {
 
 export function planoVale(a: Assinatura | null): boolean {
   if (!a?.vale_ate) return false
-  // past_due conta: é o estado em que o Stripe ainda está retentando o cartão. Quem
-  // encerra o acesso é a data, não a primeira recusa. Mesma regra do plano_ativo() no banco.
-  return ['trialing', 'active', 'past_due', 'cortesia'].includes(a.status) && new Date(a.vale_ate) > new Date()
+  // Mesma regra do plano_ativo() no banco (0013): Pix confirmado ou cortesia, dentro do prazo.
+  return ['pix', 'cortesia'].includes(a.status) && new Date(a.vale_ate) > new Date()
 }
 
-// Quem monta a sessão de pagamento é o servidor, a partir da sessão de quem chamou. O app
-// só diz o que quer fazer e recebe uma URL para abrir.
-export async function urlDePagamento(acao: 'assinar' | 'gerenciar'): Promise<string> {
-  const { data, error } = await supabase.functions.invoke('criar-checkout', { body: { acao } })
+// ---------------------------------------------------------------- pix
+
+export type Pix = {
+  status: string
+  valor: number
+  qr_code: string
+  qr_code_base64: string
+  expira_em: string
+}
+
+async function chamarPix<T>(acao: 'gerar' | 'conferir'): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('pix', { body: { acao } })
   if (error) {
-    // `invoke` transforma qualquer status fora do 2xx em erro genérico e joga fora o corpo
-    // da resposta. Sem ler o `context`, a pessoa veria "Edge Function returned a non-2xx
-    // status code" no lugar de "seu grupo já tem plano ativo".
+    // `invoke` transforma qualquer status fora do 2xx em erro genérico e joga fora o corpo.
+    // Sem ler o `context`, a pessoa veria "non-2xx status code" no lugar do motivo.
     const resposta = (error as { context?: Response }).context
     const corpo = resposta ? await resposta.json().catch(() => null) : null
     throw new Error(corpo?.erro ?? error.message)
   }
   if (data?.erro) throw new Error(data.erro)
-  return data.url as string
+  return data as T
 }
 
-export async function abrirPagamento(acao: 'assinar' | 'gerenciar') {
-  const url = await urlDePagamento(acao)
-  // No APK não dá para trocar a página: o app sumiria e o Stripe abriria por cima do nada.
-  // O navegador do sistema abre em cima e fecha de volta no app, como no login do Google.
-  if (ehNativo()) {
-    const { Browser } = await import('@capacitor/browser')
-    await Browser.open({ url, presentationStyle: 'popover' })
-    return
-  }
-  window.location.href = url
-}
+// Devolve o Pix em aberto se ainda houver um válido, ou gera outro.
+export const gerarPix = () => chamarPix<Pix>('gerar')
+
+// Pergunta ao Mercado Pago se o Pix em aberto já foi pago — e, se foi, o servidor credita.
+export const conferirPix = () => chamarPix<{ status: string; vale_ate: string | null }>('conferir')

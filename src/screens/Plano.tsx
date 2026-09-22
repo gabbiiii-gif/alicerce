@@ -1,61 +1,83 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { abrirPagamento } from '../data/api'
+import { conferirPix, gerarPix, type Pix } from '../data/api'
 import { usePlano } from '../lib/plano'
 import { useUsuario } from '../lib/auth'
 import { useAviso } from '../components/Toast'
-import { isoParaBR } from '../lib/format'
+import { dataBR } from '../lib/format'
 import { Carregando, Tela } from '../components/Tela'
 
+// De quanto em quanto tempo a tela pergunta se o Pix caiu. O webhook costuma chegar antes,
+// mas é outro caminho — se ele falhar, é isto que libera o plano de quem pagou.
+const CONFERIR_A_CADA_MS = 5000
+
 export function Plano() {
-  const [params, setParams] = useSearchParams()
-  const voltandoDoPagamento = params.get('pago') === '1'
   const { userId } = useUsuario()
-  // Mesma fonte que a faixa de aviso das outras telas: pagar aqui tem que apagar o
-  // aviso lá, e duas cargas separadas discordariam até a próxima navegação.
+  // Mesma fonte que a faixa de aviso das outras telas: pagar aqui tem que apagar o aviso lá.
   const { plano: dados, carregando, erro, vale, ehCortesia, recarregar } = usePlano()
-  const [abrindo, setAbrindo] = useState(false)
   const avisar = useAviso()
+  const [pix, setPix] = useState<Pix | null>(null)
+  const [gerando, setGerando] = useState(false)
+  const [conferindo, setConferindo] = useState(false)
 
   const assinatura = dados?.assinatura ?? null
   const titular = dados?.titular ?? null
+  const ate = assinatura?.vale_ate ? dataBR(assinatura.vale_ate) : null
 
-  const status = assinatura?.status ?? 'sem_assinatura'
-  const ate = assinatura?.vale_ate ? isoParaBR(assinatura.vale_ate.slice(0, 10)) : null
-
-  // Convidado: usa o plano de quem pagou, e nunca mexe nele.
+  // Convidado: usa o plano de quem pagou, e nunca paga.
   const souConvidado = !!(vale && assinatura?.titular_id && assinatura.titular_id !== userId)
 
-  // Só o titular gerencia. Cortesia fica de fora porque é acesso sem cartão — não existe
-  // assinatura no Stripe para abrir; o que essa pessoa precisa é do convite para assinar
-  // antes que a cortesia acabe.
-  const podeGerenciar = vale && !ehCortesia && !souConvidado
-
-  // Voltando do Stripe, o pagamento já passou — mas o webhook é outro caminho e pode
-  // demorar alguns segundos. Sem esta espera, quem acabou de pagar veria "sem plano"
-  // justamente no instante em que mais precisa de confirmação.
-  useEffect(() => {
-    if (!voltandoDoPagamento) return
-    if (vale) {
-      setParams({}, { replace: true })
-      return
-    }
-    let tentativas = 0
-    const id = setInterval(() => {
-      if (++tentativas > 8) return clearInterval(id)
-      recarregar()
-    }, 2000)
-    return () => clearInterval(id)
-  }, [voltandoDoPagamento, vale, recarregar, setParams])
-
-  async function pagar(acao: 'assinar' | 'gerenciar') {
-    setAbrindo(true)
+  async function conferir(manual: boolean) {
+    if (manual) setConferindo(true)
     try {
-      await abrirPagamento(acao)
+      const r = await conferirPix()
+      if (r.status === 'approved') {
+        setPix(null)
+        await recarregar()
+        avisar(r.vale_ate ? `Pagamento confirmado. Plano até ${dataBR(r.vale_ate)}.` : 'Pagamento confirmado.')
+      } else if (manual) {
+        avisar('Ainda não caiu. Pode levar alguns segundos depois de pagar.')
+      }
     } catch (e) {
-      avisar(e instanceof Error ? e.message : 'não deu para abrir o pagamento')
+      if (manual) avisar(e instanceof Error ? e.message : 'não deu para conferir')
     } finally {
-      setAbrindo(false)
+      if (manual) setConferindo(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!pix) return
+    const expira = new Date(pix.expira_em).getTime()
+    const id = setInterval(() => {
+      if (Date.now() > expira) {
+        clearInterval(id)
+        setPix(null)
+        avisar('O Pix expirou. Gere outro para pagar.')
+        return
+      }
+      conferir(false)
+    }, CONFERIR_A_CADA_MS)
+    return () => clearInterval(id)
+    // conferir muda a cada render; o que importa aqui é só o Pix aberto.
+  }, [pix])
+
+  async function pagar() {
+    setGerando(true)
+    try {
+      setPix(await gerarPix())
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : 'não deu para gerar o Pix')
+    } finally {
+      setGerando(false)
+    }
+  }
+
+  async function copiar() {
+    if (!pix) return
+    try {
+      await navigator.clipboard.writeText(pix.qr_code)
+      avisar('Código Pix copiado')
+    } catch {
+      avisar('copie o código da tela')
     }
   }
 
@@ -72,11 +94,7 @@ export function Plano() {
         </>
       )}
 
-      {voltandoDoPagamento && !vale && (
-        <div className="ann">Pagamento recebido — confirmando com o Stripe, isso leva alguns segundos.</div>
-      )}
-
-      {/* Convidado não vê preço nem botão: ele não tem o que pagar nem o que decidir. */}
+      {/* Convidado não vê preço nem Pix: ele não tem o que pagar nem o que decidir. */}
       {souConvidado ? (
         <div className="cd">
           <div className="row">
@@ -88,7 +106,7 @@ export function Plano() {
               ? `Você está no plano de ${titular?.nome}. Não há nada a pagar.`
               : 'Você está no plano de quem te convidou. Não há nada a pagar.'}
           </div>
-          <div className="note">Quem cuida da assinatura, do cartão e do cancelamento é quem assinou.</div>
+          <div className="note">Quem cuida do pagamento é quem assinou.</div>
         </div>
       ) : (
         <div className="cd">
@@ -98,60 +116,58 @@ export function Plano() {
           </div>
           <div className="note">Obras, lançamentos e leitura de notas pelo agente, sem limite.</div>
           <div className="note">Você e mais uma pessoa da sua equipe, no mesmo plano.</div>
-          <div className="note">7 dias de teste grátis.</div>
+          <div className="note">Pagamento por Pix, pelo Mercado Pago.</div>
         </div>
       )}
 
       {!carregando && !souConvidado && (
-        <div
-          className="cd"
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            borderColor: status === 'past_due' ? '#FBD5B5' : undefined,
-          }}
-        >
+        <div className="cd" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <span
             className={vale ? 'chip bta' : 'chip'}
             style={vale && !ehCortesia ? { background: '#1B8FE8', borderColor: '#1B8FE8' } : undefined}
           >
-            {!vale
-              ? 'sem plano'
-              : ehCortesia
-                ? 'cortesia'
-                : status === 'trialing'
-                  ? 'em teste'
-                  : status === 'past_due'
-                    ? 'atrasado'
-                    : 'ativo'}
+            {!vale ? 'sem plano' : ehCortesia ? 'cortesia' : 'pago'}
           </span>
           <div className="note" style={{ flex: 1 }}>
-            {!vale && status === 'canceled' && 'Sua assinatura foi cancelada.'}
-            {!vale && status !== 'canceled' && 'Seu grupo ainda não tem assinatura.'}
-            {vale && ehCortesia && `Seu acesso vai até ${ate}. Assine antes disso para não parar.`}
-            {vale && status === 'past_due' && `O último pagamento falhou. Atualize o cartão até ${ate}.`}
-            {vale && status === 'trialing' && `Teste grátis até ${ate}. Depois, R$ 150 por mês.`}
-            {vale && status === 'active' && `Renova em ${ate}.`}
+            {!vale && (ate ? `Seu plano venceu em ${ate}.` : 'Seu grupo ainda não tem plano.')}
+            {vale && ehCortesia && `Seu acesso vai até ${ate}.`}
+            {vale && !ehCortesia && `Pago até ${ate}. Próximo pagamento nesse dia.`}
           </div>
         </div>
       )}
 
-      {!carregando && !souConvidado && (
-        <button className="bt btp" onClick={() => pagar(podeGerenciar ? 'gerenciar' : 'assinar')} disabled={abrindo}>
-          {abrindo ? 'abrindo…' : podeGerenciar ? 'Gerenciar assinatura' : 'Assinar por R$ 150/mês'}
-        </button>
+      {!carregando && !souConvidado && pix && (
+        <div className="cd" style={{ alignItems: 'center', gap: 10 }}>
+          <b style={{ fontSize: 15 }}>Pague R$ {pix.valor} com o app do seu banco</b>
+          <img
+            src={`data:image/png;base64,${pix.qr_code_base64}`}
+            alt="QR Code do Pix"
+            style={{ width: 220, height: 220, maxWidth: '100%' }}
+          />
+          <div className="note" style={{ textAlign: 'center' }}>
+            No celular, use o Pix copia e cola. Vale até{' '}
+            {new Date(pix.expira_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.
+          </div>
+          <button className="bt btp" style={{ width: '100%' }} onClick={copiar}>Copiar código Pix</button>
+          <button className="bt" style={{ width: '100%' }} onClick={() => conferir(true)} disabled={conferindo}>
+            {conferindo ? 'conferindo…' : 'Já paguei'}
+          </button>
+          <div className="note" style={{ textAlign: 'center' }}>
+            A confirmação aparece aqui sozinha em alguns segundos depois do pagamento.
+          </div>
+        </div>
       )}
 
-      {podeGerenciar && (
-        <div className="ann">
-          No gerenciamento você troca o cartão, vê as faturas e cancela quando quiser. Cancelando, o acesso continua até {ate}.
-        </div>
+      {!carregando && !souConvidado && !pix && (
+        <button className="bt btp" onClick={pagar} disabled={gerando}>
+          {gerando ? 'gerando Pix…' : vale && !ehCortesia ? 'Pagar o próximo mês com Pix' : 'Pagar R$ 150 com Pix'}
+        </button>
       )}
 
       {!souConvidado && (
         <div className="ann">
-          O plano é do grupo: quem entrar pelo seu convite usa o app sem pagar de novo, e não mexe na sua assinatura.
+          {vale && !ehCortesia && `Pagando antes do vencimento, o mês novo começa em ${ate} — você não perde dias. `}
+          O plano é do grupo: quem entrar pelo seu convite usa o app sem pagar de novo.
         </div>
       )}
     </Tela>

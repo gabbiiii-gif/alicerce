@@ -24,8 +24,8 @@ npm run dev
 
 ## Ligando o backend
 
-Roteiro completo em [`SETUP.md`](./SETUP.md). Para sair do sandbox do Stripe e ligar o
-domínio próprio, [`PRODUCAO.md`](./PRODUCAO.md). Em resumo:
+Roteiro completo em [`SETUP.md`](./SETUP.md). Para ligar o domínio próprio e liberar
+pagamentos por Pix, [`PRODUCAO.md`](./PRODUCAO.md). Em resumo:
 
 1. Criar o projeto (região `sa-east-1` para latência no Brasil).
 2. Aplicar `supabase/migrations/0001_init.sql` no SQL Editor, ou `supabase db push` com a CLI.
