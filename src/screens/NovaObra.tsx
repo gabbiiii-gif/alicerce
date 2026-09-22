@@ -40,14 +40,13 @@ export function NovaObra() {
       return navigate('/plano')
     }
     if (passo === 0 && (!nome.trim() || valor <= 0)) return avisar('Falta nome e valor fechado')
-    if (passo === 1 && entrada <= 0) return avisar('A obra só começa com entrada')
     if (passo < 2) return setPasso(passo + 1)
 
     setSalvando(true)
     try {
       const obraId = await criarObra({ nome: nome.trim(), endereco: endereco.trim(), valorFechado: valor, entrada, autorId: userId })
       definir(obraId)
-      avisar('Obra criada com a entrada registrada')
+      avisar(entrada > 0 ? 'Obra criada com a entrada registrada' : 'Obra criada. Registre a entrada quando o cliente pagar')
       navigate(`/obra/${obraId}`, { replace: true })
     } catch (e) {
       avisar(e instanceof Error ? e.message : 'não deu para criar a obra')
@@ -97,7 +96,9 @@ export function NovaObra() {
               </button>
             ))}
           </div>
-          <div className="ann">Sem entrada a obra fica como “não iniciada”.</div>
+          {/* Cliente que ainda não pagou é comum: a obra começa assim mesmo, e a entrada vira
+              um "+ entrada" normal no painel quando o dinheiro cair. */}
+          <div className="ann">Cliente ainda não pagou? Deixe em R$ 0,00 e registre a entrada depois, no painel da obra.</div>
         </>
       )}
 
@@ -117,7 +118,7 @@ export function NovaObra() {
             </div>
             <div className="row">
               <span className="note">Entrada</span>
-              <b style={{ fontSize: 14 }}>{fmt(entrada)}</b>
+              <b style={{ fontSize: 14 }}>{entrada > 0 ? fmt(entrada) : 'ainda não recebida'}</b>
             </div>
             <div className="row" style={{ borderTop: '1px solid #E1EAF6', paddingTop: 6 }}>
               <span style={{ fontSize: 14 }}>Fica em aberto</span>

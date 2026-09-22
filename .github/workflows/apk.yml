@@ -27,7 +27,12 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # O padrão da ação instala o pacote `tools`, que o Google tirou do SDK: o sdkmanager
+      # novo responde "Failed to find package 'tools'" e o job morria aqui, antes de compilar.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
 
       # O projeto compila contra a 36 (android/variables.gradle). A imagem do runner
       # costuma trazer, mas pedir explicitamente evita um build quebrado no dia em que
