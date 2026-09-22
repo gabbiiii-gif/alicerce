@@ -3,8 +3,46 @@
 // O aviso em si não vale nada: ele só diz "olhe o pagamento X". Quem decide é conferir(),
 // que busca o pagamento na API deles com o nosso token. Por isso não há validação de
 // assinatura aqui — um aviso forjado só faria a gente conferir um pagamento real.
-import { createClient } from 'npm:@supabase/supabase-js@2'
-import { conferir } from '../_shared/mercadopago.ts'
+//
+// Arquivo único de propósito, para poder colar no editor do painel do Supabase. A
+// conferência é a mesma da função pix — mudou aqui, muda lá.
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
+
+const API = 'https://api.mercadopago.com/v1/payments'
+
+function token() {
+  const t = Deno.env.get('MP_ACCESS_TOKEN')
+  if (!t) throw new Error('MP_ACCESS_TOKEN não configurado')
+  return t
+}
+
+// Pergunta ao Mercado Pago como está o pagamento e, se aprovado, credita o mês.
+//
+// É o ÚNICO caminho que libera acesso, e ele nunca acredita no aviso que chegou: busca o
+// pagamento pelo id com o nosso token. Um aviso falso, no máximo, faz a gente conferir um
+// pagamento de verdade.
+async function conferir(servico: SupabaseClient, mpPaymentId: string) {
+  const r = await fetch(`${API}/${mpPaymentId}`, { headers: { Authorization: `Bearer ${token()}` } })
+  if (!r.ok) throw new Error(`Mercado Pago respondeu ${r.status} ao conferir ${mpPaymentId}`)
+  const mp = await r.json()
+
+  if (mp.status === 'approved') {
+    const { data, error } = await servico.rpc('creditar_pix', {
+      p_mp_payment_id: String(mp.id),
+      p_valor: mp.transaction_amount,
+    })
+    if (error) throw error
+    // null aqui é "já tinha sido creditado" — o outro caminho chegou antes. Continua aprovado.
+    return { status: 'approved', vale_ate: (data as string | null) ?? null }
+  }
+
+  await servico
+    .from('pagamentos')
+    .update({ status: mp.status })
+    .eq('mp_payment_id', String(mp.id))
+    .is('pago_em', null)
+  return { status: mp.status as string, vale_ate: null }
+}
 
 Deno.serve(async req => {
   const url = new URL(req.url)
