@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
-import { carregarObra, carregarRelatorioGeral, listarObras } from '../data/api'
+import { carregarObra, carregarRelatorioGeral, listarObras, notasDosLancamentos, type NotaDoRelatorio } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useAviso } from '../components/Toast'
 import { brParaISO, curto, fmt, hojeISO, isoParaBR, semSimbolo } from '../lib/format'
-import { montarRelatorio, textoResumo, type Intervalo, type Periodo } from '../lib/relatorio'
+import { montarRelatorio, textoResumo, type Intervalo, type Periodo, type Relatorio } from '../lib/relatorio'
 import { baixarOuCompartilhar, gerarPdfRelatorio } from '../lib/pdf'
 import { CURVA } from '../lib/animacao'
 import { Carregando, Tela } from '../components/Tela'
@@ -37,7 +37,9 @@ export function Relatorios() {
         nome: uma.obra.nome,
         lancamentos: uma.lancamentos,
         membros: uma.membros,
+        repasses: uma.repasses,
         aberto: uma.contas.aberto,
+        notas: await notasDosLancamentos(uma.lancamentos.map(l => l.comprovante_id ?? '')),
       }
     }
     const [obras, geral] = await Promise.all([listarObras(), carregarRelatorioGeral()])
@@ -46,12 +48,14 @@ export function Relatorios() {
       nome: TODAS,
       lancamentos: geral.lancamentos,
       membros: geral.membros,
+      repasses: geral.repasses,
       aberto: obras.reduce((soma, o) => soma + o.contas.aberto, 0),
+      notas: await notasDosLancamentos(geral.lancamentos.map(l => l.comprovante_id ?? '')),
     }
   }, [obraId])
 
   const relatorio = useMemo(
-    () => (dados ? montarRelatorio(dados.lancamentos, dados.membros, periodo, new Date(), intervalo) : null),
+    () => (dados ? montarRelatorio(dados.lancamentos, dados.membros, periodo, new Date(), intervalo, dados.repasses) : null),
     [dados, periodo, intervalo],
   )
 
@@ -80,7 +84,13 @@ export function Relatorios() {
 
   async function exportarPdf() {
     try {
-      const blob = await gerarPdfRelatorio(nome, relatorio!, aberto, rotulo)
+      // Links de um ano: o PDF é mandado adiante e aberto dias depois, quando o link de
+      // uma hora que a tela usa já teria vencido.
+      const notasPdf = await notasDosLancamentos(
+        relatorio!.porPessoa.flatMap(p => p.itens.map(i => i.comprovanteId ?? '')),
+        60 * 60 * 24 * 365,
+      )
+      const blob = await gerarPdfRelatorio(nome, relatorio!, aberto, rotulo, notasPdf)
       const resultado = await baixarOuCompartilhar(
         blob,
         `alicerce-${nome.toLowerCase().replace(/\s+/g, '-')}-${relatorio!.inicio}.pdf`,
@@ -234,28 +244,13 @@ export function Relatorios() {
         ))}
 
         <div className="row" style={{ marginTop: 2 }}>
-          <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Por pessoa</span>
+          <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Gastos por pessoa</span>
           <span className="note">Nota a nota</span>
         </div>
 
-        {relatorio.porPessoa.map(p => (
-          <div className="cd" key={p.userId} style={{ padding: '8px 10px', gap: 4 }}>
-            <div className="row">
-              <div className="row" style={{ gap: 6 }}>
-                <div className="av">{p.iniciais}</div>
-                <b style={{ fontSize: 14 }}>{p.nome}</b>
-              </div>
-              <b className="num" style={{ fontSize: 14 }}>−{curto(p.total)}</b>
-            </div>
-            {p.itens.map((i, idx) => (
-              <div className="row" key={idx}>
-                <span className="note">{i.esquerda}</span>
-                <span className="note num">{i.direita}</span>
-              </div>
-            ))}
-            {p.itens.length === 0 && <span className="note">Sem saídas no período</span>}
-          </div>
-        ))}
+        <ColunasPessoas relatorio={relatorio} notas={dados.notas} />
+
+        <Repasses relatorio={relatorio} />
 
         <div className="row" style={{ gap: 7, paddingTop: 4 }}>
           <button className="bt" style={{ flex: 1, fontSize: 13.5, padding: 6 }} onClick={exportarPdf}>PDF</button>
@@ -311,6 +306,133 @@ export function Relatorios() {
       </AnimatePresence>
 
       <TabBar ativa="relatorios" />
+    </>
+  )
+}
+
+// Uma coluna por pessoa, lado a lado. Cada gasto é um cartão com data e valor no topo, o
+// que foi e a categoria embaixo, e a nota fiscal logo abaixo quando ela existe — tocar abre
+// o arquivo. Sem nota, o cartão fica só com as informações.
+function ColunasPessoas({ relatorio, notas }: { relatorio: Relatorio; notas: Map<string, NotaDoRelatorio> }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, alignItems: 'start' }}>
+      {relatorio.porPessoa.map(p => (
+        <div key={p.userId} style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+          <div
+            style={{
+              background: '#0A2A6E',
+              color: '#fff',
+              borderRadius: 10,
+              padding: '8px 10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 6,
+            }}
+          >
+            <b style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nome}</b>
+            <b className="num" style={{ fontSize: 13.5 }}>−{curto(p.total)}</b>
+          </div>
+
+          {p.itens.length === 0 && <span className="note" style={{ padding: '4px 2px' }}>Sem saídas no período</span>}
+
+          {p.itens.map(i => {
+            const nota = i.comprovanteId ? notas.get(i.comprovanteId) : undefined
+            const ehFoto = (nota?.mime ?? '').startsWith('image/')
+            return (
+              <div key={i.id} className="cd" style={{ padding: 8, gap: 3, minWidth: 0 }}>
+                <div className="row" style={{ gap: 4 }}>
+                  <span className="note" style={{ fontSize: 11.5 }}>{isoParaBR(i.data)}</span>
+                  <b className="num" style={{ fontSize: 13 }}>{semSimbolo(i.valor)}</b>
+                </div>
+                <b style={{ fontSize: 13, lineHeight: 1.25, overflowWrap: 'anywhere' }}>{i.descricao}</b>
+                <span className="note" style={{ fontSize: 11.5 }}>{i.categoria}</span>
+                {nota && (
+                  <a
+                    href={nota.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: 'block', marginTop: 4, textDecoration: 'none', color: '#1B8FE8', fontSize: 12, fontWeight: 600 }}
+                  >
+                    {ehFoto ? (
+                      <img
+                        src={nota.url}
+                        alt="nota fiscal"
+                        loading="lazy"
+                        style={{ width: '100%', height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid #E1EAF6', display: 'block' }}
+                      />
+                    ) : (
+                      <span className="chip" style={{ display: 'inline-block' }}>NF em PDF</span>
+                    )}
+                    {ehFoto && <span style={{ display: 'block', marginTop: 3 }}>ver NF</span>}
+                  </a>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Repasses entre sócios e com quem o dinheiro está. Fora das contas de cima: repasse não
+// é entrada nem saída da obra, o dinheiro só muda de mão.
+function Repasses({ relatorio }: { relatorio: Relatorio }) {
+  if (!relatorio.repasses.length && !relatorio.comCadaUm.length) return null
+  return (
+    <>
+      {relatorio.repasses.length > 0 && (
+        <>
+          <div className="row" style={{ marginTop: 2 }}>
+            <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Repasses</span>
+            <span className="note">
+              No período <b className="num" style={{ color: '#0A2A6E' }}>{fmt(relatorio.repassado)}</b>
+            </span>
+          </div>
+          <div className="cd" style={{ padding: '6px 10px', gap: 0 }}>
+            {relatorio.repasses.map((r, idx) => (
+              <div
+                key={r.id}
+                className="row"
+                style={{ padding: '6px 0', borderTop: idx ? '1px solid #E1EAF6' : undefined, alignItems: 'flex-start' }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <b style={{ fontSize: 13.5 }}>
+                    {r.de} → {r.para}
+                  </b>
+                  <div className="note">
+                    {[isoParaBR(r.data), r.descricao, r.obra].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <b className="num" style={{ fontSize: 13.5 }}>{semSimbolo(r.valor)}</b>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {relatorio.comCadaUm.length > 0 && (
+        <>
+          <div className="row" style={{ marginTop: 2 }}>
+            <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Com cada um</span>
+            <span className="note">até {isoParaBR(relatorio.fim)}</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+            {relatorio.comCadaUm.map(c => (
+              <div key={c.userId} className="cd" style={{ padding: 10, gap: 3 }}>
+                <b style={{ fontSize: 14 }}>{c.nome}</b>
+                <b className="num" style={{ fontSize: 19, color: '#0A2A6E' }}>{fmt(c.emMaos)}</b>
+                <span className="note" style={{ fontSize: 11.5 }}>recebeu do cliente {curto(c.entradas)}</span>
+                <span className="note" style={{ fontSize: 11.5 }}>gastou −{curto(c.saidas)}</span>
+                {c.enviou > 0 && <span className="note" style={{ fontSize: 11.5 }}>repassou −{curto(c.enviou)}</span>}
+                {c.recebeu > 0 && <span className="note" style={{ fontSize: 11.5 }}>recebeu repasse +{curto(c.recebeu)}</span>}
+              </div>
+            ))}
+          </div>
+          <div className="note">Repasses não mudam o total da obra: o dinheiro é o mesmo, só muda de mão.</div>
+        </>
+      )}
     </>
   )
 }

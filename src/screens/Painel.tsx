@@ -16,6 +16,7 @@ import { ValorAnimado } from '../components/ValorAnimado'
 import { Barra } from '../components/Barra'
 import { Sheet } from '../components/Sheet'
 import { MoedaInput } from '../components/MoedaInput'
+import { RepassesSheet } from '../components/RepassesSheet'
 import { AnimatePresence, motion } from 'motion/react'
 import { CURVA } from '../lib/animacao'
 import type { Aditivo, Lancamento } from '../lib/types'
@@ -37,6 +38,7 @@ export function Painel() {
   const [salvando, setSalvando] = useState(false)
   const [selecionado, setSelecionado] = useState<Lancamento | null>(null)
   const [verAditivos, setVerAditivos] = useState(false)
+  const [verRepasses, setVerRepasses] = useState(false)
   // Remover muda o total da obra: o primeiro toque só arma, o segundo remove.
   const [removerId, setRemoverId] = useState<string | null>(null)
   const [removendo, setRemovendo] = useState(false)
@@ -163,6 +165,9 @@ export function Painel() {
         </div>
 
         <div className="row" style={{ gap: 6, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+          <button className="chip" onClick={() => setVerRepasses(true)}>
+            Repasses{dados.repasses.length > 0 ? ` (${dados.repasses.length})` : ''}
+          </button>
           <button className="chip" onClick={() => navigate(`/obra/${obraId}/notas`)}>Notas fiscais</button>
           <button className="chip" onClick={() => navigate(`/obra/${obraId}/equipe`)}>Equipe</button>
           <button className="chip" onClick={() => navigate(`/obra/${obraId}/categorias`)}>Categorias</button>
@@ -306,6 +311,20 @@ export function Painel() {
           </div>
         </Sheet>
       )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {verRepasses && (
+          <RepassesSheet
+            obraId={obraId}
+            userId={userId}
+            membros={dados.membros}
+            repasses={dados.repasses}
+            podeLancar={vale}
+            aoFechar={() => setVerRepasses(false)}
+            aoMudar={recarregar}
+          />
+        )}
       </AnimatePresence>
 
       <TabBar ativa="obras" />

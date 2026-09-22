@@ -1,4 +1,5 @@
-import type { Relatorio } from './relatorio'
+import type { ItemSaida, Relatorio } from './relatorio'
+import type { NotaDoRelatorio } from '../data/api'
 import { fmt } from './format'
 import { ehNativo } from './plataforma'
 
@@ -30,8 +31,53 @@ function primeiraMaiuscula(texto: string): string {
 // O jsPDF entra por import dinâmico: só quem exporta PDF paga o download da biblioteca.
 // Recebe o nome pronto em vez da obra: o mesmo PDF serve para uma obra e para o
 // consolidado, que não tem obra nenhuma.
-export async function gerarPdfRelatorio(nome: string, relatorio: Relatorio, aberto: number, subtitulo: string): Promise<Blob> {
+// Miniatura da nota para ir dentro do PDF. A foto do celular tem vários MB; reduzida a
+// 320px em JPEG ela pesa uns 20 KB e ainda dá para reconhecer a nota no papel.
+async function miniatura(url: string): Promise<string | null> {
+  try {
+    const resposta = await fetch(url)
+    if (!resposta.ok) return null
+    const imagem = await createImageBitmap(await resposta.blob())
+    const escala = Math.min(1, 320 / Math.max(imagem.width, imagem.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(imagem.width * escala)
+    canvas.height = Math.round(imagem.height * escala)
+    canvas.getContext('2d')!.drawImage(imagem, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/jpeg', 0.72)
+  } catch {
+    return null
+  }
+}
+
+function dataBRCompleta(iso: string): string {
+  const [ano, mes, dia] = iso.split('-')
+  return `${dia}/${mes}/${ano}`
+}
+
+// `notas` liga cada comprovante ao arquivo. O link vai clicável no PDF, então precisa
+// durar mais que a sessão: quem gera passa URLs de validade longa.
+export async function gerarPdfRelatorio(
+  nome: string,
+  relatorio: Relatorio,
+  aberto: number,
+  subtitulo: string,
+  notas: Map<string, NotaDoRelatorio> = new Map(),
+): Promise<Blob> {
   const { jsPDF } = await import('jspdf')
+
+  // As miniaturas são baixadas antes de desenhar: o jsPDF desenha de forma síncrona, e
+  // a altura de cada gasto depende de ele ter foto ou não.
+  const fotos = new Map<string, string>()
+  await Promise.all(
+    relatorio.porPessoa
+      .flatMap(p => p.itens)
+      .map(async i => {
+        const nota = i.comprovanteId ? notas.get(i.comprovanteId) : null
+        if (!nota || !(nota.mime ?? '').startsWith('image/')) return
+        const foto = await miniatura(nota.url)
+        if (foto) fotos.set(i.comprovanteId!, foto)
+      }),
+  )
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
 
   const margem = 48
@@ -141,7 +187,7 @@ export async function gerarPdfRelatorio(nome: string, relatorio: Relatorio, aber
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(10.5)
       doc.setTextColor(NAVY)
-      doc.text(`− ${fmt(o.saidas)}`, fimTexto, y, { align: 'right' })
+      doc.text(`- ${fmt(o.saidas)}`, fimTexto, y, { align: 'right' })
       y += 19
     })
     y += 16
@@ -176,40 +222,193 @@ export async function gerarPdfRelatorio(nome: string, relatorio: Relatorio, aber
 
   // ---------------------------------------------------------------- por pessoa
 
+  // Uma coluna por pessoa, lado a lado: o gasto de cada um se lê de cima para baixo, em
+  // ordem de data, e as duas colunas andam juntas linha a linha. Com mais de duas pessoas,
+  // elas vão em pares, um bloco embaixo do outro.
   if (relatorio.porPessoa.length) {
-    secao('Por pessoa')
-    relatorio.porPessoa.forEach(p => {
-      // O nome e a primeira nota andam juntos: um nome sozinho no pé da página, com os
-      // gastos dele na página seguinte, é a quebra que mais atrapalha a leitura.
-      novaPagina(44)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(11.5)
-      doc.setTextColor(NAVY)
-      doc.text(p.nome, margem, y)
-      doc.text(fmt(p.total), fimTexto, y, { align: 'right' })
-      y += 18
+    secao('Gastos por pessoa')
+    const vao = 14
+    const colL = (largura - vao) / 2
+    const FOTO = 54
+    const pad = 9
 
-      if (!p.itens.length) {
-        doc.setFont('helvetica', 'italic')
-        doc.setFontSize(9.5)
-        doc.setTextColor(CINZA)
-        doc.text('Sem saídas no período', margem + 14, y)
-        y += 16
+    // Mede sem desenhar: a linha precisa da altura da maior das duas células.
+    const medir = (item: ItemSaida) => {
+      const temFoto = item.comprovanteId ? fotos.has(item.comprovanteId) : false
+      const temNota = item.comprovanteId ? notas.has(item.comprovanteId) : false
+      const larguraTexto = colL - pad * 2 - (temFoto ? FOTO + 8 : 0)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9.5)
+      const linhas = (doc.splitTextToSize(primeiraMaiuscula(item.descricao), larguraTexto) as string[]).slice(0, 3)
+      const alturaTexto = 12 + linhas.length * 11.5 + 11 + (temNota ? 12 : 0)
+      return { linhas, temFoto, temNota, altura: pad * 2 + Math.max(alturaTexto, temFoto ? FOTO : 0) }
+    }
+
+    const celula = (item: ItemSaida, x: number, yTopo: number, altura: number) => {
+      const m = medir(item)
+      doc.setFillColor('#FFFFFF')
+      doc.setDrawColor(LINHA)
+      doc.setLineWidth(0.8)
+      doc.roundedRect(x, yTopo, colL, altura, 6, 6, 'FD')
+
+      const nota = item.comprovanteId ? notas.get(item.comprovanteId) : undefined
+      const xTexto = x + pad
+      const fimCel = x + colL - pad - (m.temFoto ? FOTO + 8 : 0)
+      let yl = yTopo + pad + 8
+
+      // Data à esquerda, valor à direita: as duas coisas que o olho procura primeiro.
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8.5)
+      doc.setTextColor(CINZA)
+      doc.text(dataBRCompleta(item.data), xTexto, yl)
+      doc.setFontSize(10)
+      doc.setTextColor(NAVY)
+      doc.text(fmt(item.valor), fimCel, yl, { align: 'right' })
+      yl += 13
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9.5)
+      doc.setTextColor(NAVY)
+      m.linhas.forEach(l => {
+        doc.text(l, xTexto, yl)
+        yl += 11.5
+      })
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.5)
+      doc.setTextColor(CINZA)
+      doc.text(primeiraMaiuscula(item.categoria), xTexto, yl)
+      yl += 12
+
+      if (nota) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8.5)
+        doc.setTextColor(AZUL)
+        doc.textWithLink((nota.mime ?? '').includes('pdf') ? 'NF em PDF · abrir' : 'NF · abrir', xTexto, yl, { url: nota.url })
       }
 
-      p.itens.forEach(i => {
-        novaPagina(18)
-        doc.setFont('helvetica', 'normal')
-        doc.setFontSize(9.5)
-        doc.setTextColor(CINZA)
-        // Corta o que não cabe antes de esbarrar no valor, em vez de escrever por cima.
-        doc.text(doc.splitTextToSize(primeiraMaiuscula(i.esquerda), largura - 104)[0], margem + 14, y)
-        doc.setTextColor(NAVY)
-        doc.text(i.direita, fimTexto, y, { align: 'right' })
-        y += 15
-      })
+      if (m.temFoto && nota) {
+        const xFoto = x + colL - pad - FOTO
+        const yFoto = yTopo + pad
+        doc.addImage(fotos.get(item.comprovanteId!)!, 'JPEG', xFoto, yFoto, FOTO, FOTO, undefined, 'FAST')
+        doc.setDrawColor(LINHA)
+        doc.rect(xFoto, yFoto, FOTO, FOTO)
+        doc.link(xFoto, yFoto, FOTO, FOTO, { url: nota.url })
+      }
+    }
+
+    const cabecalho = (p: Relatorio['porPessoa'][number], x: number) => {
+      doc.setFillColor(NAVY)
+      doc.roundedRect(x, y, colL, 30, 6, 6, 'F')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      doc.setTextColor('#FFFFFF')
+      doc.text(p.nome, x + 10, y + 19)
+      doc.text(fmt(p.total), x + colL - 10, y + 19, { align: 'right' })
+    }
+
+    for (let par = 0; par < relatorio.porPessoa.length; par += 2) {
+      const dupla = relatorio.porPessoa.slice(par, par + 2)
+      const xs = [margem, margem + colL + vao]
+      novaPagina(90)
+      dupla.forEach((p, k) => cabecalho(p, xs[k]))
+      y += 38
+
+      const linhasDupla = Math.max(...dupla.map(p => Math.max(p.itens.length, 1)))
+      for (let i = 0; i < linhasDupla; i++) {
+        const alturas = dupla.map(p => (p.itens[i] ? medir(p.itens[i]).altura : 0))
+        const altura = Math.max(...alturas, 26)
+        if (y + altura > limite) {
+          doc.addPage()
+          y = margem + 14
+          // Na página nova, o nome de cada coluna de novo: sem ele, a coluna vira um
+          // monte de gastos sem dono.
+          dupla.forEach((p, k) => cabecalho(p, xs[k]))
+          y += 38
+        }
+        dupla.forEach((p, k) => {
+          const item = p.itens[i]
+          if (item) return celula(item, xs[k], y, altura)
+          if (i === 0) {
+            doc.setFont('helvetica', 'italic')
+            doc.setFontSize(9.5)
+            doc.setTextColor(CINZA)
+            doc.text('Sem saídas no período', xs[k] + 10, y + 16)
+          }
+        })
+        y += altura + 8
+      }
+      y += 16
+    }
+  }
+
+  // ---------------------------------------------------------------- repasses
+
+  // Dinheiro que mudou de mão entre os sócios. Fica fora das contas lá de cima de
+  // propósito: não é entrada nem saída da obra.
+  if (relatorio.repasses.length) {
+    secao('Repasses entre sócios')
+    relatorio.repasses.forEach(r => {
+      novaPagina(20)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9.5)
+      doc.setTextColor(CINZA)
+      doc.text(dataBRCompleta(r.data), margem, y)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(NAVY)
+      // Sem seta: a Helvetica do jsPDF não tem →, e ele sai como lixo espaçado.
+      doc.text(`${r.de} para ${r.para}`, margem + 70, y)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(CINZA)
+      const detalhe = [r.descricao, r.obra].filter(Boolean).join(' · ')
+      if (detalhe) doc.text(doc.splitTextToSize(primeiraMaiuscula(detalhe), largura - 300)[0], margem + 190, y)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(NAVY)
+      doc.text(fmt(r.valor), fimTexto, y, { align: 'right' })
       y += 18
     })
+    novaPagina(20)
+    doc.setDrawColor(LINHA)
+    doc.line(margem, y - 8, fimTexto, y - 8)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10.5)
+    doc.setTextColor(NAVY)
+    doc.text('Total repassado no período', margem, y + 6)
+    doc.text(fmt(relatorio.repassado), fimTexto, y + 6, { align: 'right' })
+    y += 34
+  }
+
+  if (relatorio.comCadaUm.length) {
+    secao(`Com quem está o dinheiro (até ${dataBRCompleta(relatorio.fim)})`)
+    const colunas = ['Recebeu do cliente', 'Gastou', 'Repassou', 'Recebeu repasse', 'Em mãos']
+    const xCol = (k: number) => margem + 110 + k * ((largura - 110) / colunas.length) + (largura - 110) / colunas.length
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(CINZA)
+    colunas.forEach((c, k) => doc.text(c, xCol(k), y, { align: 'right' }))
+    y += 16
+    relatorio.comCadaUm.forEach(c => {
+      novaPagina(20)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(NAVY)
+      doc.text(c.nome, margem, y)
+      doc.setFont('helvetica', 'normal')
+      ;[c.entradas, -c.saidas, -c.enviou, c.recebeu].forEach((v, k) => {
+        doc.setTextColor(CINZA)
+        doc.text(v === 0 ? '-' : `${v < 0 ? '- ' : ''}${fmt(Math.abs(v))}`, xCol(k), y, { align: 'right' })
+      })
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(NAVY)
+      doc.text(fmt(c.emMaos), xCol(4), y, { align: 'right' })
+      y += 18
+    })
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(8.5)
+    doc.setTextColor(CINZA)
+    novaPagina(16)
+    doc.text('Recebeu do cliente = entradas que a própria pessoa registrou. Repasses não mudam o total da obra.', margem, y + 4)
+    y += 24
   }
 
   // ---------------------------------------------------------------- rodapé

@@ -46,6 +46,22 @@ export type Aditivo = {
   created_at: string
 }
 
+// Dinheiro que passa de um sócio para o outro. Não mexe nas contas da obra (0016).
+export type Repasse = {
+  id: string
+  obra_id: string
+  autor_id: string
+  de_id: string
+  para_id: string
+  valor: number
+  data: string
+  descricao: string | null
+  created_at: string
+  de?: Profile | null
+  para?: Profile | null
+  obra?: { id: string; nome: string } | null
+}
+
 export type DadosExtraidos = {
   fornecedor: string | null
   descricao: string | null

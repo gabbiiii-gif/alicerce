@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { apagarObra, carregarObra, encerrarObra } from '../data/api'
+import { apagarObra, carregarObra, encerrarObra, notasDosLancamentos } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useAviso } from '../components/Toast'
-import { fmt } from '../lib/format'
+import { fmt, hojeISO } from '../lib/format'
 import { montarRelatorio } from '../lib/relatorio'
 import { baixarOuCompartilhar, gerarPdfRelatorio } from '../lib/pdf'
 import { Carregando, Tela } from '../components/Tela'
@@ -46,7 +46,7 @@ export function Encerrar() {
     )
   }
 
-  const { obra, contas, lancamentos, membros } = dados
+  const { obra, contas, lancamentos, membros, repasses } = dados
   const sobra = contas.recebido - contas.saidas
 
   async function confirmar() {
@@ -54,32 +54,25 @@ export function Encerrar() {
     try {
       await encerrarObra(obraId)
 
-      // Fechamento da obra: relatório final com tudo, dos dois usuários.
-      const inicio = lancamentos.reduce((menor, l) => (l.data < menor ? l.data : menor), lancamentos[0]?.data ?? '')
-      const relatorio = montarRelatorio(lancamentos, membros, 'mes')
+      // Fechamento da obra: relatório final com tudo, dos dois usuários — do primeiro
+      // lançamento até hoje, com repasses e as notas fiscais de cada gasto.
+      const hoje = hojeISO()
+      const inicio = lancamentos.reduce((menor, l) => (l.data < menor ? l.data : menor), lancamentos[0]?.data ?? hoje)
+      const base = montarRelatorio(lancamentos, membros, 'personalizado', new Date(), { inicio, fim: hoje }, repasses)
       const final = {
-        ...relatorio,
-        titulo: inicio ? `desde ${inicio.split('-').reverse().join('/')}` : 'obra inteira',
-        inicio: inicio || relatorio.inicio,
-        fim: new Date().toISOString().slice(0, 10),
+        ...base,
+        titulo: lancamentos.length ? `desde ${inicio.split('-').reverse().join('/')}` : 'obra inteira',
         entradas: contas.recebido,
         saidas: contas.saidas,
-        porPessoa: membros.map(m => {
-          const itens = lancamentos.filter(l => l.autor_id === m.user_id && l.tipo === 'saida')
-          return {
-            userId: m.user_id,
-            nome: m.profile.nome.split(' ')[0],
-            iniciais: m.profile.iniciais,
-            total: itens.reduce((s, l) => s + Number(l.valor), 0),
-            itens: itens.map(l => ({
-              esquerda: `${l.data.split('-').reverse().slice(0, 2).join('/')} ${l.descricao} · ${l.categoria?.nome ?? 'sem categoria'}`,
-              direita: fmt(l.valor).replace('R$ ', ''),
-            })),
-          }
-        }),
       }
+      // Um ano de validade: o PDF de fechamento é guardado e mandado ao cliente, e o link
+      // da nota tem que abrir bem depois de hoje.
+      const notas = await notasDosLancamentos(
+        lancamentos.map(l => l.comprovante_id ?? ''),
+        60 * 60 * 24 * 365,
+      )
 
-      const blob = await gerarPdfRelatorio(obra.nome, final, contas.aberto, 'Fechamento')
+      const blob = await gerarPdfRelatorio(obra.nome, final, contas.aberto, 'Fechamento', notas)
       await baixarOuCompartilhar(blob, `alicerce-${obra.nome.toLowerCase().replace(/\s+/g, '-')}-fechamento.pdf`, `Fechamento ${obra.nome}`)
       avisar('Obra encerrada e relatório final gerado')
       navigate('/obras', { replace: true })
