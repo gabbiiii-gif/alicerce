@@ -17,6 +17,7 @@ import { Lancar } from './screens/Lancar'
 import { Relatorios } from './screens/Relatorios'
 import { Perfil } from './screens/Perfil'
 import { Plano } from './screens/Plano'
+import { Notas } from './screens/Notas'
 import { Categorias } from './screens/Categorias'
 import { Equipe } from './screens/Equipe'
 import { Encerrar } from './screens/Encerrar'
@@ -95,6 +96,7 @@ export function App() {
           <Route path="/obra/:obraId/categorias" element={<Protegida><Categorias /></Protegida>} />
           <Route path="/obra/:obraId/equipe" element={<Protegida><Equipe /></Protegida>} />
           <Route path="/obra/:obraId/encerrar" element={<Protegida><Encerrar /></Protegida>} />
+          <Route path="/obra/:obraId/notas" element={<Protegida><Notas /></Protegida>} />
           <Route path="/relatorios" element={<Protegida><Relatorios /></Protegida>} />
           <Route path="/perfil" element={<Protegida><Perfil /></Protegida>} />
           <Route path="/plano" element={<Protegida><Plano /></Protegida>} />

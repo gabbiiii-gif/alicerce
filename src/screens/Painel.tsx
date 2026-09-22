@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { apagarLancamento, carregarObra, criarAditivo, registrarEntrada } from '../data/api'
+import {
+  apagarAditivo, apagarLancamento, carregarComprovante, carregarObra, criarAditivo, registrarEntrada, urlComprovante,
+} from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
 import { useObraAtual } from '../lib/obraAtual'
@@ -16,7 +18,7 @@ import { Sheet } from '../components/Sheet'
 import { MoedaInput } from '../components/MoedaInput'
 import { AnimatePresence, motion } from 'motion/react'
 import { CURVA } from '../lib/animacao'
-import type { Lancamento } from '../lib/types'
+import type { Aditivo, Lancamento } from '../lib/types'
 
 type SheetAberto = 'entrada' | 'aditivo' | null
 
@@ -34,10 +36,30 @@ export function Painel() {
   const [descricao, setDescricao] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [selecionado, setSelecionado] = useState<Lancamento | null>(null)
+  const [verAditivos, setVerAditivos] = useState(false)
+  // Remover muda o total da obra: o primeiro toque só arma, o segundo remove.
+  const [removerId, setRemoverId] = useState<string | null>(null)
+  const [removendo, setRemovendo] = useState(false)
+  const [notaUrl, setNotaUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (obraId) definir(obraId)
   }, [obraId, definir])
+
+  // O link da nota é buscado ao abrir o lançamento, não no toque do botão: aberto depois de
+  // um await, o navegador trata como pop-up e bloqueia. Só o autor lê a própria nota (RLS).
+  useEffect(() => {
+    setNotaUrl(null)
+    if (!selecionado?.comprovante_id || selecionado.autor_id !== userId) return
+    let ativo = true
+    carregarComprovante(selecionado.comprovante_id)
+      .then(c => urlComprovante(c.storage_path))
+      .then(url => ativo && setNotaUrl(url))
+      .catch(() => {})
+    return () => {
+      ativo = false
+    }
+  }, [selecionado, userId])
 
   if (carregando) return <Carregando />
   if (erro || !dados) {
@@ -77,6 +99,21 @@ export function Painel() {
     }
   }
 
+  async function removerAditivo(aditivo: Aditivo) {
+    if (removerId !== aditivo.id) return setRemoverId(aditivo.id)
+    setRemovendo(true)
+    try {
+      await apagarAditivo(aditivo.id)
+      setRemoverId(null)
+      avisar('Aditivo removido do total')
+      await recarregar()
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : 'não deu para remover')
+    } finally {
+      setRemovendo(false)
+    }
+  }
+
   async function apagar(lancamento: Lancamento) {
     try {
       await apagarLancamento(lancamento.id)
@@ -97,10 +134,21 @@ export function Painel() {
             <span className="note">Valor fechado</span>
             <b className="num" style={{ fontSize: 14 }}>{fmt(obra.valor_fechado)}</b>
           </div>
-          <div className="row">
-            <span className="note">+ aditivos ({dados.aditivos.length})</span>
+          {/* Tocável para ver e remover: um aditivo lançado errado inflava o total para sempre. */}
+          <button
+            className="row"
+            onClick={() => {
+              setRemoverId(null)
+              setVerAditivos(true)
+            }}
+            disabled={dados.aditivos.length === 0}
+            style={{ width: '100%', background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', opacity: 1, cursor: dados.aditivos.length ? 'pointer' : 'default' }}
+          >
+            <span className="note">
+              + aditivos ({dados.aditivos.length}){dados.aditivos.length > 0 && <span style={{ color: '#2272CC' }}> · ver</span>}
+            </span>
             <b className="num" style={{ fontSize: 14, color: '#2272CC' }}>{fmt(contas.aditivos)}</b>
-          </div>
+          </button>
           <div className="row" style={{ borderTop: '1px solid #E1EAF6', paddingTop: 6 }}>
             <span style={{ fontSize: 14 }}>Total</span>
             {/* Conta até o valor: é o número principal da tela, e a contagem faz o olho pousar nele. */}
@@ -114,6 +162,7 @@ export function Painel() {
         </div>
 
         <div className="row" style={{ gap: 6, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+          <button className="chip" onClick={() => navigate(`/obra/${obraId}/notas`)}>Notas fiscais</button>
           <button className="chip" onClick={() => navigate(`/obra/${obraId}/equipe`)}>Equipe</button>
           <button className="chip" onClick={() => navigate(`/obra/${obraId}/categorias`)}>Categorias</button>
           <button className="chip" onClick={() => navigate(`/obra/${obraId}/encerrar`)}>Encerrar</button>
@@ -196,12 +245,62 @@ export function Painel() {
             {(selecionado.categoria?.nome || 'entrada') + ' · ' + dataCurta(selecionado.data) + ' · enviado por ' +
               (selecionado.autor_id === userId ? 'você' : selecionado.autor?.nome ?? 'alguém da equipe')}
           </div>
+          {notaUrl && (
+            <a className="bt" href={notaUrl} target="_blank" rel="noreferrer" style={{ textAlign: 'center', textDecoration: 'none' }}>
+              Ver nota fiscal
+            </a>
+          )}
           {selecionado.autor_id === userId ? (
             <button className="bt" onClick={() => apagar(selecionado)}>Apagar lançamento</button>
           ) : (
             <div className="ann">Só quem lançou pode editar ou apagar.</div>
           )}
           <div className="note" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setSelecionado(null)}>
+            fechar
+          </div>
+        </Sheet>
+      )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+      {verAditivos && (
+        <Sheet aoFechar={() => setVerAditivos(false)}>
+          <div className="row">
+            <b style={{ fontSize: 17 }}>Aditivos</b>
+            <b className="num" style={{ fontSize: 15, color: '#2272CC' }}>{fmt(contas.aditivos)}</b>
+          </div>
+          {dados.aditivos.length === 0 && <div className="note">Nenhum aditivo nesta obra.</div>}
+          {dados.aditivos.map(a => (
+            <div key={a.id} className="li" style={{ cursor: 'default' }}>
+              <div style={{ minWidth: 0 }}>
+                <b style={{ fontSize: 13.5 }}>{a.descricao}</b>
+                <div className="note">
+                  {dataCurta(a.created_at.slice(0, 10)) + ' · ' + (a.autor_id === userId ? 'você' : 'equipe')}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <b className="num" style={{ fontSize: 13.5 }}>{'+' + semSimbolo(a.valor)}</b>
+                {a.autor_id === userId && (
+                  <button
+                    className="chip"
+                    onClick={() => removerAditivo(a)}
+                    disabled={removendo}
+                    style={removerId === a.id ? { borderColor: '#FBD5B5', color: '#9A3412', whiteSpace: 'nowrap' } : { whiteSpace: 'nowrap' }}
+                  >
+                    {removerId === a.id ? (removendo ? 'removendo…' : 'confirmar') : 'remover'}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+          {removerId && (
+            <div className="ann">
+              Removendo, o total da obra cai para{' '}
+              {fmt(contas.total - Number(dados.aditivos.find(a => a.id === removerId)?.valor ?? 0))}.
+            </div>
+          )}
+          <div className="note" style={{ textAlign: 'center' }}>Só quem lançou o aditivo pode remover.</div>
+          <div className="note" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setVerAditivos(false)}>
             fechar
           </div>
         </Sheet>

@@ -218,6 +218,14 @@ export async function criarAditivo(dados: { obraId: string; autorId: string; des
   if (error) throw error
 }
 
+export async function apagarAditivo(id: string) {
+  const { data, error } = await supabase.from('aditivos').delete().eq('id', id).select('id')
+  if (error) throw error
+  // A RLS recusa em silêncio: sem linha de volta, o aditivo não era de quem pediu e
+  // continua somando no total. Dizer "removido" aqui seria mentir.
+  if (!data?.length) throw new Error('só quem lançou o aditivo pode remover')
+}
+
 // Apaga a obra e tudo que pendura nela. O banco cuida do resto por cascata:
 // lançamentos, aditivos, comprovantes, membros e convites somem junto.
 //
@@ -298,6 +306,47 @@ export async function urlComprovante(path: string): Promise<string | null> {
   const { data, error } = await supabase.storage.from('comprovantes').createSignedUrl(path, 60 * 10)
   if (error) return null
   return data.signedUrl
+}
+
+// As notas que a pessoa mandou nesta obra, com o link do arquivo já assinado. Quando a nota
+// virou lançamento, valem os dados do lançamento — é o que a pessoa conferiu e corrigiu,
+// não o chute do agente.
+export type NotaEnviada = {
+  comprovante: Comprovante
+  url: string | null
+  lancamento: { descricao: string; valor: number; data: string } | null
+}
+
+export async function listarNotas(obraId: string, autorId: string): Promise<NotaEnviada[]> {
+  // A RLS só mostra a própria fila, então o filtro por autor é o que ela deixaria de
+  // qualquer jeito — escrito aqui para a intenção ficar clara.
+  const { data, error } = await supabase
+    .from('comprovantes')
+    .select('*')
+    .eq('obra_id', obraId)
+    .eq('autor_id', autorId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  const comprovantes = (data ?? []) as Comprovante[]
+  if (!comprovantes.length) return []
+
+  const [urls, lancamentos] = await Promise.all([
+    // Uma chamada para todos os links. Uma hora de validade: a tela fica aberta enquanto a
+    // pessoa confere nota por nota.
+    supabase.storage.from('comprovantes').createSignedUrls(comprovantes.map(c => c.storage_path), 60 * 60),
+    supabase
+      .from('lancamentos')
+      .select('comprovante_id, descricao, valor, data')
+      .in('comprovante_id', comprovantes.map(c => c.id)),
+  ])
+  const urlPorCaminho = new Map((urls.data ?? []).map(u => [u.path, u.signedUrl]))
+  const lancPorNota = new Map((lancamentos.data ?? []).map(l => [l.comprovante_id as string, l]))
+
+  return comprovantes.map(c => ({
+    comprovante: c,
+    url: urlPorCaminho.get(c.storage_path) ?? null,
+    lancamento: lancPorNota.get(c.id) ?? null,
+  }))
 }
 
 // Envia o arquivo, cria a linha na fila e dispara o agente que lê a nota.
