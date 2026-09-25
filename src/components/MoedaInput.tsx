@@ -1,6 +1,7 @@
 import { digitosParaValor, valorParaCampo } from '../lib/format'
 
 type Props = {
+  id?: string
   valor: number
   aoMudar: (valor: number) => void
   placeholder?: string
@@ -9,9 +10,10 @@ type Props = {
 }
 
 // Digitação em centavos: o usuário só toca em números e o campo formata em reais.
-export function MoedaInput({ valor, aoMudar, placeholder = 'R$ 0', style, autoFocus }: Props) {
+export function MoedaInput({ id, valor, aoMudar, placeholder = 'R$ 0', style, autoFocus }: Props) {
   return (
     <input
+      id={id}
       className="inp"
       inputMode="numeric"
       autoFocus={autoFocus}

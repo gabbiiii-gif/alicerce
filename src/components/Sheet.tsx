@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 
 // A folha que sobe de baixo. Quem chama envolve num <AnimatePresence> para a saída
 // acontecer — é justamente o que o CSS não sabe fazer, porque na hora de desmontar o
 // elemento já saiu do DOM antes de qualquer @keyframes rodar.
 export function Sheet({ aoFechar, children }: { aoFechar: () => void; children: ReactNode }) {
   return (
-    <motion.div
+    <m.div
       className="ovl"
       onClick={aoFechar}
       initial={{ opacity: 0 }}
@@ -14,7 +14,7 @@ export function Sheet({ aoFechar, children }: { aoFechar: () => void; children: 
       exit={{ opacity: 0 }}
       transition={{ duration: 0.18 }}
     >
-      <motion.div
+      <m.div
         className="sheet"
         onClick={e => e.stopPropagation()}
         initial={{ y: '100%' }}
@@ -32,7 +32,7 @@ export function Sheet({ aoFechar, children }: { aoFechar: () => void; children: 
       >
         <div className="sheet-alca" />
         {children}
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   )
 }

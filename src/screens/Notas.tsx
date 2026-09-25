@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { listarNotas, type NotaEnviada } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
@@ -31,14 +31,14 @@ export function Notas() {
       )}
 
       {dados?.map((nota, i) => (
-        <motion.div
+        <m.div
           key={nota.comprovante.id}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ ...CURVA, delay: Math.min(i, 8) * 0.035 }}
         >
           <LinhaNota nota={nota} userId={userId} aoConferir={() => navigate(`/obra/${obraId}/revisar/${nota.comprovante.id}`)} />
-        </motion.div>
+        </m.div>
       ))}
 
       {dados && dados.length > 0 && (
@@ -105,7 +105,7 @@ function LinhaNota({ nota, userId, aoConferir }: { nota: NotaEnviada; userId: st
           {c.status === 'lendo' ? 'lendo…' : 'conferir'}
         </button>
       ) : (
-        <span className="chip bta" style={{ background: '#1B8FE8', borderColor: '#1B8FE8', whiteSpace: 'nowrap' }}>lançada</span>
+        <span className="chip bta" style={{ background: '#2272CC', borderColor: '#2272CC', whiteSpace: 'nowrap' }}>lançada</span>
       )}
     </div>
   )

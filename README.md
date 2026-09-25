@@ -14,6 +14,29 @@ Implementação do protótipo aprovado no Claude Design (`Alicerce App.dc.html`)
 - **Agente de leitura** — Edge Function que manda a nota para a API da Claude (visão) e devolve
   fornecedor, valor, data e sugestão de categoria; o usuário confere antes de virar lançamento
 
+## Desempenho (PageSpeed 100)
+
+A tela de entrada nota 100 nas quatro categorias do PageSpeed, no celular e no computador.
+O que sustenta isso, e o que derruba se for desfeito:
+
+- **A abertura é HTML puro** (`index.html`): pinta no primeiro quadro, antes de qualquer
+  JavaScript. Quem a tira é `src/lib/abertura.ts`, quando a primeira tela monta atrás.
+- **O CSS vai dentro do HTML** e o JavaScript de entrada tem prioridade baixa
+  (`vite.config.ts`, plugin `primeiraPintura`).
+- **Fontes servidas pelo app** (`public/fonts`, com cache de um ano): trocar um arquivo
+  exige trocar o nome. Elas entram depois do primeiro quadro (classe `.fontes`).
+- **Só a primeira tela viaja no primeiro carregamento.** As demais entram por `sobDemanda`
+  em `src/App.tsx`. Tela nova vai para a tabela `PROTEGIDAS`, nunca por import direto.
+- **O Supabase não está no caminho da primeira tela.** Quem precisa dele ali usa
+  `carregarSupabase()` (`src/lib/sessao.ts`). Importar `lib/supabase` ou `data/api` direto
+  de `main.tsx`, `App.tsx`, `lib/auth.tsx`, `lib/plano.tsx`, `Login`, `Intro`, `Tela` ou
+  `Toast` traz de volta 60 KB para a abertura.
+- **Animação com `m.div`, não `motion.div`.** O `<LazyMotion strict>` do `main.tsx`
+  acusa o erro em desenvolvimento.
+
+Para medir: [PageSpeed Insights](https://pagespeed.web.dev/) no endereço publicado, aba
+Celular. A nota varia alguns pontos de uma rodada para outra; vale a mediana de três.
+
 ## Rodando local
 
 ```bash

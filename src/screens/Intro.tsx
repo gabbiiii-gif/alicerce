@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { CURVA } from '../lib/animacao'
 
 const CHAVE = 'alicerce:intro-vista'
@@ -61,11 +61,16 @@ export function Intro({ aoTerminar }: { aoTerminar: () => void }) {
     // zIndex acima das rotas: .scr é absolute sem camada própria, e a tela de login
     // desenharia por cima desta — a intro existia, montava e ficava escondida atrás.
     // Abaixo de 50, que é da abertura: ela entra antes e sai por cima.
-    <motion.div
+    //
+    // Montando junto com o app, ela já nasce pronta (AnimatePresence initial={false} no
+    // App.tsx): está atrás da abertura, e quem a apresenta é a saída da abertura. Na saída
+    // dela, desliza para a esquerda e deixa à mostra a tela de entrada, já montada atrás.
+    <m.div
       className="scr"
       style={{ zIndex: 20 }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
+      exit={{ opacity: 0, x: -16 }}
       transition={CURVA}
     >
       <div className="bd" style={{ padding: '26px 24px 22px', gap: 0 }}>
@@ -79,8 +84,8 @@ export function Intro({ aoTerminar }: { aoTerminar: () => void }) {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16 }}>
           {/* A troca anima só o conteúdo: a marca, os pontos e o botão ficam parados,
               então o que muda é o que a pessoa precisa reler. */}
-          <AnimatePresence mode="wait">
-            <motion.div
+          <AnimatePresence mode="wait" initial={false}>
+            <m.div
               key={passo}
               initial={{ opacity: 0, x: 12 }}
               animate={{ opacity: 1, x: 0 }}
@@ -114,14 +119,14 @@ export function Intro({ aoTerminar }: { aoTerminar: () => void }) {
 
               {passo === 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7, paddingTop: 6 }}>
-                  <div style={{ height: 8, borderRadius: 99, background: '#E4EDF8', overflow: 'hidden', display: 'flex' }}>
-                    <motion.div
-                      initial={{ flex: 0 }}
-                      animate={{ flex: 62 }}
+                  <div style={{ height: 8, borderRadius: 99, background: '#E4EDF8', overflow: 'hidden' }}>
+                    {/* Escala em vez de largura: cresce na placa de vídeo, sem recalcular layout. */}
+                    <m.div
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: 0.62 }}
                       transition={{ ...CURVA, delay: 0.15 }}
-                      style={{ background: '#1B8FE8' }}
+                      style={{ background: '#1B8FE8', height: '100%', transformOrigin: 'left' }}
                     />
-                    <div style={{ flex: 38 }} />
                   </div>
                   <div className="row">
                     <span className="note">Entrada + parcelas</span>
@@ -150,13 +155,13 @@ export function Intro({ aoTerminar }: { aoTerminar: () => void }) {
                   <span className="note">Um histórico, dois nomes</span>
                 </div>
               )}
-            </motion.div>
+            </m.div>
           </AnimatePresence>
         </div>
 
         <div className="row" style={{ gap: 5, justifyContent: 'flex-start', paddingBottom: 16, flex: 'none' }}>
           {PASSOS.map((_, i) => (
-            <motion.i
+            <m.i
               key={i}
               animate={{ width: passo === i ? 18 : 6 }}
               transition={{ duration: 0.2 }}
@@ -176,6 +181,6 @@ export function Intro({ aoTerminar }: { aoTerminar: () => void }) {
           {ultimo ? 'já tenho conta' : 'pular'}
         </button>
       </div>
-    </motion.div>
+    </m.div>
   )
 }

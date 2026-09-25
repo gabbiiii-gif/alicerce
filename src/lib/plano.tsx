@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { carregarPlano, planoVale, type PlanoDoGrupo } from '../data/api'
+import type { PlanoDoGrupo } from '../data/api'
+import { planoVale } from './assinatura'
 import { useAuth } from './auth'
 
 // O plano do grupo, carregado uma vez e compartilhado.
@@ -41,6 +42,8 @@ export function PlanoProvider({ children }: { children: ReactNode }) {
     setCarregando(true)
     setErro(null)
     try {
+      // Import dinâmico: a camada de dados puxa o Supabase, que não entra na primeira tela.
+      const { carregarPlano } = await import('../data/api')
       setPlano(await carregarPlano())
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'não deu para ler o plano')

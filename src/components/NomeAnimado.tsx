@@ -1,50 +1,23 @@
-import { useEffect, useRef } from 'react'
-import { animate } from 'animejs/animation'
-import { splitText } from 'animejs/text'
-import { stagger } from 'animejs/utils'
+import type { CSSProperties } from 'react'
 
-// O nome da marca entrando letra a letra, na abertura do app.
+// O nome da marca entrando letra a letra, na tela de entrada.
 //
-// Os imports são por subpath de propósito: assim entra só o pedaço usado do Anime.js,
-// e não a biblioteca inteira. Num app que roda em canteiro de obra, com sinal ruim e
-// celular simples, cada dezena de kB conta.
+// Era Anime.js dividindo o texto depois que a fonte carregava. Agora as letras já nascem
+// separadas e a animação é CSS (.nome-marca em index.css): nenhuma biblioteca no caminho
+// da primeira tela, e a animação começa junto com a saída da abertura (classe `revelado`
+// no <html>), em vez de rodar escondida atrás dela.
 export function NomeAnimado({ texto, className }: { texto: string; className?: string }) {
-  const ref = useRef<HTMLHeadingElement>(null)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-
-    // Quem pediu menos movimento no sistema vê o nome parado, e pronto.
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-
-    let ativo = true
-    let divisao: ReturnType<typeof splitText> | null = null
-
-    // Dividir antes da fonte chegar mede as letras na fonte errada e a linha pula
-    // quando a Instrument Sans finalmente carrega.
-    document.fonts.ready.then(() => {
-      if (!ativo) return
-      // `accessible` mantém a palavra inteira para o leitor de tela, em vez de soletrar.
-      divisao = splitText(el, { chars: true, accessible: true })
-      animate(divisao.chars, {
-        opacity: [0, 1],
-        y: [24, 0],
-        duration: 800,
-        delay: stagger(60),
-        ease: 'out(3)',
-      })
-    })
-
-    return () => {
-      ativo = false
-      divisao?.revert()
-    }
-  }, [texto])
-
   return (
-    <h1 ref={ref} className={className}>
-      {texto}
+    <h1 className={className}>
+      {/* O leitor de tela lê a palavra inteira, não oito letras soltas. */}
+      <span className="so-leitor">{texto}</span>
+      <span aria-hidden="true">
+        {[...texto].map((letra, i) => (
+          <span key={i} style={{ '--i': i } as CSSProperties}>
+            {letra}
+          </span>
+        ))}
+      </span>
     </h1>
   )
 }

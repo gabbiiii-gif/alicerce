@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 
 const ToastContext = createContext<(mensagem: string) => void>(() => {})
 
@@ -22,7 +22,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {/* Antes o aviso sumia de uma vez, porque desmontar não dispara @keyframes. */}
       <AnimatePresence>
         {mensagem && (
-          <motion.div
+          <m.div
             className="toast"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -30,7 +30,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             transition={{ duration: 0.18 }}
           >
             {mensagem}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </ToastContext.Provider>

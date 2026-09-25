@@ -11,6 +11,12 @@ import type { ObraComContas } from '../data/api'
 export const COR_ENTRADA = '#1B8FE8'
 export const COR_SAIDA = '#D97706'
 
+// As mesmas duas cores quando viram texto. As de cima são para barra e legenda; em número
+// pequeno sobre o branco elas ficam abaixo do contraste mínimo de leitura (4,5:1). Estas
+// são o mesmo azul e o mesmo âmbar, um tom mais escuros.
+export const COR_ENTRADA_TEXTO = '#2272CC'
+export const COR_SAIDA_TEXTO = '#B45309'
+
 // Ordem fixa: uma categoria mantém a cor mesmo que outra suma do período. Cor segue a
 // coisa, nunca a posição dela na lista.
 export const CORES_CATEGORIA = ['#1B8FE8', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899']

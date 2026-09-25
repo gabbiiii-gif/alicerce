@@ -99,7 +99,7 @@ export function Plano() {
         <div className="cd">
           <div className="row">
             <b style={{ fontSize: 17 }}>Você é convidado</b>
-            <span className="chip bta" style={{ background: '#1B8FE8', borderColor: '#1B8FE8' }}>liberado</span>
+            <span className="chip bta" style={{ background: '#2272CC', borderColor: '#2272CC' }}>liberado</span>
           </div>
           <div className="note">
             {primeiroNome
@@ -124,7 +124,7 @@ export function Plano() {
         <div className="cd" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <span
             className={vale ? 'chip bta' : 'chip'}
-            style={vale && !ehCortesia ? { background: '#1B8FE8', borderColor: '#1B8FE8' } : undefined}
+            style={vale && !ehCortesia ? { background: '#2272CC', borderColor: '#2272CC' } : undefined}
           >
             {!vale ? 'sem plano' : ehCortesia ? 'cortesia' : 'pago'}
           </span>

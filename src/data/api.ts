@@ -572,11 +572,9 @@ export async function carregarPlano(): Promise<PlanoDoGrupo> {
   return { assinatura, titular: (perfil as Profile) ?? null }
 }
 
-export function planoVale(a: Assinatura | null): boolean {
-  if (!a?.vale_ate) return false
-  // Mesma regra do plano_ativo() no banco (0013): Pix confirmado ou cortesia, dentro do prazo.
-  return ['pix', 'cortesia'].includes(a.status) && new Date(a.vale_ate) > new Date()
-}
+// A regra de validade mora em lib/assinatura.ts: o provedor do plano precisa dela já na
+// primeira tela, e importar este arquivo traria o Supabase inteiro junto.
+export { planoVale } from '../lib/assinatura'
 
 // ---------------------------------------------------------------- pix
 

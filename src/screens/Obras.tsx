@@ -7,7 +7,7 @@ import { fmt } from '../lib/format'
 import { Carregando, Tela, Vazio } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
 import { Barra } from '../components/Barra'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { CURVA } from '../lib/animacao'
 
 export function Obras() {
@@ -30,7 +30,7 @@ export function Obras() {
         {obras?.map((obra, i) => (
           // Os cartões entram em cascata, e o toque afunda um pouco — retorno tátil
           // que o CSS :active dava só no desktop, com mouse.
-          <motion.button
+          <m.button
             key={obra.id}
             className="cd"
             style={{ cursor: 'pointer', textAlign: 'left' }}
@@ -50,7 +50,7 @@ export function Obras() {
               <span className="note">Recebido <span className="num">{fmt(obra.contas.recebido)}</span></span>
               <span className="note">Em aberto <span className="num">{fmt(obra.contas.aberto)}</span></span>
             </div>
-          </motion.button>
+          </m.button>
         ))}
 
         {obras?.length === 0 && (

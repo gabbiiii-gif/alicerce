@@ -1,17 +1,14 @@
-import { lazy, Suspense, useState } from 'react'
+import { useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { lerDestino } from '../lib/destino'
 import { useAviso } from '../components/Toast'
-import { Marca } from '../components/Marca'
 import { Carregando } from '../components/Tela'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { CURVA, TELA } from '../lib/animacao'
-
+import { aberturaSaiu } from '../lib/abertura'
+import { MarcaVolume } from '../components/MarcaVolume'
 import { NomeAnimado } from '../components/NomeAnimado'
-
-// Sob demanda: o Three.js só viaja para quem chega na tela de entrada.
-const MarcaTres = lazy(() => import('../components/MarcaTres'))
 
 export function Login() {
   const { session, carregando, entrarComGoogle } = useAuth()
@@ -43,14 +40,10 @@ export function Login() {
   }
 
   return (
-    <motion.div className="scr" variants={TELA} initial="entra" animate="parada" exit="sai" transition={CURVA}>
+    <m.div className="scr" variants={TELA} initial={aberturaSaiu() ? 'entra' : false} animate="parada" exit="sai" transition={CURVA}>
       <div className="bd" style={{ justifyContent: 'center', gap: 14, padding: '20px 22px' }}>
         <div style={{ alignSelf: 'center', padding: '8px 0 4px' }}>
-          {/* Enquanto o Three.js baixa, a marca chapada já está na tela — e é ela que
-              fica para sempre em quem não tem WebGL. Nunca há um buraco aqui. */}
-          <Suspense fallback={<Marca />}>
-            <MarcaTres />
-          </Suspense>
+          <MarcaVolume />
         </div>
         <div style={{ textAlign: 'center' }}>
           <NomeAnimado texto="Alicerce" className="nome-marca" />
@@ -65,7 +58,7 @@ export function Login() {
         </button>
 
       </div>
-    </motion.div>
+    </m.div>
   )
 }
 

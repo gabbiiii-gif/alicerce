@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { apagarCategoria, carregarObra, criarCategoria, listarCategorias } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
@@ -100,7 +100,7 @@ export function Categorias() {
         {categorias.map((c, i) => {
           const gasto = gastoPorCategoria.get(c.id) ?? 0
           return (
-            <motion.button
+            <m.button
               key={c.id}
               className="li"
               initial={{ opacity: 0, y: 8 }}
@@ -113,7 +113,7 @@ export function Categorias() {
                 <b style={{ fontSize: 14 }}>{c.nome}</b>
               </div>
               <span className="note">{gasto ? fmt(gasto) : 'sem uso'}</span>
-            </motion.button>
+            </m.button>
           )
         })}
 
