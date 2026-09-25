@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { supabase } from './supabase'
+import { carregarSupabase, talvezTenhaSessao } from './sessao'
+import { aoInteragir } from './agenda'
 import { ehNativo, urlDeRetorno } from './plataforma'
 import type { Profile } from './types'
 
@@ -20,15 +21,41 @@ const AuthContext = createContext<Contexto | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [perfil, setPerfil] = useState<Profile | null>(null)
-  const [carregando, setCarregando] = useState(true)
+  // Sem sessão guardada, a resposta já é conhecida: ninguém entrou. A tela de entrada
+  // aparece no primeiro quadro, sem esperar o Supabase baixar (lib/sessao.ts).
+  const [carregando, setCarregando] = useState(talvezTenhaSessao)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setCarregando(false)
-    })
-    const { data: sub } = supabase.auth.onAuthStateChange((_evento, nova) => setSession(nova))
-    return () => sub.subscription.unsubscribe()
+    let ativo = true
+    let desligar = () => {}
+    const ligar = async () => {
+      try {
+        const supabase = await carregarSupabase()
+        if (!ativo) return
+        const { data } = await supabase.auth.getSession()
+        if (!ativo) return
+        setSession(data.session)
+        const { data: sub } = supabase.auth.onAuthStateChange((_evento, nova) => setSession(nova))
+        desligar = () => sub.subscription.unsubscribe()
+      } catch {
+        // O Supabase não baixou (sem sinal e sem o app guardado no aparelho). Melhor cair
+        // na tela de entrada, que tenta de novo no toque, do que ficar na abertura para
+        // sempre.
+      } finally {
+        if (ativo) setCarregando(false)
+      }
+    }
+    // Com sessão possível, o Supabase é o caminho da primeira tela e vem já. Sem sessão,
+    // ele só serve a quem vai entrar: começa a baixar no primeiro toque — na intro, ou no
+    // próprio "Continuar com Google", que de todo modo espera por ele antes de sair
+    // para o Google. Quem só olha a tela de entrada não paga o download.
+    const esquecer = carregando ? (ligar(), () => {}) : aoInteragir(ligar)
+    return () => {
+      ativo = false
+      esquecer()
+      desligar()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // No app empacotado o Google volta pelo esquema app.alicerce:// em vez de uma URL,
@@ -44,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const codigo = params.get('code')
         // O Google devolve `error` quando a pessoa cancela ou nega o acesso.
         if (!codigo && !params.get('error')) return
-        if (codigo) await supabase.auth.exchangeCodeForSession(codigo)
+        if (codigo) await (await carregarSupabase()).auth.exchangeCodeForSession(codigo)
         await Browser.close().catch(() => {})
       })
       cancelar = () => ouvinte.remove()
@@ -55,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const buscarPerfil = useCallback(async (userId: string) => {
     // O perfil nasce de um trigger no banco junto com a conta. No primeiro login pelo
     // Google os dois acontecem no mesmo instante, então vale uma segunda tentativa.
+    const supabase = await carregarSupabase()
     for (let tentativa = 0; tentativa < 3; tentativa++) {
       const { data } = await supabase
         .from('profiles')
@@ -86,10 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       perfil,
       carregando,
       entrar: async (email, senha) => {
+        const supabase = await carregarSupabase()
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: senha })
         if (error) throw new Error(traduzErro(error.message))
       },
       cadastrar: async (nome, email, senha) => {
+        const supabase = await carregarSupabase()
         const { error } = await supabase.auth.signUp({
           email: email.trim(),
           password: senha,
@@ -99,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       entrarComGoogle: async () => {
         const nativo = ehNativo()
+        const supabase = await carregarSupabase()
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -116,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       sair: async () => {
-        await supabase.auth.signOut()
+        await (await carregarSupabase()).auth.signOut()
       },
     }),
     [session, perfil, carregando],

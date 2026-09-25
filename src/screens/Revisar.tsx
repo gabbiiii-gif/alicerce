@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   carregarComprovante, carregarObra, descartarComprovante, listarCategorias,
@@ -12,6 +12,8 @@ import { Carregando, Tela } from '../components/Tela'
 import { MoedaInput } from '../components/MoedaInput'
 
 export function Revisar() {
+  // Liga cada rótulo ao seu campo: tocar no rótulo foca o campo, e o leitor de tela diz o nome.
+  const campo = useId()
   const { obraId = '', comprovanteId = '' } = useParams()
   const navigate = useNavigate()
   const { userId } = useUsuario()
@@ -114,7 +116,7 @@ export function Revisar() {
       )}
 
       <div className="row">
-        <span className="chip bta" style={{ background: '#1B8FE8', borderColor: '#1B8FE8' }}>
+        <span className="chip bta" style={{ background: '#2272CC', borderColor: '#2272CC' }}>
           {/* Só 'pronto' veio do agente. 'lendo' aqui é a nota que travou e o usuário abriu na mão. */}
           {comprovante.status === 'pronto' ? 'lido pelo agente' : 'preencha na mão'}
         </span>
@@ -123,11 +125,12 @@ export function Revisar() {
 
       {comprovante.status === 'erro' && comprovante.erro && <div className="ann">O agente não conseguiu ler: {comprovante.erro}</div>}
 
-      <div className="note">Fornecedor</div>
-      <input className="inp" value={fornecedor} onChange={e => setFornecedor(e.target.value)} />
+      <label className="note" htmlFor={`${campo}-fornecedor`}>Fornecedor</label>
+      <input id={`${campo}-fornecedor`} className="inp" value={fornecedor} onChange={e => setFornecedor(e.target.value)} />
 
-      <div className="note">Descrição</div>
+      <label className="note" htmlFor={`${campo}-descricao`}>Descrição</label>
       <input
+        id={`${campo}-descricao`}
         className="inp"
         placeholder="O que foi comprado (opcional)"
         value={descricao}
@@ -137,12 +140,12 @@ export function Revisar() {
 
       <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }}>
-          <div className="note">Valor</div>
-          <MoedaInput valor={valor} aoMudar={setValor} />
+          <label className="note" htmlFor={`${campo}-valor`}>Valor</label>
+          <MoedaInput id={`${campo}-valor`} valor={valor} aoMudar={setValor} />
         </div>
         <div style={{ flex: 1 }}>
-          <div className="note">Data</div>
-          <input className="inp" inputMode="numeric" placeholder="dd/mm/aaaa" value={data} onChange={e => setData(e.target.value)} />
+          <label className="note" htmlFor={`${campo}-data`}>Data</label>
+          <input id={`${campo}-data`} className="inp" inputMode="numeric" placeholder="dd/mm/aaaa" value={data} onChange={e => setData(e.target.value)} />
         </div>
       </div>
 
@@ -152,7 +155,7 @@ export function Revisar() {
           <button
             key={c.id}
             className={categoriaId === c.id ? 'chip bta' : 'chip'}
-            style={categoriaId === c.id ? { background: '#1B8FE8', borderColor: '#1B8FE8' } : undefined}
+            style={categoriaId === c.id ? { background: '#2272CC', borderColor: '#2272CC' } : undefined}
             onClick={() => setCategoriaId(c.id)}
           >
             {c.nome}

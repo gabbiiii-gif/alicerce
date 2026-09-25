@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { carregarObra, carregarRelatorioGeral, listarObras, notasDosLancamentos, type NotaDoRelatorio } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useAviso } from '../components/Toast'
@@ -215,7 +215,7 @@ export function Relatorios() {
               <span className="note">No período</span>
             </div>
             {relatorio.porObra.map((o, i) => (
-              <motion.button
+              <m.button
                 key={o.id}
                 className="li"
                 initial={{ opacity: 0, y: 8 }}
@@ -228,7 +228,7 @@ export function Relatorios() {
                   <div className="note">entrou {curto(o.entradas)}</div>
                 </div>
                 <b className="num" style={{ fontSize: 13.5 }}>−{semSimbolo(o.saidas)}</b>
-              </motion.button>
+              </m.button>
             ))}
           </>
         )}
@@ -352,7 +352,7 @@ function ColunasPessoas({ relatorio, notas }: { relatorio: Relatorio; notas: Map
                     href={nota.url}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ display: 'block', marginTop: 4, textDecoration: 'none', color: '#1B8FE8', fontSize: 12, fontWeight: 600 }}
+                    style={{ display: 'block', marginTop: 4, textDecoration: 'none', color: '#2272CC', fontSize: 12, fontWeight: 600 }}
                   >
                     {ehFoto ? (
                       <img

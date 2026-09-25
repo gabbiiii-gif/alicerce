@@ -1,11 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
+// Este módulo é pesado e só entra por import dinâmico (lib/sessao.ts) ou pelas telas, que
+// já são carregadas sob demanda. Importá-lo direto de algo que está na primeira tela
+// devolve o Supabase inteiro para o caminho do primeiro carregamento.
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-// Sem as duas chaves não há servidor para conversar. Em vez de derrubar o app com uma
-// tela branca, o main.tsx mostra o que falta preencher.
-export const configurado = Boolean(url && anonKey)
 
 export const supabase = createClient(url || 'http://localhost:54321', anonKey || 'sem-chave', {
   auth: {

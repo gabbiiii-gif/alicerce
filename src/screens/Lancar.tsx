@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { carregarObra, listarCategorias, registrarSaida } from '../data/api'
 import { useAsync } from '../lib/hooks'
@@ -11,6 +11,8 @@ import { MoedaInput } from '../components/MoedaInput'
 // A saída sem nota: mesma ficha do Revisar, sem agente no meio. Serve para a compra que
 // não tem comprovante para fotografar e para quem prefere digitar a esperar a leitura.
 export function Lancar() {
+  // Liga cada rótulo ao seu campo: tocar no rótulo foca o campo, e o leitor de tela diz o nome.
+  const campo = useId()
   const { obraId = '' } = useParams()
   const navigate = useNavigate()
   const { userId } = useUsuario()
@@ -77,11 +79,12 @@ export function Lancar() {
         <span className="note">{obra.nome}</span>
       </div>
 
-      <div className="note">Fornecedor</div>
-      <input className="inp" value={fornecedor} onChange={e => setFornecedor(e.target.value)} autoFocus />
+      <label className="note" htmlFor={`${campo}-fornecedor`}>Fornecedor</label>
+      <input id={`${campo}-fornecedor`} className="inp" value={fornecedor} onChange={e => setFornecedor(e.target.value)} autoFocus />
 
-      <div className="note">Descrição</div>
+      <label className="note" htmlFor={`${campo}-descricao`}>Descrição</label>
       <input
+        id={`${campo}-descricao`}
         className="inp"
         placeholder="O que foi comprado (opcional)"
         value={descricao}
@@ -91,12 +94,12 @@ export function Lancar() {
 
       <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }}>
-          <div className="note">Valor</div>
-          <MoedaInput valor={valor} aoMudar={setValor} />
+          <label className="note" htmlFor={`${campo}-valor`}>Valor</label>
+          <MoedaInput id={`${campo}-valor`} valor={valor} aoMudar={setValor} />
         </div>
         <div style={{ flex: 1 }}>
-          <div className="note">Data</div>
-          <input className="inp" inputMode="numeric" placeholder="dd/mm/aaaa" value={data} onChange={e => setData(e.target.value)} />
+          <label className="note" htmlFor={`${campo}-data`}>Data</label>
+          <input id={`${campo}-data`} className="inp" inputMode="numeric" placeholder="dd/mm/aaaa" value={data} onChange={e => setData(e.target.value)} />
         </div>
       </div>
 
@@ -106,7 +109,7 @@ export function Lancar() {
           <button
             key={c.id}
             className={categoriaId === c.id ? 'chip bta' : 'chip'}
-            style={categoriaId === c.id ? { background: '#1B8FE8', borderColor: '#1B8FE8' } : undefined}
+            style={categoriaId === c.id ? { background: '#2272CC', borderColor: '#2272CC' } : undefined}
             onClick={() => setCategoriaId(c.id)}
           >
             {c.nome}

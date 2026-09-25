@@ -106,10 +106,12 @@ export function Perfil() {
           </div>
           <span className="note">{enviando ? 'enviando…' : '›'}</span>
         </button>
-        <div className="li" style={{ cursor: 'default', opacity: .6 }}>
+        {/* Desligado de verdade (disabled), como o resto da lista é de botões: o leitor de
+            tela anuncia "indisponível" em vez de ler uma linha solta. */}
+        <button className="li" disabled style={{ cursor: 'default', opacity: .6 }}>
           <b style={{ fontSize: 14 }}>Resumo no WhatsApp</b>
           <span className="note">Em breve</span>
-        </div>
+        </button>
 
         {socios.length > 0 && (
           <button

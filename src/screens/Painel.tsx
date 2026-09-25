@@ -9,7 +9,7 @@ import { useObraAtual } from '../lib/obraAtual'
 import { usePlano } from '../lib/plano'
 import { useAviso } from '../components/Toast'
 import { curto, dataCurta, fmt, semSimbolo } from '../lib/format'
-import { Carregando, Tela } from '../components/Tela'
+import { Tela, TelaCarregando } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
 import { AvisoPlano } from '../components/AvisoPlano'
 import { ValorAnimado } from '../components/ValorAnimado'
@@ -17,7 +17,7 @@ import { Barra } from '../components/Barra'
 import { Sheet } from '../components/Sheet'
 import { MoedaInput } from '../components/MoedaInput'
 import { RepassesSheet } from '../components/RepassesSheet'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { CURVA } from '../lib/animacao'
 import type { Aditivo, Lancamento } from '../lib/types'
 
@@ -64,7 +64,9 @@ export function Painel() {
     }
   }, [selecionado])
 
-  if (carregando) return <Carregando />
+  // Só a primeira carga troca a tela pelo esqueleto. Recarregar depois de lançar mantém os
+  // números na tela e deixa eles andarem até o valor novo, em vez de piscar a tela inteira.
+  if (carregando && !dados) return <TelaCarregando />
   if (erro || !dados) {
     return (
       <Tela titulo="Obra" voltar="/">
@@ -182,7 +184,7 @@ export function Painel() {
         {lancamentos.map((l, i) => (
           // Em cascata, não todos de uma vez. O atraso para no oitavo item: numa obra
           // com cem lançamentos, esperar a cascata inteira seria pior que não ter.
-          <motion.button
+          <m.button
             key={l.id}
             className="li"
             initial={{ opacity: 0, y: 8 }}
@@ -198,7 +200,7 @@ export function Painel() {
               </div>
             </div>
             <b className="num" style={{ fontSize: 13.5 }}>{(l.tipo === 'saida' ? '−' : '+') + semSimbolo(l.valor)}</b>
-          </motion.button>
+          </m.button>
         ))}
 
         {lancamentos.length === 0 && <div className="dsh" style={{ padding: 18 }}>Nenhum lançamento nesta obra ainda</div>}

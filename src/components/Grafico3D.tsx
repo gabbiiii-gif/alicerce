@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import type { MesResumo } from '../lib/dashboard'
 import { COR_ENTRADA, COR_SAIDA } from '../lib/dashboard'
 import { curto } from '../lib/format'
@@ -22,8 +22,8 @@ type Valor = { id: string; x: number; y: number; texto: string; cor: string }
 // conforme a posição — o 3D passaria a mentir sobre o dado. Na ortográfica a
 // profundidade é só sombreamento; a altura continua proporcional ao valor.
 //
-// O three.js entra por import dinâmico, como na marca da tela de entrada: quem não abre
-// o resumo não paga o download da biblioteca.
+// O three.js entra por import dinâmico: quem não abre o resumo não paga o download da
+// biblioteca. É o único lugar do app que ainda usa o three.js.
 export function Grafico3D({ meses, maior }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const [rotulos, setRotulos] = useState<Rotulo[]>([])
@@ -98,13 +98,13 @@ export function Grafico3D({ meses, maior }: Props) {
       type Barra = { malha: import('three').Mesh; alvo: number; mes: MesResumo; valor: number; cor: string }
       const barras: Barra[] = []
 
-      meses.forEach((m, i) => {
+      meses.forEach((mes, i) => {
         const base = x0 + i * passo
         // Entrada à esquerda, saída à direita: a ordem é sempre a mesma, então a
         // comparação é a mesma leitura em todos os meses.
         ;([
-          { valor: m.entradas, cor: COR_ENTRADA, desloca: -largura * 0.62 },
-          { valor: m.saidas, cor: COR_SAIDA, desloca: largura * 0.62 },
+          { valor: mes.entradas, cor: COR_ENTRADA, desloca: -largura * 0.62 },
+          { valor: mes.saidas, cor: COR_SAIDA, desloca: largura * 0.62 },
         ] as const).forEach(b => {
           // Altura mínima visível: uma barra de valor pequeno mas não-zero precisa
           // aparecer, senão o mês parece vazio quando não está.
@@ -116,7 +116,7 @@ export function Grafico3D({ meses, maior }: Props) {
           malha.position.set(base + b.desloca, 0, 0)
           malha.scale.y = 0.0001
           cena.add(malha)
-          barras.push({ malha, alvo, mes: m, valor: b.valor, cor: b.cor })
+          barras.push({ malha, alvo, mes, valor: b.valor, cor: b.cor })
         })
       })
 
@@ -128,12 +128,12 @@ export function Grafico3D({ meses, maior }: Props) {
         const v = new THREE.Vector3()
         const saida: Rotulo[] = []
         let base = 0
-        meses.forEach((m, i) => {
+        meses.forEach((mes, i) => {
           v.set(x0 + i * passo, 0, 1.5)
           v.project(camera)
           const y = ((-v.y + 1) / 2) * A
           base = Math.max(base, y)
-          saida.push({ chave: m.chave, x: ((v.x + 1) / 2) * L, y, texto: m.rotulo })
+          saida.push({ chave: mes.chave, x: ((v.x + 1) / 2) * L, y, texto: mes.rotulo })
         })
         // Todos na mesma linha: seguindo a diagonal da perspectiva, os rótulos viram uma
         // escada que cruza as barras e fica difícil saber qual é de qual.
@@ -224,13 +224,13 @@ export function Grafico3D({ meses, maior }: Props) {
   if (semWebGL) {
     return (
       <div className="row" style={{ alignItems: 'flex-end', gap: 6, height: 150, padding: '0 2px' }}>
-        {meses.map(m => (
-          <div key={m.chave} style={{ flex: 1, textAlign: 'center' }}>
+        {meses.map(mes => (
+          <div key={mes.chave} style={{ flex: 1, textAlign: 'center' }}>
             <div className="row" style={{ alignItems: 'flex-end', gap: 3, height: 118, justifyContent: 'center' }}>
-              <div style={{ width: 10, borderRadius: '3px 3px 0 0', background: COR_ENTRADA, height: `${(m.entradas / maior) * 100}%` }} />
-              <div style={{ width: 10, borderRadius: '3px 3px 0 0', background: COR_SAIDA, height: `${(m.saidas / maior) * 100}%` }} />
+              <div style={{ width: 10, borderRadius: '3px 3px 0 0', background: COR_ENTRADA, height: `${(mes.entradas / maior) * 100}%` }} />
+              <div style={{ width: 10, borderRadius: '3px 3px 0 0', background: COR_SAIDA, height: `${(mes.saidas / maior) * 100}%` }} />
             </div>
-            <div className="note" style={{ fontSize: 11 }}>{m.rotulo}</div>
+            <div className="note" style={{ fontSize: 11 }}>{mes.rotulo}</div>
           </div>
         ))}
       </div>
@@ -241,7 +241,7 @@ export function Grafico3D({ meses, maior }: Props) {
     <div style={{ position: 'relative' }}>
       <div ref={container} style={{ width: '100%', height: 230 }} />
       {valores.map(v => (
-        <motion.span
+        <m.span
           key={v.id}
           className="num"
           initial={{ opacity: 0 }}
@@ -260,7 +260,7 @@ export function Grafico3D({ meses, maior }: Props) {
           }}
         >
           {v.texto}
-        </motion.span>
+        </m.span>
       ))}
       {rotulos.map(r => (
         <span
@@ -283,11 +283,11 @@ export function Grafico3D({ meses, maior }: Props) {
       <table style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
         <caption>Entradas e saídas por mês</caption>
         <tbody>
-          {meses.map(m => (
-            <tr key={m.chave}>
-              <th scope="row">{m.rotulo}</th>
-              <td>entrou {curto(m.entradas)}</td>
-              <td>saiu {curto(m.saidas)}</td>
+          {meses.map(mes => (
+            <tr key={mes.chave}>
+              <th scope="row">{mes.rotulo}</th>
+              <td>entrou {curto(mes.entradas)}</td>
+              <td>saiu {curto(mes.saidas)}</td>
             </tr>
           ))}
         </tbody>

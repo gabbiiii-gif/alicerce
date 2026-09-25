@@ -9,7 +9,7 @@ import { fmt, isoParaBR } from '../lib/format'
 import { Carregando, Tela } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
 import { AvisoPlano } from '../components/AvisoPlano'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { CURVA } from '../lib/animacao'
 import type { Comprovante } from '../lib/types'
 
@@ -126,13 +126,19 @@ export function Enviar() {
           </div>
         </button>
 
-        <div className="cd" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, opacity: .6 }}>
+        {/* Desligado de verdade (disabled), e não só apagado: o leitor de tela anuncia
+            "indisponível", e o cartão não parece um botão que não responde. */}
+        <button
+          className="cd"
+          disabled
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, opacity: .6, textAlign: 'left', cursor: 'default', color: 'inherit' }}
+        >
           <div className="dsh" style={{ width: 40, height: 40, padding: 0 }}>↗</div>
           <div>
             <b style={{ fontSize: 15 }}>Mandar pro agente</b>
             <div className="note">WhatsApp e e-mail — em breve</div>
           </div>
-        </div>
+        </button>
 
         <div className="row" style={{ marginTop: 4 }}>
           <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Na fila</span>
@@ -150,7 +156,7 @@ export function Enviar() {
           const parado = parou(c)
           const daParaAbrir = pronto || falhou || parado
           return (
-            <motion.button
+            <m.button
               key={c.id}
               className="li"
               layout
@@ -183,11 +189,11 @@ export function Enviar() {
               </div>
               <span
                 className={pronto ? 'chip bta' : 'chip'}
-                style={pronto ? { background: '#1B8FE8', borderColor: '#1B8FE8' } : { border: 'none', color: '#5B7392' }}
+                style={pronto ? { background: '#2272CC', borderColor: '#2272CC' } : { border: 'none', color: '#5B7392' }}
               >
                 {pronto ? 'revisar' : falhou || parado ? 'conferir' : 'aguarde'}
               </span>
-            </motion.button>
+            </m.button>
           )
         })}
         </AnimatePresence>

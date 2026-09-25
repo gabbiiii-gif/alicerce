@@ -2,16 +2,98 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+    <!-- Sem maximum-scale: travar o zoom tira de quem enxerga pouco a única saída. O zoom
+         que atrapalhava (o do iPhone ao tocar num campo) não volta, porque todo campo tem
+         16px — abaixo disso é que o Safari amplia a tela sozinho. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Alicerce — obras e gastos no lugar certo</title>
+    <meta name="description" content="Controle de obras para engenheiros e pequenas construtoras: valor fechado, entradas, saldo em aberto e notas lidas automaticamente, com histórico dividido entre os sócios." />
     <meta name="theme-color" content="#0A2A6E" />
+    <!-- O app é claro de propósito. Sem isto, o "modo escuro forçado" de alguns navegadores
+         Android inverte as cores e o navy vira outra coisa. -->
+    <meta name="color-scheme" content="light" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Alicerce" />
+    <link rel="canonical" href="https://appalicerce.com.br/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <title>Alicerce</title>
+    <!-- A prévia do link no WhatsApp: é por onde o convite de sócio chega. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Alicerce" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:url" content="https://appalicerce.com.br/" />
+    <meta property="og:title" content="Alicerce — obras e gastos no lugar certo" />
+    <meta property="og:description" content="Valor fechado, entradas, saldo em aberto e notas lidas automaticamente, com histórico dividido entre os sócios." />
+    <meta property="og:image" content="https://appalicerce.com.br/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
+    <style>
+      /* A abertura mora aqui, e não num componente React: pinta junto com o HTML, antes de
+         qualquer JavaScript chegar. Antes, a tela ficava em branco enquanto o app baixava,
+         e só então a abertura começava — duas esperas somadas. Agora é uma só, e com a
+         marca na tela desde o primeiro quadro.
+
+         A animação é CSS de propósito: roda na thread de composição, então segue lisa
+         mesmo com o celular ocupado lendo o JavaScript. Quem tira a abertura é o app
+         (src/lib/abertura.ts), assim que a primeira tela de verdade está montada atrás. */
+      #abertura {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        background: #0A2A6E;
+        padding-top: env(safe-area-inset-top);
+        transition: opacity .32s cubic-bezier(.4, 0, .2, 1), transform .32s cubic-bezier(.4, 0, .2, 1);
+      }
+      #abertura.saindo {
+        opacity: 0;
+        transform: scale(1.04);
+        pointer-events: none;
+      }
+      #abertura svg { display: block; width: 124px; height: 86px; overflow: visible; }
+      #abertura .ab { animation: ab-sobe .5s cubic-bezier(.22, .8, .3, 1) both; }
+      #abertura .ab:nth-child(2) { animation-delay: .07s; }
+      #abertura .ab:nth-child(3) { animation-delay: .14s; }
+      #abertura .ab:nth-child(4) { animation-delay: .21s; }
+      #abertura .ab:nth-child(5) { animation-delay: .3s; }
+      @keyframes ab-sobe { from { opacity: 0; transform: translateY(8px); } }
+      /* Só aparece se o app demorar: em canteiro de obra, sinal fraco é o normal, e uma
+         abertura parada sem explicação parece app travado. */
+      #abertura p {
+        position: absolute;
+        bottom: calc(40px + env(safe-area-inset-bottom));
+        margin: 0;
+        padding: 0 24px;
+        text-align: center;
+        font: 13px/1.4 system-ui, sans-serif;
+        color: rgba(255, 255, 255, .72);
+        animation: ab-aparece .4s 6s both;
+      }
+      @keyframes ab-aparece { from { opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) {
+        #abertura .ab { animation: none; }
+        #abertura { transition-duration: .01s; }
+      }
+    </style>
   </head>
   <body>
+    <div id="abertura" aria-hidden="true">
+      <!-- A marca e o nome em vetor: o "ALICERCE" são os contornos da Instrument Sans 500,
+           então aparece com a letra certa sem esperar a fonte baixar. -->
+      <svg viewBox="0 0 124 86" xmlns="http://www.w3.org/2000/svg">
+        <rect class="ab" x="39" y="0" width="46" height="10" fill="#6CB4F0" />
+        <rect class="ab" x="29" y="14" width="66" height="10" fill="#FFFFFF" />
+        <rect class="ab" x="33" y="28" width="58" height="10" fill="#6CB4F0" />
+        <rect class="ab" x="26" y="42" width="72" height="10" fill="#1B8FE8" />
+        <g class="ab">
+          <path fill="#FFFFFF" transform="translate(-0.39 85.33) scale(0.021)" d="M32 0 303 -720H395L136 0ZM589 0 330 -720H427L699 0ZM169 -287H555V-199H169ZM945 0V-720H1051V0ZM997 0V-87H1413V0ZM1674 0V-720H1780V0ZM2385 10Q2310 10 2246 -18Q2182 -45 2136 -94Q2089 -144 2063 -212Q2037 -280 2037 -361Q2037 -442 2062 -510Q2088 -577 2134 -626Q2181 -676 2245 -703Q2309 -730 2384 -730Q2468 -730 2535 -696Q2602 -663 2644 -602Q2687 -541 2697 -460H2593Q2580 -545 2524 -592Q2469 -640 2385 -640Q2314 -640 2260 -606Q2205 -571 2175 -508Q2145 -446 2145 -361Q2145 -277 2176 -214Q2206 -150 2260 -115Q2314 -80 2385 -80Q2469 -80 2526 -128Q2582 -175 2594 -260H2699Q2688 -178 2645 -118Q2602 -57 2536 -24Q2469 10 2385 10ZM2952 0V-720H3058V0ZM3004 0V-87H3452V0ZM3004 -329V-416H3416V-329ZM3004 -633V-720H3443V-633ZM3725 0V-720H4009Q4087 -720 4142 -694Q4197 -669 4227 -624Q4257 -578 4257 -516Q4257 -454 4227 -408Q4197 -362 4142 -336Q4087 -310 4009 -310H3805V-396H4006Q4078 -396 4116 -428Q4153 -459 4153 -515Q4153 -571 4116 -602Q4079 -633 4006 -633H3831V0ZM4141 0 3790 -363H3919L4293 0ZM4843 10Q4768 10 4704 -18Q4640 -45 4594 -94Q4547 -144 4521 -212Q4495 -280 4495 -361Q4495 -442 4520 -510Q4546 -577 4592 -626Q4639 -676 4703 -703Q4767 -730 4842 -730Q4926 -730 4993 -696Q5060 -663 5102 -602Q5145 -541 5155 -460H5051Q5038 -545 4982 -592Q4927 -640 4843 -640Q4772 -640 4718 -606Q4663 -571 4633 -508Q4603 -446 4603 -361Q4603 -277 4634 -214Q4664 -150 4718 -115Q4772 -80 4843 -80Q4927 -80 4984 -128Q5040 -175 5052 -260H5157Q5146 -178 5103 -118Q5060 -57 4994 -24Q4927 10 4843 10ZM5410 0V-720H5516V0ZM5462 0V-87H5910V0ZM5462 -329V-416H5874V-329ZM5462 -633V-720H5901V-633Z" />
+        </g>
+      </svg>
+      <p>Sinal fraco? O Alicerce continua carregando…</p>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

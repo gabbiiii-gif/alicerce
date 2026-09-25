@@ -28,7 +28,7 @@ export function TabBar({ ativa }: { ativa: Aba }) {
   const cor = (aba: Aba) => (ativa === aba ? '#1B8FE8' : 'none')
 
   return (
-    <div className="tb">
+    <nav className="tb" aria-label="Seções do app">
       <button className={ativa === 'resumo' ? 'ativa' : ''} onClick={() => irPara('resumo')}>
         {/* Quatro quadrantes: o ícone de painel, distinto das barras de relatório. */}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
@@ -70,6 +70,6 @@ export function TabBar({ ativa }: { ativa: Aba }) {
         </svg>
         Perfil
       </button>
-    </div>
+    </nav>
   )
 }

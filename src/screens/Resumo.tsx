@@ -1,11 +1,11 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { carregarRelatorioGeral, listarObras } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
 import { useObraAtual } from '../lib/obraAtual'
-import { montarVisao, COR_ENTRADA, COR_SAIDA } from '../lib/dashboard'
+import { montarVisao, COR_ENTRADA, COR_ENTRADA_TEXTO, COR_SAIDA, COR_SAIDA_TEXTO } from '../lib/dashboard'
 import { curto, dataCurta, fmt, semSimbolo } from '../lib/format'
 import { CURVA } from '../lib/animacao'
 import { Carregando, Tela, Vazio } from '../components/Tela'
@@ -74,7 +74,7 @@ export function Resumo() {
             {/* A margem vem primeiro, e não o faturamento: é ela que diz se a obra se
                 paga hoje. Negativa significa tocar a obra com dinheiro que ainda não
                 entrou — a informação que mais cedo muda uma decisão. */}
-            <motion.div
+            <m.div
               className="cd"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -99,24 +99,24 @@ export function Resumo() {
                   ? `dá para ${visao.mesesDeFolego.toFixed(1).replace('.', ',')} ${visao.mesesDeFolego < 2 ? 'mês' : 'meses'} no ritmo atual`
                   : `a receber ${fmt(visao.aberto)} · ${visao.obrasAtivas} ${visao.obrasAtivas === 1 ? 'obra' : 'obras'}`}
               </span>
-            </motion.div>
+            </m.div>
 
             <div className="row" style={{ gap: 8, alignItems: 'stretch' }}>
               {[
                 { rotulo: 'a receber', valor: fmt(visao.aberto) },
                 { rotulo: 'ritmo mensal', valor: fmt(visao.ritmoMensal) },
-              ].map((m, i) => (
-                <motion.div
-                  key={m.rotulo}
+              ].map((item, i) => (
+                <m.div
+                  key={item.rotulo}
                   className="cd"
                   style={{ flex: 1, gap: 2 }}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ ...CURVA, delay: 0.05 + i * 0.05 }}
                 >
-                  <span className="note">{m.rotulo}</span>
-                  <b className="num" style={{ fontSize: 17 }}>{m.valor}</b>
-                </motion.div>
+                  <span className="note">{item.rotulo}</span>
+                  <b className="num" style={{ fontSize: 17 }}>{item.valor}</b>
+                </m.div>
               ))}
             </div>
 
@@ -139,11 +139,11 @@ export function Resumo() {
             <div className="cd" style={{ gap: 5 }}>
               <div className="row">
                 <span className="note">Entrou este mês</span>
-                <b className="num" style={{ fontSize: 14, color: COR_ENTRADA }}>+{semSimbolo(visao.mesEntradas)}</b>
+                <b className="num" style={{ fontSize: 14, color: COR_ENTRADA_TEXTO }}>+{semSimbolo(visao.mesEntradas)}</b>
               </div>
               <div className="row">
                 <span className="note">Saiu este mês</span>
-                <b className="num" style={{ fontSize: 14, color: COR_SAIDA }}>−{semSimbolo(visao.mesSaidas)}</b>
+                <b className="num" style={{ fontSize: 14, color: COR_SAIDA_TEXTO }}>−{semSimbolo(visao.mesSaidas)}</b>
               </div>
               <div className="row" style={{ borderTop: '1px solid var(--linha)', paddingTop: 5 }}>
                 <span style={{ fontSize: 14 }}>Do contrato já executado</span>
@@ -155,7 +155,7 @@ export function Resumo() {
               <>
                 <Titulo texto="Onde o dinheiro foi" nota="este mês" />
                 {visao.categorias.map((c, i) => (
-                  <motion.div
+                  <m.div
                     key={c.nome}
                     className="row"
                     initial={{ opacity: 0, x: -6 }}
@@ -166,7 +166,7 @@ export function Resumo() {
                         sozinha — sob daltonismo duas destas ficam próximas. */}
                     <span className="note" style={{ width: 92, flex: 'none' }}>{c.nome}</span>
                     <div style={{ flex: 1, height: 9, borderRadius: 5, background: 'var(--linha-suave)', overflow: 'hidden' }}>
-                      <motion.div
+                      <m.div
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.max(c.pct, 3)}%` }}
                         transition={{ ...CURVA, delay: 0.1 + Math.min(i, 6) * 0.04 }}
@@ -174,7 +174,7 @@ export function Resumo() {
                       />
                     </div>
                     <b className="num" style={{ fontSize: 12.5, width: 56, textAlign: 'right' }}>{curto(c.valor)}</b>
-                  </motion.div>
+                  </m.div>
                 ))}
               </>
             )}
@@ -206,7 +206,7 @@ export function Resumo() {
                         <span className="num">{dataCurta(l.data)}</span> · {l.obra?.nome ?? 'obra'}
                       </span>
                     </div>
-                    <b className="num" style={{ fontSize: 13, color: l.tipo === 'saida' ? COR_SAIDA : COR_ENTRADA }}>
+                    <b className="num" style={{ fontSize: 13, color: l.tipo === 'saida' ? COR_SAIDA_TEXTO : COR_ENTRADA_TEXTO }}>
                       {l.tipo === 'saida' ? '−' : '+'}{semSimbolo(l.valor)}
                     </b>
                   </div>

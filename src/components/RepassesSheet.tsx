@@ -128,7 +128,7 @@ export function RepassesSheet({
                 <button
                   key={p.id}
                   className={outro?.id === p.id ? 'chip bta' : 'chip'}
-                  style={outro?.id === p.id ? { background: '#1B8FE8', borderColor: '#1B8FE8' } : undefined}
+                  style={outro?.id === p.id ? { background: '#2272CC', borderColor: '#2272CC' } : undefined}
                   onClick={() => setOutroId(p.id)}
                 >
                   {primeiro(p.nome)}
