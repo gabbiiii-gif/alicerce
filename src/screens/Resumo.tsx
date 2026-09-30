@@ -13,6 +13,8 @@ import { TabBar } from '../components/TabBar'
 import { AvisoPlano } from '../components/AvisoPlano'
 import { ValorAnimado } from '../components/ValorAnimado'
 import { Grafico3D } from '../components/Grafico3D'
+import { Sino } from '../components/Sino'
+import { useNovidades } from '../lib/notificacoes'
 
 function Titulo({ texto, nota }: { texto: string; nota?: string }) {
   return (
@@ -32,6 +34,9 @@ export function Resumo() {
     const [obras, geral] = await Promise.all([listarObras(), carregarRelatorioGeral()])
     return { obras, lancamentos: geral.lancamentos }
   }, [])
+
+  // O sócio lançou em qualquer obra: os números daqui mudam, então a tela se refaz sozinha.
+  useNovidades(() => recarregar())
 
   const visao = useMemo(() => (dados ? montarVisao(dados.obras, dados.lancamentos) : null), [dados])
 
@@ -61,7 +66,16 @@ export function Resumo() {
 
   return (
     <>
-      <Tela titulo="Resumo" comAbas acao={<div className="av">{perfil?.iniciais ?? '·'}</div>}>
+      <Tela
+        titulo="Resumo"
+        comAbas
+        acao={
+          <>
+            <Sino />
+            <div className="av">{perfil?.iniciais ?? '·'}</div>
+          </>
+        }
+      >
         <AvisoPlano />
         {dados.obras.length === 0 ? (
           <Vazio>

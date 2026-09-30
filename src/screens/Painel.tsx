@@ -17,6 +17,8 @@ import { Barra } from '../components/Barra'
 import { Sheet } from '../components/Sheet'
 import { MoedaInput } from '../components/MoedaInput'
 import { RepassesSheet } from '../components/RepassesSheet'
+import { Sino } from '../components/Sino'
+import { useNovidades } from '../lib/notificacoes'
 import { AnimatePresence, m } from 'motion/react'
 import { CURVA } from '../lib/animacao'
 import type { Aditivo, Lancamento } from '../lib/types'
@@ -32,6 +34,18 @@ export function Painel() {
   const avisar = useAviso()
 
   const { dados, carregando, erro, recarregar } = useAsync(() => carregarObra(obraId), [obraId])
+
+  // O sócio mexeu nesta obra (ou na sociedade, que decide quem vê o quê): os números se
+  // refazem na tela aberta. Se ele apagou a obra, não há mais o que mostrar aqui.
+  useNovidades(novas => {
+    const daqui = novas.filter(n => n.obra_id === obraId || !n.obra_id)
+    if (!daqui.length) return
+    if (daqui.some(n => n.tipo === 'obra_apagada' && n.obra_id === obraId)) {
+      navigate('/obras', { replace: true })
+      return
+    }
+    recarregar()
+  })
   const [sheet, setSheet] = useState<SheetAberto>(null)
   const [valor, setValor] = useState(0)
   const [descricao, setDescricao] = useState('')
@@ -132,7 +146,17 @@ export function Painel() {
 
   return (
     <>
-      <Tela titulo={obra.nome} voltar="/" comAbas acao={<div className="av">{perfil?.iniciais ?? '·'}</div>}>
+      <Tela
+        titulo={obra.nome}
+        voltar="/"
+        comAbas
+        acao={
+          <>
+            <Sino />
+            <div className="av">{perfil?.iniciais ?? '·'}</div>
+          </>
+        }
+      >
         <AvisoPlano />
         <div className="cd">
           <div className="row">

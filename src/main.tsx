@@ -5,6 +5,7 @@ import { LazyMotion, MotionConfig } from 'motion/react'
 import { AuthProvider } from './lib/auth'
 import { PlanoProvider } from './lib/plano'
 import { ToastProvider } from './components/Toast'
+import { NotificacoesProvider } from './lib/notificacoes'
 import { configurado } from './lib/sessao'
 import { ehNativo } from './lib/plataforma'
 import { revelar } from './lib/abertura'
@@ -92,7 +93,9 @@ startTransition(() => raiz.render(
             <AuthProvider>
               <PlanoProvider>
                 <ToastProvider>
-                  <App />
+                  <NotificacoesProvider>
+                    <App />
+                  </NotificacoesProvider>
                 </ToastProvider>
               </PlanoProvider>
             </AuthProvider>

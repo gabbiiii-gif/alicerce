@@ -120,6 +120,21 @@ export type ContasObra = {
   saidas: number
 }
 
+// Aviso do que outra pessoa da obra fez (0017). O texto chega pronto do banco; `dados`
+// traz os ids para o toque saber aonde ir e as iniciais de quem fez.
+export type Notificacao = {
+  id: string
+  user_id: string
+  autor_id: string | null
+  obra_id: string | null
+  tipo: string
+  titulo: string
+  corpo: string | null
+  dados: { iniciais?: string | null; [chave: string]: unknown } | null
+  lida_em: string | null
+  created_at: string
+}
+
 // Assinatura do GRUPO, não da pessoa: quem entrou por convite herda o plano de quem pagou.
 // Só estas colunas são legíveis pelo app.
 export type Assinatura = {

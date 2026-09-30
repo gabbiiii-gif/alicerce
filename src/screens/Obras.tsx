@@ -9,12 +9,17 @@ import { TabBar } from '../components/TabBar'
 import { Barra } from '../components/Barra'
 import { m } from 'motion/react'
 import { CURVA } from '../lib/animacao'
+import { Sino } from '../components/Sino'
+import { useNovidades } from '../lib/notificacoes'
 
 export function Obras() {
   const navigate = useNavigate()
   const { perfil } = useUsuario()
   const { definir } = useObraAtual()
-  const { dados: obras, carregando, erro } = useAsync(listarObras, [])
+  const { dados: obras, carregando, erro, recarregar } = useAsync(listarObras, [])
+
+  // Obra nova, encerrada ou apagada pelo sócio aparece aqui sem precisar sair e voltar.
+  useNovidades(() => recarregar())
 
   function abrir(id: string) {
     definir(id)
@@ -23,8 +28,18 @@ export function Obras() {
 
   return (
     <>
-      <Tela titulo="Minhas obras" comAbas acao={<div className="av">{perfil?.iniciais ?? '·'}</div>}>
-        {carregando && <Carregando />}
+      <Tela
+        titulo="Minhas obras"
+        comAbas
+        acao={
+          <>
+            <Sino />
+            <div className="av">{perfil?.iniciais ?? '·'}</div>
+          </>
+        }
+      >
+        {/* Só na primeira carga: recarregar com a lista na tela não pisca o indicador. */}
+        {carregando && !obras && <Carregando />}
         {erro && <div className="ann">Não deu para carregar as obras: {erro}</div>}
 
         {obras?.map((obra, i) => (

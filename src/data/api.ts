@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type {
-  Aditivo, Assinatura, Categoria, Comprovante, ContasObra, Convite, Lancamento, Membro, Obra, Profile, Repasse,
+  Aditivo, Assinatura, Categoria, Comprovante, ContasObra, Convite, Lancamento, Membro, Notificacao, Obra, Profile,
+  Repasse,
 } from '../lib/types'
 import { comoNome, hojeISO } from '../lib/format'
 
@@ -604,3 +605,87 @@ export const gerarPix = () => chamarPix<Pix>('gerar')
 
 // Pergunta ao Mercado Pago se o Pix em aberto já foi pago — e, se foi, o servidor credita.
 export const conferirPix = () => chamarPix<{ status: string; vale_ate: string | null }>('conferir')
+
+// ---------------------------------------------------------------- notificações
+
+// Quem gera os avisos é o banco (0017), por trigger: o app só lê, marca como lido e escuta.
+const COLUNAS_NOTIFICACAO = 'id, user_id, autor_id, obra_id, tipo, titulo, corpo, dados, lida_em, created_at'
+
+// Sem a 0017 aplicada, a tabela não existe. A tela explica isso em vez de mostrar o erro
+// do banco para quem só queria ver o que o sócio lançou.
+function erroDeNotificacao(error: { code?: string; message?: string }): Error {
+  const mensagem = error.message ?? ''
+  const semTabela =
+    error.code === 'PGRST205' ||
+    error.code === '42P01' ||
+    (/notificacoes/.test(mensagem) && /does not exist|schema cache|could not find/i.test(mensagem))
+  return new Error(
+    semTabela ? 'As notificações ainda não foram ligadas no servidor.' : error.message ?? 'não deu para carregar',
+  )
+}
+
+// O filtro por user_id repete o que a RLS já garante: é ele que deixa o banco usar o índice.
+export async function listarNotificacoes(userId: string, limite = 100): Promise<Notificacao[]> {
+  const { data, error } = await supabase
+    .from('notificacoes')
+    .select(COLUNAS_NOTIFICACAO)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limite)
+  if (error) throw erroDeNotificacao(error)
+  return (data ?? []) as Notificacao[]
+}
+
+export async function contarNaoLidas(userId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('notificacoes')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .is('lida_em', null)
+  if (error) throw erroDeNotificacao(error)
+  return count ?? 0
+}
+
+// O que chegou a partir de um instante, da mais antiga para a mais nova. `gte`, e não `gt`:
+// dois avisos no mesmo milissegundo não se perdem — quem chama descarta o repetido pelo id.
+export async function notificacoesDesde(userId: string, desde: string): Promise<Notificacao[]> {
+  const { data, error } = await supabase
+    .from('notificacoes')
+    .select(COLUNAS_NOTIFICACAO)
+    .eq('user_id', userId)
+    .gte('created_at', desde)
+    .order('created_at', { ascending: true })
+    .limit(50)
+  if (error) throw erroDeNotificacao(error)
+  return (data ?? []) as Notificacao[]
+}
+
+export async function marcarNotificacoesLidas(ids: string[]) {
+  if (!ids.length) return
+  const { error } = await supabase
+    .from('notificacoes')
+    .update({ lida_em: new Date().toISOString() })
+    .in('id', ids)
+    .is('lida_em', null)
+  if (error) throw erroDeNotificacao(error)
+}
+
+// Escuta os avisos novos pelo Realtime do Supabase. A policy de select vale aqui também:
+// cada um recebe só os próprios. Devolve a função que desliga.
+export function ouvirNotificacoes(
+  userId: string,
+  aoChegar: (notificacao: Notificacao) => void,
+  aoMudarConexao: (conectado: boolean) => void,
+): () => void {
+  const canal = supabase
+    .channel(`notificacoes:${userId}`)
+    .on<Notificacao>(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'notificacoes', filter: `user_id=eq.${userId}` },
+      payload => aoChegar(payload.new),
+    )
+    .subscribe(status => aoMudarConexao(status === 'SUBSCRIBED'))
+  return () => {
+    supabase.removeChannel(canal)
+  }
+}

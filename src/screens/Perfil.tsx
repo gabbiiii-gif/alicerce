@@ -8,6 +8,7 @@ import { useAviso } from '../components/Toast'
 import { Tela } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
 import { Sheet } from '../components/Sheet'
+import { useNotificacoes } from '../lib/notificacoes'
 
 export function Perfil() {
   const navigate = useNavigate()
@@ -15,6 +16,7 @@ export function Perfil() {
   const { userId, perfil } = useUsuario()
   const { obraId } = useObraAtual()
   const avisar = useAviso()
+  const { naoLidas } = useNotificacoes()
   const { dados, recarregar } = useAsync(async () => {
     const [obras, socios] = await Promise.all([listarObras(), listarSocios()])
     return { obras, socios }
@@ -82,6 +84,13 @@ export function Perfil() {
           </div>
         </div>
 
+        <button className="li" onClick={() => navigate('/notificacoes', { state: { de: '/perfil' } })}>
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <b style={{ fontSize: 14 }}>Notificações</b>
+            <div className="note">o que a equipe lança e muda nas obras</div>
+          </div>
+          <span className="note">{naoLidas ? `${naoLidas} ${naoLidas === 1 ? 'nova' : 'novas'} ›` : '›'}</span>
+        </button>
         <button className="li" onClick={() => navigate('/plano')}>
           <b style={{ fontSize: 14 }}>Plano e cobrança</b>
           <span className="note">›</span>

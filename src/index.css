@@ -487,6 +487,69 @@ button.li, button.cd { transition: opacity .12s; }
 /* A foto do Google entra no mesmo círculo das iniciais. */
 img.av { object-fit: cover; padding: 0; }
 
+/* Sino do cabeçalho: 36 px de área de toque na altura do avatar, com o número por cima.
+   O laranja dá 5,2:1 com o branco, acima do mínimo de leitura. */
+.sino {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  margin: -4px -2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  color: var(--navy);
+  cursor: pointer;
+  flex: none;
+  transition: transform .1s, background .12s;
+}
+.sino:active { transform: scale(.92); background: var(--linha-suave); }
+.sino svg { width: 22px; height: 22px; display: block; }
+.sino-n {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 2px solid #fff;
+  border-radius: 99px;
+  background: #C2410C;
+  color: #fff;
+  font-family: var(--fonte-texto);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+}
+
+/* Linha de notificação: iniciais de quem fez, o que fez e quando. As que chegaram por ler
+   ficam no azul claro enquanto a tela está aberta, mesmo já marcadas como lidas. */
+.ntf {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--linha);
+  border-radius: 12px;
+  background: #fff;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  flex: none;
+}
+button.ntf { cursor: pointer; transition: opacity .12s; }
+button.ntf:active { opacity: .7; }
+.ntf.nova { background: var(--azul-claro); border-color: #C4E4FB; }
+/* O cinza das notas dá 4,3:1 sobre o azul claro, abaixo do mínimo; este dá 5,1:1. */
+.ntf.nova .note { color: #4E6787; }
+.ntf-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ntf-txt b { font-size: 13.5px; line-height: 1.25; }
+.ntf-hora { flex: none; padding-top: 1px; white-space: nowrap; }
+
 /* Assinatura da entrada: o nome da marca animado letra a letra (NomeAnimado.tsx). A
    animação espera o `revelado` no <html>, que chega com a saída da abertura. */
 .nome-marca {

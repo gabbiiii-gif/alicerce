@@ -37,6 +37,7 @@ const Categorias = sobDemanda(() => import('./screens/Categorias'), 'Categorias'
 const Equipe = sobDemanda(() => import('./screens/Equipe'), 'Equipe')
 const Encerrar = sobDemanda(() => import('./screens/Encerrar'), 'Encerrar')
 const AceitarConvite = sobDemanda(() => import('./screens/AceitarConvite'), 'AceitarConvite')
+const Notificacoes = sobDemanda(() => import('./screens/Notificacoes'), 'Notificacoes')
 
 // As rotas que pedem login, numa tabela só: é dela que saem as <Route> e também o
 // "adiantar" da tela certa quando o app abre.
@@ -56,6 +57,7 @@ const PROTEGIDAS: Array<[string, ReturnType<typeof sobDemanda>]> = [
   ['/relatorios', Relatorios],
   ['/perfil', Perfil],
   ['/plano', Plano],
+  ['/notificacoes', Notificacoes],
   ['/e/:codigo', AceitarConvite],
 ]
 

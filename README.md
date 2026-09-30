@@ -63,7 +63,7 @@ pagamentos por Pix, [`PRODUCAO.md`](./PRODUCAO.md). Em resumo:
 ## Banco
 
 Tabelas: `profiles`, `obras`, `obra_membros`, `categorias`, `aditivos`, `comprovantes`
-(fila do agente), `lancamentos`, `convites`.
+(fila do agente), `lancamentos`, `convites`, `repasses`, `notificacoes`.
 
 Regras que a RLS garante:
 
@@ -71,6 +71,22 @@ Regras que a RLS garante:
 - editar/apagar lançamento e aditivo: só o autor
 - a fila de comprovantes é pessoal até virar lançamento
 - categorias são a lista do dono da obra, compartilhada com quem participa dela
+- notificações: cada um lê só as suas e só marca como lidas; quem cria é o banco
+
+## Notificações
+
+Toda mudança numa obra avisa **as outras pessoas** que a enxergam, nunca quem fez: lançamento
+(novo, alterado, apagado), aditivo, repasse, obra (criada, alterada, encerrada, reaberta,
+apagada), categoria, sócio que entra ou sai e Pix do plano confirmado.
+
+- **Quem gera é o banco** (`0017_notificacoes.sql`), por trigger em cada tabela. Nenhum caminho
+  escapa (app antigo, função do servidor) e o app não consegue forjar aviso: não há grant de
+  insert. Um defeito no aviso vira warning no log e **nunca** impede a escrita que o gerou.
+- **No app:** sino com o número no cabeçalho (Resumo, Obras, Painel), tela `/notificacoes`, aviso
+  na hora pelo Realtime do Supabase, e Resumo, Obras, Painel e plano se atualizam sozinhos quando
+  o sócio mexe. Sem Realtime, o app confere ao voltar para a tela e a cada 45 s.
+- **Ainda não:** push com o app fechado. A tabela já é a fila para isso: falta o Firebase (FCM)
+  no APK e uma função que mande cada linha nova para o celular.
 
 ## Agente de leitura de comprovantes
 
@@ -92,9 +108,10 @@ usuário preenche na mão — nada se perde.
 
 Login · Minhas obras · Nova obra (3 passos, entrada obrigatória) · Painel da obra ·
 Enviar comprovante · Conferir lançamento · Relatório (semana/mês, por categoria, por pessoa, PDF) ·
-Perfil · Categorias · Equipe e convite · Encerrar obra.
+Perfil · Categorias · Equipe e convite · Encerrar obra · Notificações.
 
 ## Ainda fora do escopo
 
 - WhatsApp e e-mail como canal de entrada de notas e de envio de resumo (decidido para depois)
 - App nativo (React Native), relatório automático agendado por e-mail
+- Push no celular com o app fechado (as notificações aparecem com o app aberto)

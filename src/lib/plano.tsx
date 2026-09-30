@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { PlanoDoGrupo } from '../data/api'
 import { planoVale } from './assinatura'
 import { useAuth } from './auth'
+import { useNovidades } from './notificacoes'
 
 // O plano do grupo, carregado uma vez e compartilhado.
 //
@@ -59,6 +60,12 @@ export function PlanoProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     recarregar()
   }, [recarregar])
+
+  // Pix confirmado, ou sociedade feita e desfeita (o plano é do grupo): o sócio que estava
+  // com os botões apagados volta a lançar sem precisar fechar e abrir o app.
+  useNovidades(novas => {
+    if (novas.some(n => n.tipo === 'plano_renovado' || n.tipo.startsWith('socio_'))) recarregar()
+  })
 
   const valor = useMemo<Contexto>(() => {
     const assinatura = plano?.assinatura ?? null

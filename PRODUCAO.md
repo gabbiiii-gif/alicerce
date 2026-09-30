@@ -209,7 +209,37 @@ respondeu.
 
 ---
 
-## Parte 3 — Rotina
+## Parte 3 — Notificações
+
+Aviso para o sócio de tudo que o outro lança ou muda. O app publicado já tem o sino; sem a
+migration, ele fica em zero e a tela diz que as notificações ainda não foram ligadas — nada
+quebra se o deploy chegar antes do SQL.
+
+### 3.1 Aplicar a migration
+
+Depois da `0016`, cole no SQL Editor `supabase/migrations/0017_notificacoes.sql` → **Run**.
+Sem a `0016`, ela para logo no começo com a mensagem dizendo isso, sem criar nada.
+
+Ela também põe a tabela `notificacoes` na publicação `supabase_realtime`. Confira em
+**Database → Publications → supabase_realtime**: `notificacoes` tem que estar marcada.
+
+### ✅ Verificação da Parte 3
+
+Com duas contas sócias, cada uma num aparelho (ou uma no celular e outra no computador):
+
+1. A conta A abre o **Painel** de uma obra
+2. A conta B lança uma saída nessa obra
+3. Em até 2 segundos, na A: aviso "B lançou uma saída de R$ …", número **1** no sino e o
+   lançamento novo na lista, sem recarregar
+4. A toca no sino: a notificação aparece destacada e o número some
+5. A conta B **não** recebe aviso do próprio lançamento
+
+Se o passo 3 só acontecer ao sair e voltar para o app, o Realtime não está entregando: confira
+a publicação (3.1). O app segue funcionando, só sem o "na hora".
+
+---
+
+## Parte 4 — Rotina
 
 ### Quem vence nos próximos dias
 
@@ -251,6 +281,7 @@ downgrade da `gabb dev`.
 | Quem tem plano | tabela `assinaturas`, estendida por `creditar_pix()` (`0014`) |
 | Histórico de Pix | tabela `pagamentos` |
 | Quem barra sem plano | `plano_ativo()` nas policies de insert (`0012`, regra em `0013`) |
+| Quem gera as notificações | triggers `notifica_*` nas tabelas da obra (`0017`) |
 
 ## O que nunca fazer
 
