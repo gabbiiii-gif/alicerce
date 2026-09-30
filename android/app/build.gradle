@@ -44,11 +44,12 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
-        apply plugin: 'com.google.gms.google-services'
-    }
-} catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+// Sem o google-services.json o Firebase não inicia, e ligar o aviso no celular DERRUBA o app:
+// o plugin de push chama o Firebase direto e o Capacitor transforma o erro em fechamento.
+// Melhor o build parar aqui, dizendo o que falta, do que sair um APK que fecha sozinho na
+// mão de alguém. O arquivo sai do Firebase: Configurações do projeto → Seus apps → Android
+// app.alicerce → google-services.json (PRODUCAO.md, Parte 4).
+if (!file('google-services.json').exists()) {
+    throw new GradleException("Falta android/app/google-services.json (Firebase). Sem ele o aviso no celular derruba o app. Veja PRODUCAO.md, Parte 4.")
 }
+apply plugin: 'com.google.gms.google-services'

@@ -13,3 +13,8 @@ verify_jwt = true
 # Pix pago só libera o plano quando a pessoa volta na tela.
 [functions.mercadopago-webhook]
 verify_jwt = false
+
+# Quem chama é o próprio banco (0018), sem sessão de ninguém. A trava contra repetição é a
+# coluna notificacoes.push_em, não um JWT.
+[functions.enviar-push]
+verify_jwt = false

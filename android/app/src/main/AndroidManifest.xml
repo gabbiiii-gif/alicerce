@@ -42,9 +42,24 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- Aviso com o app fechado (push): quem monta é o Firebase, com o ícone da marca,
+             o azul do app e o canal "equipe", que o app cria com o toque próprio
+             (src/lib/push.ts). -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_alicerce" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/colorAccent" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="equipe" />
     </application>
 
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 13 em diante: sem esta, o pedido de permissão para avisar nem aparece. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

@@ -147,6 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       sair: async () => {
+        // O celular para de receber os avisos desta conta antes de a sessão acabar: sem ela,
+        // o banco não deixaria apagar. Import dinâmico: o push não entra na primeira tela.
+        if (ehNativo()) await import('./push').then(m => m.esquecerNesteAparelho()).catch(() => {})
         await (await carregarSupabase()).auth.signOut()
       },
     }),

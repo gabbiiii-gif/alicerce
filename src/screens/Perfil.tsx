@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { enviarRelatorioPorEmail, listarObras, listarSocios, sairDaSociedade } from '../data/api'
 import { useAsync } from '../lib/hooks'
@@ -9,6 +9,16 @@ import { Tela } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
 import { Sheet } from '../components/Sheet'
 import { useNotificacoes } from '../lib/notificacoes'
+import { ehNativo } from '../lib/plataforma'
+import type { EstadoPush } from '../lib/push'
+
+// O aviso com o app fechado, em cada situação em que o celular pode estar (lib/push.ts).
+const PUSH: Record<Exclude<EstadoPush, 'sem-suporte'>, { nota: string; rotulo: string }> = {
+  ligado: { nota: 'chega mesmo com o app fechado, com o toque do Alicerce', rotulo: 'ligado' },
+  desligado: { nota: 'toque para saber na hora o que o sócio lança', rotulo: 'desligado ›' },
+  bloqueado: { nota: 'bloqueado no Android: Configurações › Apps › Alicerce › Notificações', rotulo: '›' },
+  'atualizar-app': { nota: 'instale a versão nova do app para receber com ele fechado', rotulo: 'atualizar' },
+}
 
 export function Perfil() {
   const navigate = useNavigate()
@@ -17,6 +27,45 @@ export function Perfil() {
   const { obraId } = useObraAtual()
   const avisar = useAviso()
   const { naoLidas } = useNotificacoes()
+  const [push, setPush] = useState<EstadoPush | null>(null)
+  const [mexendoPush, setMexendoPush] = useState(false)
+
+  // Só no APK. Confere de novo na volta ao app: a pessoa pode ter liberado a permissão nas
+  // configurações do Android e voltado.
+  useEffect(() => {
+    if (!ehNativo()) return
+    let ativo = true
+    const conferir = () =>
+      import('../lib/push')
+        .then(m => m.estadoDoPush())
+        .then(estado => ativo && setPush(estado))
+        .catch(() => {})
+    const aoVoltar = () => document.visibilityState === 'visible' && conferir()
+    conferir()
+    document.addEventListener('visibilitychange', aoVoltar)
+    return () => {
+      ativo = false
+      document.removeEventListener('visibilitychange', aoVoltar)
+    }
+  }, [])
+
+  async function alternarPush() {
+    if (push === 'bloqueado') return avisar('Libere em Configurações › Apps › Alicerce › Notificações')
+    if (push === 'atualizar-app') return avisar('Peça o app novo: o aviso com ele fechado só vem na versão nova')
+    setMexendoPush(true)
+    try {
+      const m = await import('../lib/push')
+      const novo = push === 'ligado' ? await m.desligarPush() : await m.ligarPush()
+      setPush(novo)
+      avisar(
+        novo === 'ligado' ? 'Aviso no celular ligado' : novo === 'bloqueado' ? 'Permissão negada no Android' : 'Aviso no celular desligado',
+      )
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : 'não deu para mudar o aviso')
+    } finally {
+      setMexendoPush(false)
+    }
+  }
   const { dados, recarregar } = useAsync(async () => {
     const [obras, socios] = await Promise.all([listarObras(), listarSocios()])
     return { obras, socios }
@@ -91,6 +140,20 @@ export function Perfil() {
           </div>
           <span className="note">{naoLidas ? `${naoLidas} ${naoLidas === 1 ? 'nova' : 'novas'} ›` : '›'}</span>
         </button>
+        {push && push !== 'sem-suporte' && (
+          <button
+            className="li"
+            onClick={alternarPush}
+            disabled={mexendoPush}
+            {...(push === 'ligado' || push === 'desligado' ? { role: 'switch', 'aria-checked': push === 'ligado' } : {})}
+          >
+            <div style={{ flex: 1, textAlign: 'left' }}>
+              <b style={{ fontSize: 14 }}>Aviso no celular</b>
+              <div className="note">{PUSH[push].nota}</div>
+            </div>
+            <span className="note">{mexendoPush ? '…' : PUSH[push].rotulo}</span>
+          </button>
+        )}
         <button className="li" onClick={() => navigate('/plano')}>
           <b style={{ fontSize: 14 }}>Plano e cobrança</b>
           <span className="note">›</span>

@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from './auth'
 import { quandoOcioso } from './agenda'
+import { ehNativo } from './plataforma'
 import { useAviso } from '../components/Toast'
 import type { Notificacao } from './types'
 
@@ -33,6 +35,12 @@ export function NotificacoesProvider({ children }: { children: ReactNode }) {
   const avisar = useAviso()
   const [naoLidas, setNaoLidas] = useState(0)
   const recontarAgora = useRef<() => void>(() => {})
+  // O navigate muda a cada troca de tela; o push só precisa do mais recente.
+  const navigate = useNavigate()
+  const navegar = useRef(navigate)
+  useEffect(() => {
+    navegar.current = navigate
+  })
 
   useEffect(() => {
     setNaoLidas(0)
@@ -138,6 +146,29 @@ export function NotificacoesProvider({ children }: { children: ReactNode }) {
       recontarAgora.current = () => {}
     }
   }, [userId, avisar])
+
+  // Aviso com o app fechado (lib/push.ts): só no APK, e o código dele só baixa lá. O toque no
+  // aviso abre a tela certa e já conta como lido.
+  useEffect(() => {
+    if (!userId || !ehNativo()) return
+    let ativo = true
+    let desligar = () => {}
+    quandoOcioso(() => {
+      import('./push')
+        .then(m => {
+          if (!ativo) return
+          desligar = m.iniciarPush({
+            navegar: caminho => navegar.current(caminho),
+            aoLer: () => recontarAgora.current(),
+          })
+        })
+        .catch(() => {})
+    })
+    return () => {
+      ativo = false
+      desligar()
+    }
+  }, [userId])
 
   // O número também no ícone do app instalado pela tela de início (Android e computador).
   useEffect(() => {

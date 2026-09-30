@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícone do aviso na barra de status: a marca do Alicerce, as quatro barras empilhadas.
+     O Android pinta só a silhueta (branco sobre transparente); a cor vem do
+     default_notification_color no AndroidManifest. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M5.33,3.5h13.34v3.2h-13.34z M2.61,8.1h18.78v3.2h-18.78z M3.52,12.7h16.96v3.2h-16.96z M2,17.3h20v3.2h-20z" />
+</vector>

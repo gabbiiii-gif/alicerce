@@ -239,7 +239,111 @@ a publicação (3.1). O app segue funcionando, só sem o "na hora".
 
 ---
 
-## Parte 4 — Rotina
+## Parte 4 — Aviso com o app fechado (push)
+
+O mesmo aviso da Parte 3 chega no Android com o app fechado, com a cara do Alicerce: nome da
+obra no título, o que aconteceu com o valor logo abaixo, ícone da marca, azul do app e um toque
+próprio. Tocar no aviso abre a obra.
+
+São dois arquivos do Firebase, e eles **não são a mesma coisa**:
+
+| Arquivo | Para que serve | É segredo? | Onde fica |
+|---|---|---|---|
+| `google-services.json` | Diz ao APK de qual projeto do Firebase ele é | Não | No repositório, em `android/app/` |
+| Chave da conta de serviço (JSON) | Dá ao servidor o direito de **mandar** push | **Sim** | Só no secret `FCM_SERVICE_ACCOUNT` do Supabase |
+
+### 4.1 Firebase: o app Android (`google-services.json`)
+
+1. [console.firebase.google.com](https://console.firebase.google.com) → projeto do Alicerce →
+   engrenagem **Configurações do projeto** → aba **Geral** → em **Seus apps**, o ícone do Android.
+2. **Nome do pacote Android:** `app.alicerce`, exatamente assim. É o `appId` do
+   `capacitor.config.ts`; com outro nome o Firebase não reconhece o APK e o push não chega.
+3. **Apelido:** `Alicerce`. **SHA-1:** deixe em branco (serve para login com Google e links
+   dinâmicos; push não usa).
+4. **Registrar app** → **Baixar google-services.json**.
+5. As telas seguintes ("Adicionar o SDK do Firebase") ensinam a mexer no Gradle: **pule**, o
+   projeto já está pronto. Avance até **Continuar no console**.
+6. Mova o arquivo baixado para `android/app/google-services.json`. O nome tem que ser esse: se o
+   navegador salvou como `google-services (1).json`, renomeie.
+7. Commit e push. O build do APK no GitHub sai de uma cópia limpa do repositório e precisa do
+   arquivo lá.
+
+Não é segredo: ele só identifica o projeto, e o aparelho de qualquer usuário recebe uma cópia
+dentro do APK. Com ele não se manda push para ninguém. Para fechar mais, dá para restringir a
+chave de API dele ao app Android em Google Cloud → APIs e serviços → Credenciais.
+
+Sem o arquivo, **o build do APK para** com a mensagem "Falta android/app/google-services.json".
+É de propósito: num APK sem Firebase, ligar o aviso fecha o app na mão da pessoa.
+
+### 4.2 Firebase: a chave para mandar (`FCM_SERVICE_ACCOUNT`)
+
+1. Firebase → **Configurações do projeto** → aba **Contas de serviço** → **Gerar nova chave
+   privada** → confirma. Baixa um JSON.
+2. **Este é segredo:** quem tiver o arquivo manda push em nome do Alicerce. Não vai para o
+   repositório, nem para conversa.
+3. Supabase → **Edge Functions → Secrets** → **Add new secret**: nome `FCM_SERVICE_ACCOUNT`,
+   valor o conteúdo inteiro do arquivo (abra no Bloco de Notas, `Ctrl+A`, `Ctrl+C`, cole).
+4. Apague o arquivo baixado, ou guarde fora da pasta do projeto.
+
+Pelo terminal, sem abrir o arquivo (em base64, que a função também aceita):
+
+```powershell
+$chave = [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\caminho\da\chave.json"))
+npx supabase secrets set "FCM_SERVICE_ACCOUNT=$chave" --project-ref ryygkiehthqjaivtafkg
+```
+
+### 4.3 Banco e função
+
+1. SQL Editor → cole `supabase/migrations/0018_push.sql` → **Run**. Depois da `0017`; sem ela, a
+   0018 para logo no começo, sem criar nada. Liga o `pg_net`, cria a tabela `dispositivos` e o
+   gatilho que chama a função a cada aviso novo.
+2. **Edge Functions → Deploy a new function → Via Editor**, nome `enviar-push`, cole
+   `supabase/functions/enviar-push/index.ts` inteiro e publique.
+3. Em **Details** da `enviar-push`, **desligue a verificação de JWT** e salve. Quem chama é o
+   banco, sem sessão de ninguém; a trava contra repetição é a coluna `notificacoes.push_em`.
+
+Com terminal:
+
+```powershell
+npx supabase functions deploy enviar-push --project-ref ryygkiehthqjaivtafkg --no-verify-jwt
+```
+
+A ordem entre 4.1, 4.2 e 4.3 não importa: sem a função, o gatilho leva 404 e o aviso fica só no
+app; sem a 0018, o app não consegue registrar o celular e segue sem push.
+
+### 4.4 APK novo
+
+O push depende de uma peça nativa, então cada pessoa instala o APK novo **uma vez**: GitHub →
+**Actions** → último **APK do Android** verde → **alicerce-apk**. Se o Android recusar instalar
+por cima, desinstale o antigo antes (os dados estão no servidor, nada se perde).
+
+Quem continuar com o APK antigo segue usando o app normalmente, só sem push. Em **Perfil**, a
+linha **Aviso no celular** diz "atualizar".
+
+### ✅ Verificação da Parte 4
+
+1. Abra o APK novo e entre. O Android pergunta se o Alicerce pode mandar notificações →
+   **Permitir**. (No Android 12 ou mais antigo não pergunta: já vem permitido.)
+2. **Perfil → Aviso no celular** mostra **ligado**.
+3. No SQL Editor, `select user_id, plataforma, atualizado_em from dispositivos;` mostra o celular.
+4. Feche o app de verdade (tire da lista de recentes).
+5. Do outro aparelho, o sócio lança uma saída numa obra.
+6. Em alguns segundos: aviso com o ícone do Alicerce e o toque próprio, título com o nome da
+   obra e "Gabriel lançou uma saída de R$ …" embaixo. Tocar abre o Painel dessa obra.
+
+Se o aviso não chegar:
+
+- **Edge Functions → enviar-push → Logs** mostra o que o Firebase respondeu.
+- No SQL Editor,
+  `select status_code, content from net._http_response order by created desc limit 5;` mostra o
+  que a função respondeu ao banco. `FCM_SERVICE_ACCOUNT não configurado` é o passo 4.2; 401 é a
+  verificação de JWT ligada (4.3, item 3).
+- O som próprio fica gravado no canal da primeira vez que o aviso é ligado. Se o celular já
+  tinha o canal de um teste antigo, desinstale e instale o APK de novo.
+
+---
+
+## Parte 5 — Rotina
 
 ### Quem vence nos próximos dias
 
@@ -282,6 +386,10 @@ downgrade da `gabb dev`.
 | Histórico de Pix | tabela `pagamentos` |
 | Quem barra sem plano | `plano_ativo()` nas policies de insert (`0012`, regra em `0013`) |
 | Quem gera as notificações | triggers `notifica_*` nas tabelas da obra (`0017`) |
+| Quem manda o push | trigger `dispara_push` (`0018`) → função `enviar-push` → Firebase |
+| Chave para mandar push | secret `FCM_SERVICE_ACCOUNT` no Supabase |
+| Firebase dentro do APK | `android/app/google-services.json` (no repositório) |
+| Celulares que recebem push | tabela `dispositivos` |
 
 ## O que nunca fazer
 

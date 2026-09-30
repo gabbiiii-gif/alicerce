@@ -689,3 +689,24 @@ export function ouvirNotificacoes(
     supabase.removeChannel(canal)
   }
 }
+
+// ---------------------------------------------------------------- aviso no celular (push)
+
+// Sem a 0018 aplicada, as funções não existem no banco. Quem liga o aviso vê o motivo em
+// português, e não o erro do PostgREST.
+function erroDePush(error: { code?: string; message?: string }): Error {
+  const semFuncao = error.code === 'PGRST202' || /registrar_dispositivo|esquecer_dispositivo/.test(error.message ?? '')
+  return new Error(semFuncao ? 'O aviso no celular ainda não foi ligado no servidor.' : error.message ?? 'não deu para ligar o aviso')
+}
+
+// O celular passa a receber os avisos da conta da sessão (0018). Se ele era de outra conta,
+// deixa de receber os dela.
+export async function registrarAparelho(token: string, plataforma: 'android' | 'ios' | 'web') {
+  const { error } = await supabase.rpc('registrar_dispositivo', { p_token: token, p_plataforma: plataforma })
+  if (error) throw erroDePush(error)
+}
+
+export async function esquecerAparelho(token: string) {
+  const { error } = await supabase.rpc('esquecer_dispositivo', { p_token: token })
+  if (error) throw erroDePush(error)
+}

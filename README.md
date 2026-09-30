@@ -85,8 +85,13 @@ apagada), categoria, sócio que entra ou sai e Pix do plano confirmado.
 - **No app:** sino com o número no cabeçalho (Resumo, Obras, Painel), tela `/notificacoes`, aviso
   na hora pelo Realtime do Supabase, e Resumo, Obras, Painel e plano se atualizam sozinhos quando
   o sócio mexe. Sem Realtime, o app confere ao voltar para a tela e a cada 45 s.
-- **Ainda não:** push com o app fechado. A tabela já é a fila para isso: falta o Firebase (FCM)
-  no APK e uma função que mande cada linha nova para o celular.
+- **Com o app fechado (Android):** cada linha nova em `notificacoes` chama a função
+  `enviar-push` pelo `pg_net` (`0018_push.sql`), que manda pelo Firebase Cloud Messaging para
+  os celulares registrados em `dispositivos`. O aviso tem a cara do app: obra no título, ícone
+  da marca (`res/drawable/ic_stat_alicerce.xml`), azul do app e toque próprio
+  (`res/raw/alicerce.wav`, canal `equipe`). Tocar abre a obra. Liga e desliga em Perfil.
+- **O APK precisa do `android/app/google-services.json`**: sem ele o build para de propósito,
+  porque ligar o aviso num APK sem Firebase derruba o app. Roteiro em `PRODUCAO.md`, Parte 4.
 
 ## Agente de leitura de comprovantes
 
@@ -114,4 +119,5 @@ Perfil · Categorias · Equipe e convite · Encerrar obra · Notificações.
 
 - WhatsApp e e-mail como canal de entrada de notas e de envio de resumo (decidido para depois)
 - App nativo (React Native), relatório automático agendado por e-mail
-- Push no celular com o app fechado (as notificações aparecem com o app aberto)
+- Push com o app fechado no iPhone e no navegador (no Android já existe; nos outros, as
+  notificações aparecem com o app aberto)
