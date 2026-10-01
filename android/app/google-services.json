@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "996172096244",
+    "project_id": "alicerce-45191",
+    "storage_bucket": "alicerce-45191.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:996172096244:android:fc4783649934e1487174a1",
+        "android_client_info": {
+          "package_name": "app.alicerce"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDT134wrw1f8di3Dk-FYSHEFw1NhSBF_dw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
