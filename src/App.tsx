@@ -6,6 +6,7 @@ import { guardarDestino, lerDestino, limparDestino } from './lib/destino'
 import { revelar } from './lib/abertura'
 import { quandoOcioso } from './lib/agenda'
 import { talvezTenhaSessao } from './lib/sessao'
+import { codigoParaEntregar } from './lib/ponte'
 import { Intro, introJaVista } from './screens/Intro'
 import { Carregando, TelaCarregando } from './components/Tela'
 import { Login } from './screens/Login'
@@ -64,7 +65,8 @@ const PROTEGIDAS: Array<[string, ReturnType<typeof sobDemanda>]> = [
 // Quem já tem sessão vai direto para uma tela protegida. O arquivo dela começa a baixar
 // agora, junto com o Supabase, em vez de esperar a sessão ser confirmada para só então
 // ser pedido — seriam duas esperas em fila.
-if (talvezTenhaSessao()) {
+// (A janela do Google do iPhone, que só entrega o código da ponte, não monta tela nenhuma.)
+if (talvezTenhaSessao() && !codigoParaEntregar()) {
   const caminho = window.location.pathname
   // Na volta do Google a URL é /login, mas o destino é o resumo.
   const rota = caminho === '/login' ? Resumo : PROTEGIDAS.find(([padrao]) => matchPath(padrao, caminho))?.[1]

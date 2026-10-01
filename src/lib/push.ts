@@ -1,10 +1,12 @@
-// Aviso no celular com o app fechado (push), pelo Firebase Cloud Messaging.
+// Aviso com o app fechado (push). No APK do Android, pelo Firebase Cloud Messaging (este
+// arquivo); no iPhone e nos navegadores, por Web Push (lib/webPush.ts). As telas falam só com
+// este arquivo, que escolhe o caminho.
 //
 // Quem manda é o servidor (0018 + função enviar-push). Aqui o app só faz três coisas: pede a
 // permissão, registra o celular na conta de quem entrou e, quando a pessoa toca no aviso,
 // abre a tela certa.
 //
-// Só existe no APK que já traz o plugin nativo. O site é o mesmo para todo mundo — inclusive
+// O caminho do Firebase só existe no APK que já traz o plugin nativo. O site é o mesmo para todo mundo — inclusive
 // para os APKs antigos, que carregam as telas do endereço publicado (capacitor.config.ts) —,
 // então a pergunta não é "estou no Android?", e sim "este APK tem o plugin?".
 //
@@ -13,9 +15,11 @@ import { Capacitor, type PluginListenerHandle } from '@capacitor/core'
 import { PushNotifications } from '@capacitor/push-notifications'
 import { esquecerAparelho, marcarNotificacoesLidas, registrarAparelho } from '../data/api'
 import { ehNativo } from './plataforma'
+import { desligarWeb, esquecerWebNesteAparelho, estadoWeb, iniciarWeb, ligarWeb } from './webPush'
 
 export type EstadoPush =
-  | 'sem-suporte' // navegador: por enquanto o push é só do app Android
+  | 'sem-suporte' // navegador sem push (ou o app rodando em desenvolvimento)
+  | 'instalar' // iPhone numa aba do Safari: o push só existe no app da Tela de Início
   | 'atualizar-app' // APK antigo, sem o plugin: precisa instalar o novo
   | 'ligado'
   | 'desligado'
@@ -49,7 +53,7 @@ function gravar(chave: string, valor: string) {
 const temPlugin = () => ehNativo() && Capacitor.isPluginAvailable('PushNotifications')
 
 export async function estadoDoPush(): Promise<EstadoPush> {
-  if (!ehNativo()) return 'sem-suporte'
+  if (!ehNativo()) return estadoWeb()
   if (!temPlugin()) return 'atualizar-app'
   const { receive } = await PushNotifications.checkPermissions()
   if (receive === 'denied') return 'bloqueado'
@@ -108,8 +112,10 @@ function pedirToken(): Promise<string> {
 }
 
 // Liga o aviso neste celular: pede a permissão (se ainda não tem), cria o canal e registra
-// o celular na conta da sessão.
+// o celular na conta da sessão. No navegador, quem chama precisa estar no toque da pessoa e
+// chamar direto, sem esperar nada antes (lib/webPush.ts, ligarWeb).
 export async function ligarPush(): Promise<EstadoPush> {
+  if (!ehNativo()) return ligarWeb()
   if (!temPlugin()) return estadoDoPush()
   let { receive } = await PushNotifications.checkPermissions()
   if (receive !== 'granted') receive = (await PushNotifications.requestPermissions()).receive
@@ -128,6 +134,7 @@ export async function ligarPush(): Promise<EstadoPush> {
 
 // Desliga só neste celular. O token continua no aparelho para religar sem pedir de novo.
 export async function desligarPush(): Promise<EstadoPush> {
+  if (!ehNativo()) return desligarWeb()
   const token = ler(TOKEN)
   if (token) await esquecerAparelho(token)
   gravar(PREFERENCIA, 'desligado')
@@ -138,6 +145,7 @@ export async function desligarPush(): Promise<EstadoPush> {
 // acabar — sem sessão, o banco não deixa apagar. Três segundos no máximo: sem sinal, sair da
 // conta não pode ficar preso nisto (quem entrar depois no aparelho toma o token para si).
 export async function esquecerNesteAparelho() {
+  if (!ehNativo()) return esquecerWebNesteAparelho()
   const token = ler(TOKEN)
   if (!token || !temPlugin()) return
   await Promise.race([esquecerAparelho(token).catch(() => {}), new Promise(pronto => setTimeout(pronto, 3000))])
@@ -150,6 +158,12 @@ const caminhoSeguro = (url: unknown): url is string =>
 // Chamado quando a pessoa entra: ouve o toque no aviso, acompanha a troca de token e, na
 // primeira vez neste celular, pede a permissão. Devolve a função que desliga os ouvintes.
 export function iniciarPush({ navegar, aoLer }: { navegar: (caminho: string) => void; aoLer: () => void }) {
+  if (!ehNativo()) {
+    // No navegador o toque no aviso chega pelo service worker (lib/notificacoes.tsx); aqui só
+    // confere a assinatura.
+    iniciarWeb().catch(() => {})
+    return () => {}
+  }
   if (!temPlugin()) return () => {}
   let ativo = true
   const ouvintes: PluginListenerHandle[] = []

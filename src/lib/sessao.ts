@@ -24,6 +24,9 @@ export function talvezTenhaSessao(): boolean {
     if (searchParams.has('code') || searchParams.has('error_description') || hash.includes('access_token')) {
       return true
     }
+    // Login com Google pela ponte do iPhone em andamento (lib/ponte.ts): o Supabase precisa
+    // estar de pé para receber a sessão quando o código chegar.
+    if (localStorage.getItem('alicerce:ponte-login')) return true
     for (let i = 0; i < localStorage.length; i++) {
       if (/^sb-.+-auth-token/.test(localStorage.key(i) ?? '')) return true
     }

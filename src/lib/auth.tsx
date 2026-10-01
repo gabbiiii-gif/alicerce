@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import { carregarSupabase, talvezTenhaSessao } from './sessao'
 import { aoInteragir } from './agenda'
 import { ehNativo, urlDeRetorno } from './plataforma'
+import { abrirPonte, fecharPonte, pontePendente, precisaDePonte } from './ponte'
 import type { Profile } from './types'
 
 type Contexto = {
@@ -13,6 +14,9 @@ type Contexto = {
   entrar: (email: string, senha: string) => Promise<void>
   cadastrar: (nome: string, email: string, senha: string) => Promise<void>
   entrarComGoogle: () => Promise<void>
+  // iPhone, app da Tela de Início: o Google está aberto numa janela à parte e o app espera a
+  // volta pela ponte (lib/ponte.ts).
+  aguardandoGoogle: boolean
   sair: () => Promise<void>
 }
 
@@ -24,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sem sessão guardada, a resposta já é conhecida: ninguém entrou. A tela de entrada
   // aparece no primeiro quadro, sem esperar o Supabase baixar (lib/sessao.ts).
   const [carregando, setCarregando] = useState(talvezTenhaSessao)
+  const [ponte, setPonte] = useState<string | null>(pontePendente)
 
   useEffect(() => {
     let ativo = true
@@ -95,6 +100,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null
   }, [])
 
+  // Login com Google no app da Tela de Início do iPhone (lib/ponte.ts): o código volta pelo
+  // servidor e a troca acontece aqui, com o verifier que ficou no app. Confere a cada 2
+  // segundos e na hora em que a pessoa volta da janela do Google.
+  useEffect(() => {
+    if (session) {
+      if (ponte) {
+        fecharPonte()
+        setPonte(null)
+      }
+      return
+    }
+    if (!ponte) return
+    let ativo = true
+    let buscando = false
+    const tentar = async () => {
+      if (!ativo || buscando) return
+      if (pontePendente() !== ponte) {
+        setPonte(null)
+        return
+      }
+      buscando = true
+      try {
+        const supabase = await carregarSupabase()
+        const { data: codigo } = await supabase.rpc('buscar_codigo_login', { p_ponte: ponte })
+        if (!ativo || typeof codigo !== 'string') return
+        fecharPonte()
+        setPonte(null)
+        // Quem põe a sessão no lugar é o onAuthStateChange, lá em cima.
+        const { error } = await supabase.auth.exchangeCodeForSession(codigo)
+        if (error) console.warn('login pela ponte não terminou:', error.message)
+      } catch {
+        /* sem rede: a próxima tentativa resolve */
+      } finally {
+        buscando = false
+      }
+    }
+    const aoVoltar = () => {
+      if (document.visibilityState === 'visible') tentar()
+    }
+    const relogio = setInterval(tentar, 2000)
+    document.addEventListener('visibilitychange', aoVoltar)
+    window.addEventListener('focus', aoVoltar)
+    tentar()
+    return () => {
+      ativo = false
+      clearInterval(relogio)
+      document.removeEventListener('visibilitychange', aoVoltar)
+      window.removeEventListener('focus', aoVoltar)
+    }
+  }, [session, ponte])
+
   useEffect(() => {
     const userId = session?.user.id
     if (!userId) {
@@ -130,6 +186,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       entrarComGoogle: async () => {
         const nativo = ehNativo()
         const supabase = await carregarSupabase()
+        // App da Tela de Início do iPhone: o Google abre numa janela à parte, que não enxerga o
+        // app. A volta passa pela ponte (lib/ponte.ts, 0019).
+        if (!nativo && precisaDePonte()) {
+          const id = abrirPonte()
+          const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: `${urlDeRetorno()}?ponte=${id}`,
+              queryParams: { prompt: 'select_account' },
+              skipBrowserRedirect: true,
+            },
+          })
+          if (error || !data?.url) {
+            fecharPonte()
+            throw new Error(traduzErro(error?.message ?? 'o Google não respondeu'))
+          }
+          setPonte(id)
+          window.location.href = data.url
+          return
+        }
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -146,17 +222,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await Browser.open({ url: data.url, presentationStyle: 'popover' })
         }
       },
+      aguardandoGoogle: ponte !== null,
       sair: async () => {
-        // O celular para de receber os avisos desta conta antes de a sessão acabar: sem ela,
-        // o banco não deixaria apagar. Import dinâmico: o push não entra na primeira tela.
-        if (ehNativo()) await import('./push').then(m => m.esquecerNesteAparelho()).catch(() => {})
+        // O aparelho para de receber os avisos desta conta antes de a sessão acabar: sem ela,
+        // o banco não deixaria apagar. Import dinâmico: o push não entra na primeira tela, e
+        // só baixa para quem ligou o aviso neste aparelho.
+        if (temAvisoLigado()) await import('./push').then(m => m.esquecerNesteAparelho()).catch(() => {})
         await (await carregarSupabase()).auth.signOut()
       },
     }),
-    [session, perfil, carregando],
+    [session, perfil, carregando, ponte],
   )
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>
+}
+
+// Algum aviso com o app fechado já registrado neste aparelho (lib/push.ts e lib/webPush.ts)?
+function temAvisoLigado(): boolean {
+  try {
+    return Boolean(localStorage.getItem('alicerce:push-token') || localStorage.getItem('alicerce:webpush-token'))
+  } catch {
+    return false
+  }
 }
 
 function traduzErro(mensagem: string): string {

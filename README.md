@@ -90,6 +90,9 @@ apagada), categoria, sócio que entra ou sai e Pix do plano confirmado.
   os celulares registrados em `dispositivos`. O aviso tem a cara do app: obra no título, ícone
   da marca (`res/drawable/ic_stat_alicerce.xml`), azul do app e toque próprio
   (`res/raw/alicerce.wav`, canal `equipe`). Tocar abre a obra. Liga e desliga em Perfil.
+- **No iPhone e no navegador:** Web Push, pelo mesmo caminho do servidor (`enviar-push` cifra e
+  assina com VAPID; `public/push-sw.js` mostra o aviso). No iPhone só no app da Tela de Início,
+  que tem login com Google pela ponte da `0019` (`lib/ponte.ts`). Roteiro em `PRODUCAO.md`, 4.5.
 - **O APK precisa do `android/app/google-services.json`**: sem ele o build para de propósito,
   porque ligar o aviso num APK sem Firebase derruba o app. Roteiro em `PRODUCAO.md`, Parte 4.
 
@@ -119,5 +122,4 @@ Perfil · Categorias · Equipe e convite · Encerrar obra · Notificações.
 
 - WhatsApp e e-mail como canal de entrada de notas e de envio de resumo (decidido para depois)
 - App nativo (React Native), relatório automático agendado por e-mail
-- Push com o app fechado no iPhone e no navegador (no Android já existe; nos outros, as
-  notificações aparecem com o app aberto)
+- Toque próprio do aviso no iPhone (o Web Push usa o som padrão do aparelho)

@@ -1,4 +1,4 @@
-import { StrictMode, startTransition, useEffect } from 'react'
+import { StrictMode, Suspense, lazy, startTransition, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { LazyMotion, MotionConfig } from 'motion/react'
@@ -11,6 +11,7 @@ import { ehNativo } from './lib/plataforma'
 import { revelar } from './lib/abertura'
 import { quandoOcioso } from './lib/agenda'
 import { Marca } from './components/Marca'
+import { codigoParaEntregar } from './lib/ponte'
 import { App } from './App'
 import './index.css'
 
@@ -82,10 +83,20 @@ const recursosDeMovimento = () => import('./lib/movimento').then(r => r.default)
 // a vez ao navegador entre elas. De uma vez só, era uma tarefa longa que travava o
 // celular simples bem na hora em que a abertura está animando — e em que a pessoa já
 // pode tocar na tela.
+// A janela do Google que o iPhone abre por cima do app da Tela de Início (lib/ponte.ts) não
+// monta o app: só entrega o código e manda a pessoa de volta.
+const entrega = configurado ? codigoParaEntregar() : null
+// Só baixa nessa janela. Enquanto chega, a abertura continua cobrindo a tela.
+const VoltaDoGoogle = lazy(() => import('./components/VoltaDoGoogle').then(m => ({ default: m.VoltaDoGoogle })))
+
 const raiz = createRoot(document.getElementById('root')!)
 startTransition(() => raiz.render(
   <StrictMode>
-    {configurado ? (
+    {entrega ? (
+      <Suspense fallback={null}>
+        <VoltaDoGoogle ponte={entrega.ponte} codigo={entrega.codigo} />
+      </Suspense>
+    ) : configurado ? (
       // Uma linha e todo o Motion do app passa a obedecer "reduzir movimento" do sistema.
       <MotionConfig reducedMotion="user">
         <LazyMotion features={recursosDeMovimento} strict>

@@ -41,3 +41,15 @@ export function urlPublica(caminho: string): string {
   if (ehNativo() || typeof window === 'undefined') return `${SITE}${caminho}`
   return `${window.location.origin}${caminho}`
 }
+
+// iPhone e iPad. O iPad recente se apresenta como Mac; o que entrega é ter tela de toque.
+export function ehIphone(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+// Aberto pelo ícone da Tela de Início (ou instalado no computador), e não numa aba do navegador.
+export function instaladoNaTelaDeInicio(): boolean {
+  if (typeof window === 'undefined') return false
+  return (navigator as Navigator & { standalone?: boolean }).standalone === true || window.matchMedia?.('(display-mode: standalone)').matches === true
+}

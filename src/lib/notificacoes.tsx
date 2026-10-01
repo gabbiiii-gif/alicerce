@@ -147,10 +147,11 @@ export function NotificacoesProvider({ children }: { children: ReactNode }) {
     }
   }, [userId, avisar])
 
-  // Aviso com o app fechado (lib/push.ts): só no APK, e o código dele só baixa lá. O toque no
-  // aviso abre a tela certa e já conta como lido.
+  // Aviso com o app fechado (lib/push.ts): no APK sempre; no navegador e no iPhone, só onde a
+  // pessoa ligou o Web Push — e o código dele só baixa nesses casos. O toque no aviso abre a
+  // tela certa e já conta como lido.
   useEffect(() => {
-    if (!userId || !ehNativo()) return
+    if (!userId || !(ehNativo() || webPushLigado())) return
     let ativo = true
     let desligar = () => {}
     quandoOcioso(() => {
@@ -170,6 +171,36 @@ export function NotificacoesProvider({ children }: { children: ReactNode }) {
     }
   }, [userId])
 
+  // Toque no aviso do Web Push (public/push-sw.js). Com o app fechado, ele abre na tela do
+  // aviso com ?aviso=<id> no endereço; com o app aberto, o service worker manda uma mensagem.
+  // Nos dois casos: marca como lido e vai para a tela.
+  useEffect(() => {
+    if (!userId) return
+    const abrir = (caminho: string, trocar: boolean) => {
+      const url = new URL(caminho, window.location.origin)
+      const id = url.searchParams.get('aviso')
+      url.searchParams.delete('aviso')
+      if (id) {
+        import('../data/api')
+          .then(m => m.marcarNotificacoesLidas([id]))
+          .then(() => recontarAgora.current())
+          .catch(() => {})
+      }
+      navegar.current(url.pathname + url.search, { replace: trocar })
+    }
+    if (new URLSearchParams(window.location.search).has('aviso')) {
+      abrir(window.location.pathname + window.location.search, true)
+    }
+    const aoMensagem = (e: MessageEvent) => {
+      const caminho = e.data?.caminho
+      if (e.data?.tipo === 'abrir-aviso' && typeof caminho === 'string' && caminho.startsWith('/') && !caminho.startsWith('//')) {
+        abrir(caminho, false)
+      }
+    }
+    navigator.serviceWorker?.addEventListener('message', aoMensagem)
+    return () => navigator.serviceWorker?.removeEventListener('message', aoMensagem)
+  }, [userId])
+
   // O número também no ícone do app instalado pela tela de início (Android e computador).
   useEffect(() => {
     const nav = navigator as Navigator & {
@@ -185,6 +216,15 @@ export function NotificacoesProvider({ children }: { children: ReactNode }) {
   const valor = useMemo<Contexto>(() => ({ naoLidas, recontar }), [naoLidas, recontar])
 
   return <NotificacoesContext.Provider value={valor}>{children}</NotificacoesContext.Provider>
+}
+
+// Web Push ligado neste aparelho (lib/webPush.ts)? Lido aqui, sem importar o módulo dele.
+function webPushLigado(): boolean {
+  try {
+    return localStorage.getItem('alicerce:webpush') === 'ligado'
+  } catch {
+    return false
+  }
 }
 
 export function useNotificacoes() {

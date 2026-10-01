@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { lerDestino } from '../lib/destino'
@@ -11,10 +11,18 @@ import { MarcaVolume } from '../components/MarcaVolume'
 import { NomeAnimado } from '../components/NomeAnimado'
 
 export function Login() {
-  const { session, carregando, entrarComGoogle } = useAuth()
+  const { session, carregando, entrarComGoogle, aguardandoGoogle } = useAuth()
   const avisar = useAviso()
   const location = useLocation()
   const [comGoogle, setComGoogle] = useState(false)
+
+  // No iPhone, o app continua aqui enquanto o Google está aberto por cima. Na volta, o botão
+  // destrava: se a pessoa fechou o Google sem escolher a conta, ela tenta de novo.
+  useEffect(() => {
+    const aoVoltar = () => document.visibilityState === 'visible' && setComGoogle(false)
+    document.addEventListener('visibilitychange', aoVoltar)
+    return () => document.removeEventListener('visibilitychange', aoVoltar)
+  }, [])
 
   if (carregando) return <Carregando />
   if (session) {
@@ -56,6 +64,13 @@ export function Login() {
           <LogoGoogle />
           {comGoogle ? 'abrindo o Google…' : 'Continuar com Google'}
         </button>
+
+        {aguardandoGoogle && (
+          <div className="ann" role="status">
+            Escolha a conta no Google e toque em <b>OK</b>, no canto de cima daquela janela, para voltar. O
+            login termina sozinho aqui.
+          </div>
+        )}
 
       </div>
     </m.div>

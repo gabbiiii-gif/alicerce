@@ -1,5 +1,6 @@
-// Manda um aviso da tabela notificacoes para os celulares de quem recebe, pelo Firebase
-// Cloud Messaging (FCM).
+// Manda um aviso da tabela notificacoes para os aparelhos de quem recebe: pelo Firebase Cloud
+// Messaging (FCM) no APK do Android, e por Web Push no iPhone (app da Tela de Início) e nos
+// navegadores.
 //
 // Quem chama é o próprio banco (0018, trigger dispara_push), logo depois de gravar o aviso.
 // Chega só o id: o texto, o destinatário e os celulares saem daqui de dentro, com a service
@@ -13,6 +14,8 @@
 //   FCM_SERVICE_ACCOUNT  o JSON da conta de serviço do Firebase (Configurações do projeto →
 //                        Contas de serviço → Gerar nova chave privada). Pode colar o arquivo
 //                        inteiro, como está, ou em base64.
+//   VAPID_PRIVATE_KEY    a chave privada do Web Push (43 caracteres). A pública está aqui
+//                        embaixo e no app (src/lib/webPush.ts); as duas formam um par.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 type ContaDeServico = { project_id: string; client_email: string; private_key: string }
@@ -193,9 +196,132 @@ async function mandar(
   return { ok: r.ok, morto: !r.ok && tokenMorto(r.status, resposta), status: r.status }
 }
 
+// ---------------------------------------------------------------- Web Push (iPhone e navegador)
+
+// Par VAPID do Alicerce: a pública identifica o app nos serviços de push (Apple, Google,
+// Mozilla, Microsoft) e é a mesma que o app usa ao assinar. Trocar exige trocar nos dois
+// lugares, e todo mundo precisa ligar o aviso de novo. O secret VAPID_PUBLIC_KEY, se existir,
+// passa por cima desta (é o que os testes usam).
+const VAPID_PUBLICA = 'BDR7tE9ilvYxMYg9qcwpeyHHSFObLD1GKHxI5v01uHp6hCBRslgsfBXPYPQ1AXOgYE5ZKHcrR4IhQ3Ht2jGHNRs'
+const vapidPublica = () => Deno.env.get('VAPID_PUBLIC_KEY')?.trim() || VAPID_PUBLICA
+const VAPID_CONTATO = 'https://appalicerce.com.br'
+
+// Só os serviços de push de verdade. O endereço vem do aparelho de quem assinou, e sem esta
+// lista daria para registrar um "aparelho" que fizesse a função chamar qualquer endereço.
+const SERVICOS_DE_PUSH = [/^fcm\.googleapis\.com$/, /(^|\.)push\.apple\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/]
+
+type AssinaturaWeb = { endpoint: string; keys: { p256dh: string; auth: string } }
+// Bytes sobre um ArrayBuffer comum: é o que o WebCrypto e o fetch aceitam.
+type Bytes = Uint8Array<ArrayBuffer>
+
+function lerVapid(): string | null {
+  // O painel já salvou secret com aspas em volta uma vez; aqui elas não fazem parte da chave.
+  const d = Deno.env.get('VAPID_PRIVATE_KEY')?.trim().replace(/^["']|["']$/g, '')
+  return d && /^[A-Za-z0-9_-]{43}$/.test(d) ? d : null
+}
+
+function deBase64url(s: string): Bytes {
+  const base64 = s.replace(/-/g, '+').replace(/_/g, '/')
+  return Uint8Array.from(atob(base64 + '='.repeat((4 - (base64.length % 4)) % 4)), c => c.charCodeAt(0))
+}
+
+const bytes = (s: string): Bytes => new TextEncoder().encode(s) as Bytes
+
+function juntar(...partes: Bytes[]): Bytes {
+  const tudo = new Uint8Array(partes.reduce((soma, p) => soma + p.length, 0))
+  let posicao = 0
+  for (const p of partes) {
+    tudo.set(p, posicao)
+    posicao += p.length
+  }
+  return tudo
+}
+
+async function hkdf(sal: Bytes, material: Bytes, info: Bytes, tamanho: number): Promise<Bytes> {
+  const chave = await crypto.subtle.importKey('raw', material, 'HKDF', false, ['deriveBits'])
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt: sal, info }, chave, tamanho * 8))
+}
+
+// O conteúdo vai cifrado para o aparelho (RFC 8291, aes128gcm): o serviço de push da Apple ou
+// do Google entrega, mas não consegue ler. Só o navegador que assinou tem a chave.
+export async function cifrar(assinatura: AssinaturaWeb, mensagem: Bytes): Promise<Bytes> {
+  const deles = deBase64url(assinatura.keys.p256dh)
+  const segredo = deBase64url(assinatura.keys.auth)
+  const nossa = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits'])
+  const nossaPublica = new Uint8Array(await crypto.subtle.exportKey('raw', nossa.publicKey))
+  const chaveDeles = await crypto.subtle.importKey('raw', deles, { name: 'ECDH', namedCurve: 'P-256' }, false, [])
+  const comum = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: chaveDeles }, nossa.privateKey, 256))
+
+  const material = await hkdf(segredo, comum, juntar(bytes('WebPush: info\0'), deles, nossaPublica), 32)
+  const sal = crypto.getRandomValues(new Uint8Array(16))
+  const chave = await hkdf(sal, material, bytes('Content-Encoding: aes128gcm\0'), 16)
+  const nonce = await hkdf(sal, material, bytes('Content-Encoding: nonce\0'), 12)
+
+  const aes = await crypto.subtle.importKey('raw', chave, 'AES-GCM', false, ['encrypt'])
+  // O 2 no fim marca o último (e único) bloco da mensagem.
+  const cifrado = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aes, juntar(mensagem, new Uint8Array([2]))))
+
+  const cabecalho = new Uint8Array(21 + nossaPublica.length)
+  cabecalho.set(sal, 0)
+  new DataView(cabecalho.buffer).setUint32(16, 4096)
+  cabecalho[20] = nossaPublica.length
+  cabecalho.set(nossaPublica, 21)
+  return juntar(cabecalho, cifrado)
+}
+
+// A identificação do Alicerce no serviço de push (RFC 8292): um JWT assinado com a privada.
+export async function jwtVapid(endpoint: string, privada: string): Promise<string> {
+  const publica = deBase64url(vapidPublica())
+  const chave = await crypto.subtle.importKey(
+    'jwk',
+    { kty: 'EC', crv: 'P-256', d: privada, x: base64url(publica.slice(1, 33)), y: base64url(publica.slice(33, 65)) },
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign'],
+  )
+  const cabecalho = texto(JSON.stringify({ typ: 'JWT', alg: 'ES256' }))
+  // 12 horas: o máximo que a Apple aceita é um dia.
+  const pedido = texto(JSON.stringify({ aud: new URL(endpoint).origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: VAPID_CONTATO }))
+  const assinatura = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, chave, bytes(`${cabecalho}.${pedido}`))
+  return `${cabecalho}.${pedido}.${base64url(assinatura)}`
+}
+
+async function mandarWeb(token: string, privada: string, aviso: Aviso, obra: string | null, naoLidas: number) {
+  let assinatura: AssinaturaWeb
+  try {
+    assinatura = JSON.parse(token)
+    const url = new URL(assinatura.endpoint)
+    if (url.protocol !== 'https:' || !SERVICOS_DE_PUSH.some(s => s.test(url.hostname))) throw new Error('fora da lista')
+    if (!assinatura.keys?.p256dh || !assinatura.keys?.auth) throw new Error('sem chaves')
+  } catch {
+    // Registro que não é uma assinatura de push de verdade: sai da tabela.
+    return { ok: false, morto: true, status: 0 }
+  }
+
+  const { titulo, corpo } = montar(aviso, obra)
+  // O service worker do app (public/push-sw.js) monta o aviso com isto.
+  const conteudo = { titulo, corpo, url: destino(aviso), id: aviso.id, naoLidas }
+  const r = await fetch(assinatura.endpoint, {
+    method: 'POST',
+    headers: {
+      Authorization: `vapid t=${await jwtVapid(assinatura.endpoint, privada)}, k=${vapidPublica()}`,
+      'Content-Encoding': 'aes128gcm',
+      'Content-Type': 'application/octet-stream',
+      // Um dia: celular desligado na obra recebe quando voltar, até 24 horas depois.
+      TTL: '86400',
+      Urgency: 'high',
+    },
+    body: await cifrar(assinatura, bytes(JSON.stringify(conteudo))),
+  })
+  if (!r.ok) console.warn('web push recusado', r.status, (await r.text().catch(() => '')).slice(0, 200))
+  else await r.body?.cancel()
+  // 404 e 410: a assinatura não existe mais (app removido da Tela de Início, permissão tirada).
+  return { ok: r.ok, morto: r.status === 404 || r.status === 410, status: r.status }
+}
+
 // ---------------------------------------------------------------- entrada
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const UUID =/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
@@ -204,13 +330,16 @@ Deno.serve(async req => {
   const { id } = await req.json().catch(() => ({ id: null }))
   if (typeof id !== 'string' || !UUID.test(id)) return responde({ erro: 'id inválido' }, 400)
 
-  // Antes de travar o aviso: sem a conta configurada, ele não pode ficar marcado como enviado.
+  // Antes de travar o aviso: sem nenhum dos dois caminhos configurado, ele não pode ficar
+  // marcado como enviado.
   const lida = lerConta()
-  if ('erro' in lida) {
-    console.error(lida.erro)
-    return responde({ erro: lida.erro }, 500)
+  const conta = 'conta' in lida ? lida.conta : null
+  const vapid = lerVapid()
+  if (!conta && !vapid) {
+    const erro = `${'erro' in lida ? lida.erro : ''}; VAPID_PRIVATE_KEY ausente ou inválido`
+    console.error(erro)
+    return responde({ erro }, 500)
   }
-  const { conta } = lida
 
   const servico = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
@@ -226,31 +355,43 @@ Deno.serve(async req => {
   if (!aviso) return responde({ ignorado: 'aviso inexistente ou já enviado' })
 
   const [aparelhos, porLer, daObra] = await Promise.all([
-    servico.from('dispositivos').select('token').eq('user_id', aviso.user_id),
+    servico.from('dispositivos').select('id, token, plataforma').eq('user_id', aviso.user_id),
     servico.from('notificacoes').select('id', { count: 'exact', head: true }).eq('user_id', aviso.user_id).is('lida_em', null),
     aviso.obra_id
       ? servico.from('obras').select('nome').eq('id', aviso.obra_id).maybeSingle()
       : Promise.resolve({ data: null }),
   ])
-  const tokens = (aparelhos.data ?? []).map(a => a.token as string)
-  if (!tokens.length) return responde({ enviados: 0 })
+  const lista = (aparelhos.data ?? []) as { id: string; token: string; plataforma: string }[]
+  if (!lista.length) return responde({ enviados: 0 })
   const obra = (daObra.data as { nome: string } | null)?.nome ?? null
+  const naoLidas = porLer.count ?? 1
 
-  try {
-    const acesso = await tokenDoGoogle(conta)
-    const resultados = await Promise.all(
-      tokens.map(t => mandar(conta, acesso, t, aviso as Aviso, obra, porLer.count ?? 1)),
-    )
+  // Cada aparelho pelo seu caminho: Android pelo Firebase, iPhone e navegador por Web Push. Um
+  // caminho que falha não segura o outro.
+  let acessoGoogle: Promise<string> | null = null
+  type Resultado = { ok: boolean; morto: boolean; status: number; motivo?: string }
+  const resultados: Resultado[] = await Promise.all(
+    lista.map(async ({ token, plataforma }): Promise<Resultado> => {
+      try {
+        if (plataforma === 'web') {
+          if (!vapid) return { ok: false, morto: false, status: 0, motivo: 'VAPID_PRIVATE_KEY ausente ou inválido' }
+          return await mandarWeb(token, vapid, aviso as Aviso, obra, naoLidas)
+        }
+        if (!conta) return { ok: false, morto: false, status: 0, motivo: 'erro' in lida ? lida.erro : 'sem conta' }
+        acessoGoogle ??= tokenDoGoogle(conta)
+        return await mandar(conta, await acessoGoogle, token, aviso as Aviso, obra, naoLidas)
+      } catch (e) {
+        return { ok: false, morto: false, status: 0, motivo: e instanceof Error ? e.message : String(e) }
+      }
+    }),
+  )
 
-    const mortos = tokens.filter((_, i) => resultados[i].morto)
-    if (mortos.length) await servico.from('dispositivos').delete().in('token', mortos)
+  // Pelo id, não pelo token: o token do Web Push é um JSON, com aspas e vírgulas que o filtro
+  // `in` do PostgREST não escapa.
+  const mortos = lista.filter((_, i) => resultados[i].morto).map(a => a.id)
+  if (mortos.length) await servico.from('dispositivos').delete().in('id', mortos)
 
-    const falhas = resultados.filter(r => !r.ok && !r.morto).map(r => r.status)
-    if (falhas.length) console.warn('push não entregue', { aviso: aviso.id, falhas })
-    return responde({ enviados: resultados.filter(r => r.ok).length, descartados: mortos.length, falhas })
-  } catch (e) {
-    const motivo = e instanceof Error ? e.message : String(e)
-    console.error('push falhou', { aviso: aviso.id, motivo })
-    return responde({ erro: motivo }, 502)
-  }
+  const falhas = resultados.filter(r => !r.ok && !r.morto).map(r => r.motivo ?? r.status)
+  if (falhas.length) console.warn('push não entregue', { aviso: aviso.id, falhas })
+  return responde({ enviados: resultados.filter(r => r.ok).length, descartados: mortos.length, falhas })
 })

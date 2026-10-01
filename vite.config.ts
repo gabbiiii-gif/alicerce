@@ -59,6 +59,9 @@ export default defineConfig({
         // Estes caminhos são arquivos de verdade, não telas do app: abertos no navegador,
         // não podem cair no index.html.
         navigateFallbackDenylist: [/^\/(assets|fonts)\//, /^\/robots\.txt$/, /^\/sitemap\.xml$/],
+        // O aviso com o app fechado no iPhone e nos navegadores (Web Push): o que fazer quando
+        // o push chega e quando a pessoa toca no aviso. Fica em public/ e entra aqui.
+        importScripts: ['push-sw.js'],
       },
       manifest: {
         name: 'Alicerce',

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { enviarRelatorioPorEmail, listarObras, listarSocios, sairDaSociedade } from '../data/api'
 import { useAsync } from '../lib/hooks'
@@ -9,15 +9,36 @@ import { Tela } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
 import { Sheet } from '../components/Sheet'
 import { useNotificacoes } from '../lib/notificacoes'
-import { ehNativo } from '../lib/plataforma'
+import { ehIphone, ehNativo } from '../lib/plataforma'
 import type { EstadoPush } from '../lib/push'
 
-// O aviso com o app fechado, em cada situação em que o celular pode estar (lib/push.ts).
-const PUSH: Record<Exclude<EstadoPush, 'sem-suporte'>, { nota: string; rotulo: string }> = {
-  ligado: { nota: 'chega mesmo com o app fechado, com o toque do Alicerce', rotulo: 'ligado' },
-  desligado: { nota: 'toque para saber na hora o que o sócio lança', rotulo: 'desligado ›' },
-  bloqueado: { nota: 'bloqueado no Android: Configurações › Apps › Alicerce › Notificações', rotulo: '›' },
-  'atualizar-app': { nota: 'instale a versão nova do app para receber com ele fechado', rotulo: 'atualizar' },
+type ModuloPush = typeof import('../lib/push')
+
+// Onde a pessoa devolve a permissão que negou, em cada aparelho.
+const ondeLiberar = () =>
+  ehNativo()
+    ? 'Configurações › Apps › Alicerce › Notificações'
+    : ehIphone()
+      ? 'Ajustes › Notificações › Alicerce'
+      : 'nas permissões do site, no cadeado ao lado do endereço'
+
+const nomeDoAviso = () =>
+  ehNativo() || /Android|iPhone|iPad|iPod/.test(navigator.userAgent) ? 'Aviso no celular' : 'Aviso neste computador'
+
+// O aviso com o app fechado, em cada situação em que o aparelho pode estar (lib/push.ts).
+function textoDoPush(estado: Exclude<EstadoPush, 'sem-suporte'>): { nota: string; rotulo: string } {
+  switch (estado) {
+    case 'ligado':
+      return { nota: ehNativo() ? 'chega mesmo com o app fechado, com o toque do Alicerce' : 'chega mesmo com o app fechado', rotulo: 'ligado' }
+    case 'desligado':
+      return { nota: 'toque para saber na hora o que o sócio lança', rotulo: 'desligado ›' }
+    case 'bloqueado':
+      return { nota: `bloqueado: libere em ${ondeLiberar()}`, rotulo: '›' }
+    case 'instalar':
+      return { nota: 'no iPhone, só pelo app da Tela de Início: toque para ver como', rotulo: '›' }
+    case 'atualizar-app':
+      return { nota: 'instale a versão nova do app para receber com ele fechado', rotulo: 'atualizar' }
+  }
 }
 
 export function Perfil() {
@@ -29,15 +50,19 @@ export function Perfil() {
   const { naoLidas } = useNotificacoes()
   const [push, setPush] = useState<EstadoPush | null>(null)
   const [mexendoPush, setMexendoPush] = useState(false)
+  const modulo = useRef<ModuloPush | null>(null)
 
-  // Só no APK. Confere de novo na volta ao app: a pessoa pode ter liberado a permissão nas
-  // configurações do Android e voltado.
+  // O módulo do push já fica carregado aqui: no iPhone, ligar precisa acontecer direto no
+  // toque, sem esperar download. Confere de novo na volta ao app: a pessoa pode ter liberado a
+  // permissão nos ajustes do aparelho e voltado.
   useEffect(() => {
-    if (!ehNativo()) return
     let ativo = true
     const conferir = () =>
       import('../lib/push')
-        .then(m => m.estadoDoPush())
+        .then(m => {
+          modulo.current = m
+          return m.estadoDoPush()
+        })
         .then(estado => ativo && setPush(estado))
         .catch(() => {})
     const aoVoltar = () => document.visibilityState === 'visible' && conferir()
@@ -49,22 +74,25 @@ export function Perfil() {
     }
   }, [])
 
-  async function alternarPush() {
-    if (push === 'bloqueado') return avisar('Libere em Configurações › Apps › Alicerce › Notificações')
+  function alternarPush() {
+    const m = modulo.current
+    if (!m || !push) return
+    if (push === 'bloqueado') return avisar(`Libere em ${ondeLiberar()}`)
     if (push === 'atualizar-app') return avisar('Peça o app novo: o aviso com ele fechado só vem na versão nova')
-    setMexendoPush(true)
-    try {
-      const m = await import('../lib/push')
-      const novo = push === 'ligado' ? await m.desligarPush() : await m.ligarPush()
-      setPush(novo)
-      avisar(
-        novo === 'ligado' ? 'Aviso no celular ligado' : novo === 'bloqueado' ? 'Permissão negada no Android' : 'Aviso no celular desligado',
-      )
-    } catch (e) {
-      avisar(e instanceof Error ? e.message : 'não deu para mudar o aviso')
-    } finally {
-      setMexendoPush(false)
+    if (push === 'instalar') {
+      return avisar('No Safari, toque em Compartilhar › Adicionar à Tela de Início e abra o Alicerce pelo ícone novo')
     }
+    setMexendoPush(true)
+    // Chamada direto, sem nada esperado antes: no iPhone, o pedido de permissão só aparece se
+    // vier no mesmo toque.
+    const pedido = push === 'ligado' ? m.desligarPush() : m.ligarPush()
+    pedido
+      .then(novo => {
+        setPush(novo)
+        avisar(novo === 'ligado' ? `${nomeDoAviso()} ligado` : novo === 'bloqueado' ? 'Permissão negada' : `${nomeDoAviso()} desligado`)
+      })
+      .catch(e => avisar(e instanceof Error ? e.message : 'não deu para mudar o aviso'))
+      .finally(() => setMexendoPush(false))
   }
   const { dados, recarregar } = useAsync(async () => {
     const [obras, socios] = await Promise.all([listarObras(), listarSocios()])
@@ -148,10 +176,10 @@ export function Perfil() {
             {...(push === 'ligado' || push === 'desligado' ? { role: 'switch', 'aria-checked': push === 'ligado' } : {})}
           >
             <div style={{ flex: 1, textAlign: 'left' }}>
-              <b style={{ fontSize: 14 }}>Aviso no celular</b>
-              <div className="note">{PUSH[push].nota}</div>
+              <b style={{ fontSize: 14 }}>{nomeDoAviso()}</b>
+              <div className="note">{textoDoPush(push).nota}</div>
             </div>
-            <span className="note">{mexendoPush ? '…' : PUSH[push].rotulo}</span>
+            <span className="note">{mexendoPush ? '…' : textoDoPush(push).rotulo}</span>
           </button>
         )}
         <button className="li" onClick={() => navigate('/plano')}>

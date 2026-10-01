@@ -341,6 +341,53 @@ Se o aviso não chegar:
 - O som próprio fica gravado no canal da primeira vez que o aviso é ligado. Se o celular já
   tinha o canal de um teste antigo, desinstale e instale o APK de novo.
 
+### 4.5 iPhone e navegador (Web Push)
+
+No iPhone não tem APK: o Alicerce roda pelo site. O aviso com o app fechado chega por Web Push,
+e **só no app adicionado à Tela de Início** (iOS 16.4 ou mais novo). Numa aba do Safari o
+iPhone não oferece push. O mesmo caminho vale para o Chrome, o Edge e o Firefox do computador.
+
+Diferenças em relação ao Android: o som é o padrão do iPhone (o toque do Alicerce é só do
+APK) e o ícone do aviso é o do app.
+
+**Login com Google no app da Tela de Início.** Ali o iPhone abre o Google numa janela do
+Safari por cima do app, com armazenamento separado, e o login normal se perderia. A ponte da
+`0019` resolve: a janela do Google entrega o código ao servidor, a pessoa toca em **OK** e o app
+termina o login sozinho. O código não serve sem a outra metade (o verifier do PKCE), que só o
+app tem.
+
+#### Ligar no servidor (uma vez)
+
+1. SQL Editor → cole `supabase/migrations/0019_ponte_login_iphone.sql` → **Run**.
+2. Supabase → **Edge Functions → Secrets** → **Add new secret**: nome `VAPID_PRIVATE_KEY`, valor
+   o conteúdo do arquivo `alicerce-vapid-chave-privada.txt` (43 caracteres, gerado junto com o
+   código; abra no Bloco de Notas). Depois apague o arquivo. É segredo: com ele dá para mandar
+   push em nome do Alicerce. A chave pública do par está no código (`src/lib/webPush.ts` e na
+   função) e não é segredo.
+3. Publique de novo a `enviar-push` (código atual, **Verify JWT desligado**).
+
+Perdeu a chave privada? Gere outro par, troque a pública nos dois arquivos do código e o
+secret. Quem já tinha ligado o aviso precisa ligar de novo.
+
+#### No iPhone de cada pessoa (uma vez)
+
+1. Abra `https://appalicerce.com.br` no **Safari** (não no Chrome do iPhone).
+2. **Compartilhar** (o quadrado com a seta) → **Adicionar à Tela de Início** → **Adicionar**.
+3. Abra o Alicerce **pelo ícone novo**. Ele tem armazenamento próprio, então pede login de novo:
+   **Continuar com Google**, escolha a conta e, na janela do Google, toque em **OK** no canto de
+   cima. O app termina de entrar sozinho.
+4. **Perfil → Aviso no celular** → **Permitir**.
+
+#### ✅ Verificação
+
+1. **Perfil → Aviso no celular** mostra **ligado** no iPhone.
+2. `select plataforma, atualizado_em from dispositivos where plataforma = 'web';` mostra o aparelho.
+3. Feche o app no iPhone. O sócio lança uma saída. O aviso chega com o nome da obra no título;
+   tocar abre a obra.
+4. Não chegou: `select status_code, content from net._http_response order by created desc limit 3;`.
+   Nas `falhas`, `403` é a chave VAPID (o secret não forma par com a pública do código);
+   `VAPID_PRIVATE_KEY ausente ou inválido` é o passo 2.
+
 ---
 
 ## Parte 5 — Rotina
@@ -387,9 +434,10 @@ downgrade da `gabb dev`.
 | Quem barra sem plano | `plano_ativo()` nas policies de insert (`0012`, regra em `0013`) |
 | Quem gera as notificações | triggers `notifica_*` nas tabelas da obra (`0017`) |
 | Quem manda o push | trigger `dispara_push` (`0018`) → função `enviar-push` → Firebase |
-| Chave para mandar push | secret `FCM_SERVICE_ACCOUNT` no Supabase |
+| Chave para mandar push | secret `FCM_SERVICE_ACCOUNT` no Supabase (Android) e `VAPID_PRIVATE_KEY` (iPhone e navegador) |
 | Firebase dentro do APK | `android/app/google-services.json` (no repositório) |
-| Celulares que recebem push | tabela `dispositivos` |
+| Celulares que recebem push | tabela `dispositivos` (`android` pelo Firebase, `web` por Web Push) |
+| Login com Google no app do iPhone | ponte da `0019` (`lib/ponte.ts`) |
 
 ## O que nunca fazer
 
