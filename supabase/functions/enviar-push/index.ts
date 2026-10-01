@@ -27,20 +27,30 @@ function responde(corpo: unknown, status = 200) {
   return new Response(JSON.stringify(corpo), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
 }
 
-function lerConta(): ContaDeServico | null {
+// Devolve a conta, ou o motivo de não ter conseguido ler. O motivo vai na resposta e no log,
+// então só cita nomes de campo — nunca o conteúdo do secret.
+function lerConta(): { conta: ContaDeServico } | { erro: string } {
   const cru = Deno.env.get('FCM_SERVICE_ACCOUNT')?.trim()
-  if (!cru) return null
+  if (!cru) return { erro: 'FCM_SERVICE_ACCOUNT não configurado (confira o nome em Edge Functions → Secrets)' }
   // O painel às vezes come as quebras de linha ao colar; o JSON continua válido sem elas,
   // porque as da chave privada vêm escritas como \n dentro do texto.
+  let campos: string[] | null = null
   for (const tentativa of [() => cru, () => new TextDecoder().decode(Uint8Array.from(atob(cru), c => c.charCodeAt(0)))]) {
     try {
       const conta = JSON.parse(tentativa())
-      if (conta?.project_id && conta?.client_email && conta?.private_key) return conta
+      if (conta?.project_id && conta?.client_email && conta?.private_key) return { conta }
+      if (conta && typeof conta === 'object') campos = Object.keys(conta)
     } catch {
       /* tenta o próximo formato */
     }
   }
-  return null
+  if (campos) {
+    const faltam = ['project_id', 'client_email', 'private_key'].filter(c => !campos!.includes(c))
+    return { erro: `FCM_SERVICE_ACCOUNT não é a chave da conta de serviço: faltam ${faltam.join(', ')}` }
+  }
+  return {
+    erro: `FCM_SERVICE_ACCOUNT existe, mas não é um JSON válido (${cru.length} caracteres, começa com "${cru.slice(0, 1)}"). Cole o arquivo inteiro de novo`,
+  }
 }
 
 // ---------------------------------------------------------------- acesso ao Google
@@ -179,8 +189,12 @@ Deno.serve(async req => {
   if (typeof id !== 'string' || !UUID.test(id)) return responde({ erro: 'id inválido' }, 400)
 
   // Antes de travar o aviso: sem a conta configurada, ele não pode ficar marcado como enviado.
-  const conta = lerConta()
-  if (!conta) return responde({ erro: 'FCM_SERVICE_ACCOUNT não configurado' }, 500)
+  const lida = lerConta()
+  if ('erro' in lida) {
+    console.error(lida.erro)
+    return responde({ erro: lida.erro }, 500)
+  }
+  const { conta } = lida
 
   const servico = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
