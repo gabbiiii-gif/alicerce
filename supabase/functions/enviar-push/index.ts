@@ -33,11 +33,27 @@ function lerConta(): { conta: ContaDeServico } | { erro: string } {
   const cru = Deno.env.get('FCM_SERVICE_ACCOUNT')?.trim()
   if (!cru) return { erro: 'FCM_SERVICE_ACCOUNT não configurado (confira o nome em Edge Functions → Secrets)' }
   // O painel às vezes come as quebras de linha ao colar; o JSON continua válido sem elas,
-  // porque as da chave privada vêm escritas como \n dentro do texto.
+  // porque as da chave privada vêm escritas como \n dentro do texto. E o valor pode chegar de
+  // cinco jeitos: como está no arquivo, com aspas em volta (o costume de arquivo .env), como
+  // texto JSON escapado ("{\"type\": …}"), sem as chaves das pontas (selecionado da segunda à
+  // penúltima linha) ou em base64. O painel não mostra o valor salvo, então é mais fácil
+  // aceitar todos do que pedir para colar de novo.
+  const interpretar = (t: string) => {
+    const v = JSON.parse(t)
+    return typeof v === 'string' ? JSON.parse(v) : v
+  }
+  const formas = [
+    () => cru,
+    () => (/^(["']).*\1$/s.test(cru) ? cru.slice(1, -1) : null),
+    () => (cru.startsWith('"') ? `{${cru.replace(/,\s*$/, '')}}` : null),
+    () => new TextDecoder().decode(Uint8Array.from(atob(cru), c => c.charCodeAt(0))),
+  ]
   let campos: string[] | null = null
-  for (const tentativa of [() => cru, () => new TextDecoder().decode(Uint8Array.from(atob(cru), c => c.charCodeAt(0)))]) {
+  for (const forma of formas) {
     try {
-      const conta = JSON.parse(tentativa())
+      const t = forma()
+      if (t === null) continue
+      const conta = interpretar(t)
       if (conta?.project_id && conta?.client_email && conta?.private_key) return { conta }
       if (conta && typeof conta === 'object') campos = Object.keys(conta)
     } catch {
