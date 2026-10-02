@@ -42,6 +42,22 @@ window.addEventListener('vite:preloadError', () => {
   window.location.reload()
 })
 
+// iPhone: ao abrir o teclado o iOS rola a página para o campo aparecer, e às vezes não
+// desfaz quando o teclado fecha — o app ficava deslocado para cima até ser reaberto. A
+// página nunca precisa rolar (quem rola é cada tela), então, sem campo em foco, volta ao
+// topo. Com zoom de pinça a pessoa está olhando um pedaço da tela de propósito: não mexe.
+function desrolar() {
+  if (!window.scrollY && !window.scrollX) return
+  if ((window.visualViewport?.scale ?? 1) > 1.01) return
+  const foco = document.activeElement
+  if (foco instanceof HTMLElement && (foco.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(foco.tagName))) return
+  window.scrollTo(0, 0)
+}
+window.addEventListener('scroll', desrolar, { passive: true })
+// O foco sai do campo antes de o teclado terminar de fechar; o resize do viewport marca o fim.
+window.addEventListener('focusout', () => setTimeout(desrolar, 60))
+window.visualViewport?.addEventListener('resize', desrolar)
+
 // O service worker guarda o app no aparelho para abrir sem internet, e para isso baixa
 // todos os arquivos de uma vez. Registrado junto com a primeira tela, essa descarga
 // disputaria a rede com ela; vai depois que a página carregou e o celular está ocioso.

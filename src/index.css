@@ -78,6 +78,9 @@
 * { box-sizing: border-box; }
 
 html, body, #root { height: 100%; }
+/* A página nunca rola: quem rola é o miolo de cada tela (.bd). Página rolável deixava o
+   iPhone empurrar o app inteiro para cima ao abrir o teclado e não desfazer depois. */
+html, body { overflow: hidden; }
 
 /* Toque de app, não de página: sem o clarão cinza do navegador em cada toque (cada
    botão tem o próprio retorno em :active) e sem a espera do toque duplo para zoom. O
@@ -115,6 +118,18 @@ a { color: var(--azul-700); }
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* No celular a casca fica presa à tela, e não à altura calculada (100dvh). No app da Tela
+   de Início do iPhone, depois do teclado, a página ficava rolada: o título ia para baixo
+   do relógio, sobrava uma faixa vazia sob as abas e o fim da lista saía de alcance —
+   inclusive os botões de lançar. Presa à tela, a casca não acompanha essa rolagem. */
+@media (max-width: 619px) {
+  .app {
+    position: fixed;
+    inset: 0;
+    height: auto;
+  }
 }
 
 @media (min-width: 620px) {

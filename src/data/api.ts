@@ -304,6 +304,26 @@ export async function apagarObra(obraId: string) {
   }
 }
 
+// Nome, endereço e valor fechado. Dono e sócios editam (policy de update em obras, 0003);
+// o banco avisa os outros com o que mudou (notifica_obra, 0017).
+export async function editarObra(
+  obraId: string,
+  dados: { nome: string; endereco: string; valorFechado: number },
+) {
+  const { data, error } = await supabase
+    .from('obras')
+    .update({
+      nome: comoNome(dados.nome),
+      endereco: dados.endereco.trim() ? comoNome(dados.endereco) : null,
+      valor_fechado: dados.valorFechado,
+    })
+    .eq('id', obraId)
+    .select('id')
+  if (error) throw error
+  // A RLS recusa em silêncio: sem linha de volta, nada mudou no banco.
+  if (!data?.length) throw new Error('só o dono da obra e os sócios podem editar')
+}
+
 export async function encerrarObra(obraId: string) {
   const { error } = await supabase
     .from('obras')

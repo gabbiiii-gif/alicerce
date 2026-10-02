@@ -17,6 +17,7 @@ import { Barra } from '../components/Barra'
 import { Sheet } from '../components/Sheet'
 import { MoedaInput } from '../components/MoedaInput'
 import { RepassesSheet } from '../components/RepassesSheet'
+import { EditarObraSheet } from '../components/EditarObraSheet'
 import { Sino } from '../components/Sino'
 import { useNovidades } from '../lib/notificacoes'
 import { AnimatePresence, m } from 'motion/react'
@@ -53,6 +54,7 @@ export function Painel() {
   const [selecionado, setSelecionado] = useState<Lancamento | null>(null)
   const [verAditivos, setVerAditivos] = useState(false)
   const [verRepasses, setVerRepasses] = useState(false)
+  const [editando, setEditando] = useState(false)
   // Remover muda o total da obra: o primeiro toque só arma, o segundo remove.
   const [removerId, setRemoverId] = useState<string | null>(null)
   const [removendo, setRemovendo] = useState(false)
@@ -190,6 +192,16 @@ export function Painel() {
           </div>
         </div>
 
+        {/* Logo abaixo dos números, e não no fim da lista: lá eles iam descendo a cada
+            lançamento até sair da tela. Desligados sem plano: a policy de insert vai recusar
+            de qualquer jeito, e é melhor a pessoa ver o botão apagado com a faixa explicando
+            do que preencher o lançamento inteiro para levar um erro de banco no fim. */}
+        <div className="row" style={{ gap: 8 }}>
+          <button className="bt" style={{ flex: 1 }} disabled={!vale} onClick={() => abrirSheet('entrada')}>+ entrada</button>
+          <button className="bt" style={{ flex: 1 }} disabled={!vale} onClick={() => abrirSheet('aditivo')}>+ aditivo</button>
+          <button className="bt bta" style={{ flex: 1 }} disabled={!vale} onClick={() => navigate(`/obra/${obraId}/enviar`)}>+ saída</button>
+        </div>
+
         <div className="row" style={{ gap: 6, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
           <button className="chip" onClick={() => setVerRepasses(true)}>
             Repasses{dados.repasses.length > 0 ? ` (${dados.repasses.length})` : ''}
@@ -197,6 +209,7 @@ export function Painel() {
           <button className="chip" onClick={() => navigate(`/obra/${obraId}/notas`)}>Notas fiscais</button>
           <button className="chip" onClick={() => navigate(`/obra/${obraId}/equipe`)}>Equipe</button>
           <button className="chip" onClick={() => navigate(`/obra/${obraId}/categorias`)}>Categorias</button>
+          <button className="chip" onClick={() => setEditando(true)}>Editar obra</button>
           <button className="chip" onClick={() => navigate(`/obra/${obraId}/encerrar`)}>Encerrar</button>
         </div>
 
@@ -228,15 +241,6 @@ export function Painel() {
         ))}
 
         {lancamentos.length === 0 && <div className="dsh" style={{ padding: 18 }}>Nenhum lançamento nesta obra ainda</div>}
-
-        {/* Desligados sem plano: a policy de insert vai recusar de qualquer jeito, e é
-            melhor a pessoa ver o botão apagado com a faixa explicando do que preencher o
-            lançamento inteiro para levar um erro de banco no fim. */}
-        <div className="row" style={{ gap: 8, paddingTop: 4 }}>
-          <button className="bt" style={{ flex: 1 }} disabled={!vale} onClick={() => abrirSheet('entrada')}>+ entrada</button>
-          <button className="bt" style={{ flex: 1 }} disabled={!vale} onClick={() => abrirSheet('aditivo')}>+ aditivo</button>
-          <button className="bt bta" style={{ flex: 1 }} disabled={!vale} onClick={() => navigate(`/obra/${obraId}/enviar`)}>+ saída</button>
-        </div>
       </Tela>
 
       <AnimatePresence>
@@ -350,6 +354,12 @@ export function Painel() {
             aoFechar={() => setVerRepasses(false)}
             aoMudar={recarregar}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editando && (
+          <EditarObraSheet obra={obra} contas={contas} aoFechar={() => setEditando(false)} aoSalvar={recarregar} />
         )}
       </AnimatePresence>
 
