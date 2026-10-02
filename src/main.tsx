@@ -46,12 +46,16 @@ window.addEventListener('vite:preloadError', () => {
 // desfaz quando o teclado fecha — o app ficava deslocado para cima até ser reaberto. A
 // página nunca precisa rolar (quem rola é cada tela), então, sem campo em foco, volta ao
 // topo. Com zoom de pinça a pessoa está olhando um pedaço da tela de propósito: não mexe.
+// A casca (main.app) também: o CSS a impede de rolar com `overflow: clip`, mas o Safari
+// anterior ao iOS 16 não conhece o clip.
 function desrolar() {
-  if (!window.scrollY && !window.scrollX) return
+  const casca = document.querySelector<HTMLElement>('main.app')
+  if (!window.scrollY && !window.scrollX && !casca?.scrollTop && !casca?.scrollLeft) return
   if ((window.visualViewport?.scale ?? 1) > 1.01) return
   const foco = document.activeElement
   if (foco instanceof HTMLElement && (foco.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(foco.tagName))) return
   window.scrollTo(0, 0)
+  casca?.scrollTo(0, 0)
 }
 window.addEventListener('scroll', desrolar, { passive: true })
 // O foco sai do campo antes de o teclado terminar de fechar; o resize do viewport marca o fim.

@@ -306,17 +306,21 @@ export async function apagarObra(obraId: string) {
 
 // Nome, endereço e valor fechado. Dono e sócios editam (policy de update em obras, 0003);
 // o banco avisa os outros com o que mudou (notifica_obra, 0017).
+//
+// Vai só o que a pessoa mudou. Mandar os três campos desfazia, sem ninguém ver, o que o
+// sócio tivesse trocado enquanto a folha estava aberta.
 export async function editarObra(
   obraId: string,
-  dados: { nome: string; endereco: string; valorFechado: number },
+  dados: { nome?: string; endereco?: string; valorFechado?: number },
 ) {
+  const campos: { nome?: string; endereco?: string | null; valor_fechado?: number } = {}
+  if (dados.nome !== undefined) campos.nome = comoNome(dados.nome)
+  if (dados.endereco !== undefined) campos.endereco = dados.endereco.trim() ? comoNome(dados.endereco) : null
+  if (dados.valorFechado !== undefined) campos.valor_fechado = dados.valorFechado
+
   const { data, error } = await supabase
     .from('obras')
-    .update({
-      nome: comoNome(dados.nome),
-      endereco: dados.endereco.trim() ? comoNome(dados.endereco) : null,
-      valor_fechado: dados.valorFechado,
-    })
+    .update(campos)
     .eq('id', obraId)
     .select('id')
   if (error) throw error

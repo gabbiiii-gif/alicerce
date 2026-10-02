@@ -20,15 +20,18 @@ export function EditarObraSheet({
   aoSalvar: () => Promise<void> | void
 }) {
   const avisar = useAviso()
-  const [nome, setNome] = useState(obra.nome)
-  const [endereco, setEndereco] = useState(obra.endereco ?? '')
-  const [valor, setValor] = useState(Number(obra.valor_fechado))
+  // A obra como estava ao abrir a folha. O Painel recarrega sozinho quando o sócio mexe na
+  // obra, e comparar com a versão nova acusaria como mudança da pessoa o que foi ele quem fez.
+  const [base] = useState(obra)
+  const [nome, setNome] = useState(base.nome)
+  const [endereco, setEndereco] = useState(base.endereco ?? '')
+  const [valor, setValor] = useState(Number(base.valor_fechado))
   const [salvando, setSalvando] = useState(false)
 
-  const valorAntigo = Number(obra.valor_fechado)
-  const mudouValor = valor !== valorAntigo
-  const mudou =
-    comoNome(nome) !== obra.nome || (comoNome(endereco) || null) !== (obra.endereco || null) || mudouValor
+  const mudouNome = comoNome(nome) !== base.nome
+  const mudouEndereco = (comoNome(endereco) || null) !== (base.endereco || null)
+  const mudouValor = valor !== Number(base.valor_fechado)
+  const mudou = mudouNome || mudouEndereco || mudouValor
 
   async function salvar() {
     if (!nome.trim()) return avisar('A obra precisa de um nome')
@@ -36,7 +39,11 @@ export function EditarObraSheet({
     if (!mudou) return aoFechar()
     setSalvando(true)
     try {
-      await editarObra(obra.id, { nome, endereco, valorFechado: valor })
+      await editarObra(base.id, {
+        nome: mudouNome ? nome : undefined,
+        endereco: mudouEndereco ? endereco : undefined,
+        valorFechado: mudouValor ? valor : undefined,
+      })
       avisar('Obra atualizada')
       aoFechar()
       await aoSalvar()
@@ -47,7 +54,8 @@ export function EditarObraSheet({
   }
 
   // O valor fechado mexe no total e no que falta receber: a conta nova aparece antes de salvar.
-  const novoTotal = contas.total - valorAntigo + valor
+  // Sobre os números de agora, que já trazem o que o sócio tiver lançado nesse meio-tempo.
+  const novoTotal = contas.total - Number(obra.valor_fechado) + valor
   const novoAberto = Math.max(novoTotal - contas.recebido, 0)
 
   return (

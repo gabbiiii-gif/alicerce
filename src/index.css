@@ -80,7 +80,7 @@
 html, body, #root { height: 100%; }
 /* A página nunca rola: quem rola é o miolo de cada tela (.bd). Página rolável deixava o
    iPhone empurrar o app inteiro para cima ao abrir o teclado e não desfazer depois. */
-html, body { overflow: hidden; }
+html, body { overflow: hidden; overscroll-behavior-y: none; }
 
 /* Toque de app, não de página: sem o clarão cinza do navegador em cada toque (cada
    botão tem o próprio retorno em :active) e sem a espera do toque duplo para zoom. O
@@ -99,7 +99,6 @@ body {
   color: var(--navy);
   font-family: var(--fonte-texto);
   -webkit-font-smoothing: antialiased;
-  overscroll-behavior-y: none;
 }
 
 a { color: var(--azul-700); }
@@ -116,6 +115,9 @@ a { color: var(--azul-700); }
   height: 100dvh;
   background: #fff;
   overflow: hidden;
+  /* clip, e não só hidden: hidden ainda deixa o navegador rolar a casca por código (para
+     mostrar um campo em foco, por exemplo), e casca rolada desloca todas as telas. */
+  overflow: clip;
   display: flex;
   flex-direction: column;
 }
