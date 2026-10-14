@@ -37,6 +37,27 @@ function responde(corpo: unknown, status = 200) {
   })
 }
 
+// O que quem enviou lê na nota quando a leitura falha. Antes ia o erro cru da API, e a chave
+// que venceu em 12/10/2026 chegou ao cliente como `401 {"type":"error",...}`. Um 401 ou 403
+// aqui é sempre a chave: vencida, revogada ou colada errado no secret.
+function motivoDaFalha(e: unknown): string {
+  if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) {
+    return `a chave de acesso à IA foi recusada (${e.status}). Preencha na mão por enquanto e avise o suporte`
+  }
+  if (
+    e instanceof Anthropic.RateLimitError ||
+    e instanceof Anthropic.InternalServerError ||
+    e instanceof Anthropic.APIConnectionError
+  ) {
+    return 'a IA está fora do ar ou sobrecarregada agora. Toque em "Ler de novo" daqui a alguns minutos'
+  }
+  if (e instanceof Anthropic.APIError) {
+    const corpo = e.error as { error?: { message?: string } } | undefined
+    return `a IA recusou a leitura (${e.status}): ${corpo?.error?.message ?? e.message}`
+  }
+  return e instanceof Error ? e.message : 'falha ao ler o comprovante'
+}
+
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
@@ -83,13 +104,18 @@ Deno.serve(async req => {
     const { data: categorias } = await servico.from('categorias').select('nome').eq('dono_id', obra?.dono_id ?? '')
     const nomes = (categorias ?? []).map(c => c.nome as string)
 
+    // Chave colada com espaço, quebra de linha ou entre aspas vira outra chave, e a API
+    // responde igual a chave vencida (401). Chave de verdade não tem nenhum desses caracteres.
+    const chave = (Deno.env.get('ANTHROPIC_API_KEY') ?? '').replace(/["'\s]/g, '')
+    if (!chave) throw new Error('o agente está sem chave de acesso à IA (falta ANTHROPIC_API_KEY no servidor)')
+
     // Uma chave criada fora de um workspace não diz sozinha a qual workspace cobrar, e a
     // API recusa com 400 pedindo o header. Com ANTHROPIC_WORKSPACE_ID definido, mandamos o
     // header; sem ele, seguimos direto — que é o caminho de quem usa uma chave já criada
     // dentro de um workspace, onde o header é desnecessário.
     const workspace = Deno.env.get('ANTHROPIC_WORKSPACE_ID')
     const anthropic = new Anthropic({
-      apiKey: Deno.env.get('ANTHROPIC_API_KEY')!,
+      apiKey: chave,
       ...(workspace ? { defaultHeaders: { 'anthropic-workspace-id': workspace } } : {}),
     })
 
@@ -141,7 +167,9 @@ Deno.serve(async req => {
     await servico.from('comprovantes').update({ status: 'pronto', extraido, erro: null }).eq('id', comprovante.id)
     return responde({ status: 'pronto', extraido })
   } catch (e) {
-    const mensagem = e instanceof Error ? e.message : 'falha ao ler o comprovante'
+    // O erro cru, com o request_id da Anthropic, fica no log da função.
+    console.error('ler-comprovante', comprovante.id, e)
+    const mensagem = motivoDaFalha(e)
     // Falhou a leitura: a nota continua na fila para o usuário preencher na mão.
     await servico.from('comprovantes').update({ status: 'erro', erro: mensagem }).eq('id', comprovante.id)
     return responde({ status: 'erro', erro: mensagem }, 200)

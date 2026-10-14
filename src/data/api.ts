@@ -509,6 +509,17 @@ function chamarAgente(comprovanteId: string) {
     })
 }
 
+// "Ler de novo" na tela da nota: a mesma leitura, mas esperando o resultado, porque quem
+// pediu está olhando o formulário. A função grava na linha 'pronto' ou o novo motivo da falha.
+export async function lerDeNovo(comprovanteId: string) {
+  const { data, error } = await supabase.functions.invoke('ler-comprovante', {
+    body: { comprovante_id: comprovanteId },
+  })
+  if (error) throw new Error('o agente não respondeu. Confira a internet e tente de novo')
+  // A função responde 200 também quando a leitura falha, com o motivo em `erro`.
+  if (data?.status !== 'pronto') throw new Error(data?.erro ?? 'o agente não conseguiu ler')
+}
+
 // Pede ao servidor que mande o resumo das obras por e-mail. Quem monta o conteúdo é a
 // função, com o token de quem chamou — o app não decide o que vai no e-mail.
 export async function enviarRelatorioPorEmail(para?: string): Promise<string> {

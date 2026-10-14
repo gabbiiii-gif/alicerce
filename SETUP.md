@@ -112,6 +112,11 @@ Opcional: `supabase secrets set ALICERCE_MODELO=claude-opus-5` (o padrão é
 A chave sai de console.anthropic.com → API Keys. Ela fica só no servidor do Supabase,
 nunca no app.
 
+Ao criar a chave, deixe **sem data de validade** (ou anote a data na agenda). A primeira
+chave vencia em 12/10/2026 e, vencida, toda leitura voltou com erro 401; o aviso da
+Anthropic tinha chegado por e-mail na véspera. Trocar a chave é só
+`supabase secrets set ANTHROPIC_API_KEY=...`; a função não precisa ser publicada de novo.
+
 ## 5. Primeiro teste, na ordem
 
 1. **Continuar com Google** na tela de login.
@@ -211,4 +216,5 @@ Isso recompila o site e copia para dentro dos dois projetos nativos.
 | Usuário do Google aparece com nome errado | O `0002_login_google.sql` não rodou |
 | Fila trava em "lendo a nota…" | Função não publicada ou `ANTHROPIC_API_KEY` faltando — ver Edge Functions → Logs |
 | Nota vira "não deu para ler" | O agente respondeu com erro; a mensagem fica no card e dá para preencher na mão |
+| Nota diz "a chave de acesso à IA foi recusada (401)" | A chave da Anthropic venceu, foi revogada ou foi colada errado: crie outra em console.anthropic.com → API Keys e troque o secret `ANTHROPIC_API_KEY`. Depois, em cada nota que falhou, "Ler de novo com o agente" |
 | "new row violates row-level security" | O SQL do passo 1 não rodou inteiro |

@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  carregarComprovante, carregarObra, descartarComprovante, listarCategorias,
+  carregarComprovante, carregarObra, descartarComprovante, lerDeNovo, listarCategorias,
   marcarComprovanteConfirmado, registrarSaida, urlComprovante,
 } from '../data/api'
 import { useAsync } from '../lib/hooks'
@@ -32,6 +32,7 @@ export function Revisar() {
   const [data, setData] = useState('')
   const [categoriaId, setCategoriaId] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
+  const [relendo, setRelendo] = useState(false)
 
   // Preenche o formulário com o que o agente leu, deixando tudo editável.
   useEffect(() => {
@@ -91,6 +92,21 @@ export function Revisar() {
     }
   }
 
+  // Só recarrega quando a leitura deu certo: recarregar refaz o formulário com o que o agente
+  // leu, e apagaria o que a pessoa já tinha digitado se o agente falhasse de novo.
+  async function lerOutraVez() {
+    setRelendo(true)
+    try {
+      await lerDeNovo(comprovante.id)
+      await recarregar()
+      avisar('Nota lida pelo agente — confira os dados')
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : 'o agente não conseguiu ler')
+    } finally {
+      setRelendo(false)
+    }
+  }
+
   async function descartar() {
     try {
       await descartarComprovante(comprovante.id, comprovante.storage_path)
@@ -124,6 +140,14 @@ export function Revisar() {
       </div>
 
       {comprovante.status === 'erro' && comprovante.erro && <div className="ann">O agente não conseguiu ler: {comprovante.erro}</div>}
+
+      {/* Nota que falhou (chave vencida, IA fora do ar) ou travou em "lendo": resolvido o
+          problema, um toque lê de novo em vez de digitar tudo. */}
+      {(comprovante.status === 'erro' || comprovante.status === 'lendo') && (
+        <button className="bt" onClick={lerOutraVez} disabled={relendo}>
+          {relendo ? 'lendo a nota…' : 'Ler de novo com o agente'}
+        </button>
+      )}
 
       <label className="note" htmlFor={`${campo}-fornecedor`}>Fornecedor</label>
       <input id={`${campo}-fornecedor`} className="inp" value={fornecedor} onChange={e => setFornecedor(e.target.value)} />
@@ -163,9 +187,11 @@ export function Revisar() {
         ))}
       </div>
 
+      {/* Enquanto o agente relê, nada de lançar nem descartar: a resposta dele chegaria
+          depois e devolveria à fila uma nota já lançada. */}
       <div className="row" style={{ marginTop: 'auto', gap: 8, paddingTop: 10 }}>
-        <button className="bt" style={{ flex: 1 }} onClick={descartar}>Descartar</button>
-        <button className="bt btp" style={{ flex: 2 }} onClick={confirmar} disabled={salvando}>
+        <button className="bt" style={{ flex: 1 }} onClick={descartar} disabled={relendo}>Descartar</button>
+        <button className="bt btp" style={{ flex: 2 }} onClick={confirmar} disabled={salvando || relendo}>
           {salvando ? 'lançando…' : 'Confirmar'}
         </button>
       </div>
