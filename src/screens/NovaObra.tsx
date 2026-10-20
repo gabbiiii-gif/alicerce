@@ -91,7 +91,7 @@ export function NovaObra() {
           <MoedaInput valor={entrada} aoMudar={setEntrada} style={{ fontSize: 23, textAlign: 'center', padding: '14px 9px' }} autoFocus />
           <div className="row" style={{ justifyContent: 'center', gap: 7 }}>
             {[10, 30, 50].map(pct => (
-              <button key={pct} className="chip" onClick={() => setEntrada(Math.round(valor * (pct / 100)))}>
+              <button key={pct} className="chip" onClick={() => setEntrada(Math.round(valor * pct) / 100)}>
                 {pct}%
               </button>
             ))}

@@ -44,7 +44,10 @@ const CINZA = '#5B7392'
 const LINHA = '#E1EAF6'
 
 function real(valor: number): string {
-  return 'R$ ' + Math.round(valor || 0).toLocaleString('pt-BR')
+  // Centavos só quando existem, como o app (fmt, em lib/format.ts).
+  const centavos = Math.round((valor || 0) * 100) / 100
+  const casas = Number.isInteger(centavos) ? 0 : 2
+  return 'R$ ' + centavos.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: 2 })
 }
 
 function escapar(texto: string): string {

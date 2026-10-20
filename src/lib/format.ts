@@ -13,18 +13,28 @@ export function comoNome(texto: string): string {
   return limpo.charAt(0).toUpperCase() + limpo.slice(1)
 }
 
+// Reais com centavos só quando eles existem: "R$ 9.000" e "R$ 2.634,50". Os valores são
+// numeric(14,2) no banco, e arredondar para o real inteiro escondia até R$ 0,99 de cada
+// número — no acerto entre sócios isso aparecia como uma diferença que ninguém achava.
+function numero(valor: number | null | undefined): string {
+  const centavos = Math.round((valor || 0) * 100) / 100
+  const casas = Number.isInteger(centavos) ? 0 : 2
+  return centavos.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: 2 })
+}
+
 export function fmt(valor: number | null | undefined): string {
-  return 'R$ ' + Math.round(valor || 0).toLocaleString('pt-BR')
+  return 'R$ ' + numero(valor)
 }
 
 export function semSimbolo(valor: number | null | undefined): string {
-  return Math.round(valor || 0).toLocaleString('pt-BR')
+  return numero(valor)
 }
 
 // Valores curtos para barras e resumos: 4500 -> "4k"
 export function curto(valor: number | null | undefined): string {
   const v = Math.round(valor || 0)
-  return v >= 1000 ? Math.round(v / 1000) + 'k' : String(v)
+  // Abaixo de mil não há abreviação a fazer, então os centavos ficam.
+  return v >= 1000 ? Math.round(v / 1000) + 'k' : numero(valor)
 }
 
 // Entrada de dinheiro no celular: o usuário digita só dígitos e o campo formata.

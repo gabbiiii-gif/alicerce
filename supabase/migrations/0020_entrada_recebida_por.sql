@@ -53,3 +53,20 @@ drop trigger if exists confere_recebido_por on public.lancamentos;
 create trigger confere_recebido_por
   before insert or update of recebido_por on public.lancamentos
   for each row execute function public.confere_recebido_por();
+
+-- Centavos nos avisos. A reais() (0017) arredondava para o real inteiro, e o aviso do sócio
+-- dizia "R$ 2.634" para uma entrada de R$ 2.634,50. Agora é como o app (fmt, em lib/format.ts):
+-- centavos só quando existem. Mesma assinatura, então os gatilhos não precisam mudar.
+create or replace function public.reais(p_valor numeric)
+returns text
+language sql
+stable
+set search_path = public
+as $$
+  select 'R$' || chr(160) ||
+    case when v = trunc(v)
+      then replace(to_char(v, 'FM999,999,999,990'), ',', '.')
+      else replace(replace(replace(to_char(v, 'FM999,999,999,990.00'), ',', '#'), '.', ','), '#', '.')
+    end
+  from (select round(coalesce(p_valor, 0), 2) as v) valor;
+$$;

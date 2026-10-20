@@ -254,11 +254,14 @@ export function montarRelatorio(
   // que ainda não chegou não está no caixa de ninguém.
   let acerto: Acerto | null = null
   if (comCadaUm.length) {
-    const resultado = soma(ateOFim.filter(l => l.tipo === 'entrada')) - soma(ateOFim.filter(l => l.tipo === 'saida'))
-    const parte = resultado / comCadaUm.length
-    const centavos = (v: number) => Math.round(v * 100) / 100
-    const devem = comCadaUm.map(c => ({ nome: c.nome, sobra: centavos(c.emMaos - parte) })).filter(c => c.sobra > 0.5)
-    const recebem = comCadaUm.map(c => ({ nome: c.nome, falta: centavos(parte - c.emMaos) })).filter(c => c.falta > 0.5)
+    // Em centavos inteiros: somar reais em ponto flutuante deixa sobras de 0,0000001 que
+    // viravam um Pix de R$ 0,00 no acerto. Diferença de menos de um centavo não é dívida.
+    const emCentavos = (v: number) => Math.round(Number(v) * 100)
+    const resultadoC = soma(ateOFim.filter(l => l.tipo === 'entrada')) - soma(ateOFim.filter(l => l.tipo === 'saida'))
+    const resultado = emCentavos(resultadoC) / 100
+    const parteC = emCentavos(resultadoC) / comCadaUm.length
+    const devem = comCadaUm.map(c => ({ nome: c.nome, sobra: emCentavos(c.emMaos) - parteC })).filter(c => c.sobra > 0.5)
+    const recebem = comCadaUm.map(c => ({ nome: c.nome, falta: parteC - emCentavos(c.emMaos) })).filter(c => c.falta > 0.5)
     const transferencias: Acerto['transferencias'] = []
     // Quem mais deve paga primeiro a quem mais tem a receber: o menor número de Pix.
     devem.sort((a, b) => b.sobra - a.sobra)
@@ -267,13 +270,13 @@ export function montarRelatorio(
       for (const r of recebem) {
         if (d.sobra <= 0.5) break
         if (r.falta <= 0.5) continue
-        const valor = centavos(Math.min(d.sobra, r.falta))
-        transferencias.push({ de: d.nome, para: r.nome, valor })
-        d.sobra -= valor
-        r.falta -= valor
+        const centavos = Math.round(Math.min(d.sobra, r.falta))
+        transferencias.push({ de: d.nome, para: r.nome, valor: centavos / 100 })
+        d.sobra -= centavos
+        r.falta -= centavos
       }
     }
-    acerto = { resultado, parte, transferencias }
+    acerto = { resultado, parte: parteC / 100, transferencias }
   }
 
   return {
