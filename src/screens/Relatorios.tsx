@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, m } from 'motion/react'
-import { carregarObra, carregarRelatorioGeral, listarObras, notasDosLancamentos, type NotaDoRelatorio } from '../data/api'
+import {
+  carregarObra, carregarRelatorioGeral, listarObras, listarSocios, notasDosLancamentos, type NotaDoRelatorio,
+} from '../data/api'
+import type { Profile } from '../lib/types'
 import { useAsync } from '../lib/hooks'
 import { useAviso } from '../components/Toast'
 import { brParaISO, curto, fmt, hojeISO, isoParaBR, semSimbolo } from '../lib/format'
@@ -12,8 +15,14 @@ import { Carregando, Tela } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
 import { Barra } from '../components/Barra'
 import { Sheet } from '../components/Sheet'
+import { CaixaDeCadaUm } from '../components/CaixaDeCadaUm'
 
 const TODAS = 'Todas as obras'
+
+// O recorte escolhido sobrevive à troca de obra. A tela é montada de novo a cada endereço
+// (App.tsx, `key={location.pathname}`), e o estado local voltava para o padrão: quem olhava o
+// mês e tocava em outra obra caía na semana, e o repasse "sumia" da tela.
+let recorte: { periodo: Periodo; intervalo: Intervalo | null } = { periodo: 'obra', intervalo: null }
 
 export function Relatorios() {
   // Sem obraId na rota (/relatorios) o relatório é o consolidado; com obraId
@@ -21,8 +30,16 @@ export function Relatorios() {
   const { obraId } = useParams()
   const navigate = useNavigate()
   const avisar = useAviso()
-  const [periodo, setPeriodo] = useState<Periodo>('semana')
-  const [intervalo, setIntervalo] = useState<Intervalo | null>(null)
+  const [periodo, setPeriodoLocal] = useState<Periodo>(recorte.periodo)
+  const [intervalo, setIntervaloLocal] = useState<Intervalo | null>(recorte.intervalo)
+  const setPeriodo = (p: Periodo) => {
+    recorte = { ...recorte, periodo: p }
+    setPeriodoLocal(p)
+  }
+  const setIntervalo = (i: Intervalo | null) => {
+    recorte = { ...recorte, intervalo: i }
+    setIntervaloLocal(i)
+  }
   const [escolhendo, setEscolhendo] = useState(false)
   const [de, setDe] = useState('')
   const [ate, setAte] = useState('')
@@ -30,6 +47,8 @@ export function Relatorios() {
   // Uma carga só para a tela inteira. As obras servem aos chips e, no consolidado, à soma
   // do "em aberto" — que antes vinha de um segundo select idêntico dentro do relatório.
   const { dados, carregando, erro, recarregar } = useAsync(async () => {
+    // Os sócios entram na divisão do acerto mesmo sem lançamento (lib/relatorio.ts).
+    const socios = listarSocios().catch(() => [] as Profile[])
     if (obraId) {
       const [obras, uma] = await Promise.all([listarObras(), carregarObra(obraId)])
       return {
@@ -38,6 +57,7 @@ export function Relatorios() {
         lancamentos: uma.lancamentos,
         membros: uma.membros,
         repasses: uma.repasses,
+        socios: await socios,
         aberto: uma.contas.aberto,
         notas: await notasDosLancamentos(uma.lancamentos.map(l => l.comprovante_id ?? '')),
       }
@@ -49,13 +69,17 @@ export function Relatorios() {
       lancamentos: geral.lancamentos,
       membros: geral.membros,
       repasses: geral.repasses,
+      socios: await socios,
       aberto: obras.reduce((soma, o) => soma + o.contas.aberto, 0),
       notas: await notasDosLancamentos(geral.lancamentos.map(l => l.comprovante_id ?? '')),
     }
   }, [obraId])
 
   const relatorio = useMemo(
-    () => (dados ? montarRelatorio(dados.lancamentos, dados.membros, periodo, new Date(), intervalo, dados.repasses) : null),
+    () =>
+      dados
+        ? montarRelatorio(dados.lancamentos, dados.membros, periodo, new Date(), intervalo, dados.repasses, dados.socios)
+        : null,
     [dados, periodo, intervalo],
   )
 
@@ -80,7 +104,8 @@ export function Relatorios() {
   }
 
   const { obras, nome, aberto } = dados
-  const rotulo = periodo === 'semana' ? 'Semana' : periodo === 'mes' ? 'Mês' : 'Período'
+  const rotulo =
+    periodo === 'obra' ? (obraId ? 'Obra toda' : 'Tudo') : periodo === 'semana' ? 'Semana' : periodo === 'mes' ? 'Mês' : 'Período'
 
   async function exportarPdf() {
     try {
@@ -177,6 +202,7 @@ export function Relatorios() {
         </div>
 
         <div className="row" style={{ border: '1px solid #D5E2F2', borderRadius: 10, overflow: 'hidden', gap: 0 }}>
+          <button style={seg(periodo === 'obra')} onClick={() => setPeriodo('obra')}>{obraId ? 'Obra toda' : 'Tudo'}</button>
           <button style={seg(periodo === 'semana')} onClick={() => setPeriodo('semana')}>Semana</button>
           <button style={seg(periodo === 'mes')} onClick={() => setPeriodo('mes')}>Mês</button>
           {/* Tocar aqui já abre a escolha, mesmo com o período ativo: é assim que se troca
@@ -412,27 +438,7 @@ function Repasses({ relatorio }: { relatorio: Relatorio }) {
         </>
       )}
 
-      {relatorio.comCadaUm.length > 0 && (
-        <>
-          <div className="row" style={{ marginTop: 2 }}>
-            <span style={{ fontSize: 15, fontWeight: 500, fontFamily: 'var(--fonte-titulo)' }}>Com cada um</span>
-            <span className="note">até {isoParaBR(relatorio.fim)}</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-            {relatorio.comCadaUm.map(c => (
-              <div key={c.userId} className="cd" style={{ padding: 10, gap: 3 }}>
-                <b style={{ fontSize: 14 }}>{c.nome}</b>
-                <b className="num" style={{ fontSize: 19, color: '#0A2A6E' }}>{fmt(c.emMaos)}</b>
-                <span className="note" style={{ fontSize: 11.5 }}>recebeu do cliente {curto(c.entradas)}</span>
-                <span className="note" style={{ fontSize: 11.5 }}>gastou −{curto(c.saidas)}</span>
-                {c.enviou > 0 && <span className="note" style={{ fontSize: 11.5 }}>repassou −{curto(c.enviou)}</span>}
-                {c.recebeu > 0 && <span className="note" style={{ fontSize: 11.5 }}>recebeu repasse +{curto(c.recebeu)}</span>}
-              </div>
-            ))}
-          </div>
-          <div className="note">Repasses não mudam o total da obra: o dinheiro é o mesmo, só muda de mão.</div>
-        </>
-      )}
+      <CaixaDeCadaUm relatorio={relatorio} nota={`até ${isoParaBR(relatorio.fim)}`} />
     </>
   )
 }

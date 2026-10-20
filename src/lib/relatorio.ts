@@ -1,8 +1,10 @@
-import type { Lancamento, Membro, Repasse } from './types'
+import type { Lancamento, Membro, Profile, Repasse } from './types'
 import { fmt } from './format'
-import { mesDe, periodoDe, semanaDe } from './format'
+import { hojeISO, mesDe, periodoDe, semanaDe } from './format'
 
-export type Periodo = 'semana' | 'mes' | 'personalizado'
+// 'obra': do primeiro lançamento até hoje. É o padrão: o que o sócio quer saber é quanto a
+// obra deu e quanto cada um gastou nela, não o movimento da semana (reunião de 19/10/2026).
+export type Periodo = 'obra' | 'semana' | 'mes' | 'personalizado'
 
 export type Intervalo = { inicio: string; fim: string }
 
@@ -46,7 +48,17 @@ export type SaldoPessoa = {
   saidas: number
   recebeu: number
   enviou: number
+  // O que ficou com a pessoa: entradas no nome dela, mais repasse recebido, menos repassado.
+  ficou: number
   emMaos: number
+}
+
+// Fechamento entre os sócios: cada um com uma parte igual do resultado, e quem passa quanto
+// a quem para chegar lá.
+export type Acerto = {
+  resultado: number
+  parte: number
+  transferencias: { de: string; para: string; valor: number }[]
 }
 
 export type ResumoObra = {
@@ -70,6 +82,18 @@ export type Relatorio = {
   repassado: number
   repasses: ItemRepasse[]
   comCadaUm: SaldoPessoa[]
+  // Nulo com uma pessoa só.
+  acerto: Acerto | null
+}
+
+// Tudo o que já foi lançado. O fim é o último lançamento quando ele cai depois de hoje
+// (nota com data adiantada também entra na conta).
+function obraToda(lancamentos: Lancamento[], repasses: Repasse[]) {
+  const hoje = hojeISO()
+  const datas = [...lancamentos.map(l => l.data), ...repasses.map(r => r.data)].sort()
+  const inicio = datas[0] ?? hoje
+  const fim = datas.length && datas[datas.length - 1] > hoje ? datas[datas.length - 1] : hoje
+  return { inicio, fim, titulo: 'Do início até hoje' }
 }
 
 export function montarRelatorio(
@@ -79,15 +103,21 @@ export function montarRelatorio(
   base = new Date(),
   intervalo?: Intervalo | null,
   repasses: Repasse[] = [],
+  // Os sócios do grupo (listarSocios). Sócio vê e lança na obra sem estar em obra_membros
+  // (0003): sem esta lista, quem ainda não lançou nada ficava fora da divisão e o acerto
+  // dava o resultado inteiro para o outro.
+  socios: Profile[] = [],
 ): Relatorio {
   // Sem intervalo, 'personalizado' cai na semana em vez de quebrar: é o estado de quem
   // tocou na aba e ainda não escolheu as datas.
   const janela =
-    periodo === 'personalizado' && intervalo
-      ? periodoDe(intervalo.inicio, intervalo.fim)
-      : periodo === 'mes'
-        ? mesDe(base)
-        : semanaDe(base)
+    periodo === 'obra'
+      ? obraToda(lancamentos, repasses)
+      : periodo === 'personalizado' && intervalo
+        ? periodoDe(intervalo.inicio, intervalo.fim)
+        : periodo === 'mes'
+          ? mesDe(base)
+          : semanaDe(base)
   const doPeriodo = lancamentos.filter(l => l.data >= janela.inicio && l.data <= janela.fim)
 
   const entradas = doPeriodo.filter(l => l.tipo === 'entrada').reduce((s, l) => s + Number(l.valor), 0)
@@ -179,25 +209,72 @@ export function montarRelatorio(
   const ateOFim = lancamentos.filter(l => l.data <= janela.fim)
   const repassesAteOFim = repasses.filter(r => r.data <= janela.fim)
   const soma = (xs: { valor: number }[]) => xs.reduce((s, x) => s + Number(x.valor), 0)
-  const comCadaUm = repasses.length
-    ? [...pessoas.values()].map(p => {
-        // Quem registrou a entrada é quem recebeu o dinheiro do cliente.
-        const entradasP = soma(ateOFim.filter(l => l.tipo === 'entrada' && l.autor_id === p.userId))
-        const saidasP = soma(ateOFim.filter(l => l.tipo === 'saida' && l.autor_id === p.userId))
-        const recebeu = soma(repassesAteOFim.filter(r => r.para_id === p.userId))
-        const enviou = soma(repassesAteOFim.filter(r => r.de_id === p.userId))
-        return {
-          userId: p.userId,
-          nome: p.nome.split(' ')[0],
-          iniciais: p.iniciais,
-          entradas: entradasP,
-          saidas: saidasP,
-          recebeu,
-          enviou,
-          emMaos: entradasP - saidasP + recebeu - enviou,
-        }
-      })
-    : []
+
+  // O dinheiro da entrada é de quem recebeu, não de quem digitou (0020). Entrada antiga, sem
+  // essa marca, fica com quem lançou.
+  const dono = (l: Lancamento) => (l.tipo === 'entrada' ? l.recebido_por ?? l.autor_id : l.autor_id)
+
+  // Quem tem caixa na obra: os sócios, mesmo sem lançamento, e quem só recebeu entrada ou
+  // lançou antes do período.
+  socios.forEach(s => {
+    const atual = pessoas.get(s.id)
+    // O perfil do sócio tem o nome de verdade; o que veio antes pode ser o rótulo genérico.
+    if (!atual || atual.nome === 'alguém da equipe') pessoas.set(s.id, { userId: s.id, nome: s.nome, iniciais: s.iniciais })
+  })
+  ateOFim.forEach(l => {
+    const id = dono(l)
+    if (pessoas.has(id)) return
+    const perfil = id === l.autor_id ? l.autor : null
+    pessoas.set(id, { userId: id, nome: perfil?.nome ?? 'sócio', iniciais: perfil?.iniciais ?? '··' })
+  })
+
+  const caixas = [...pessoas.values()].map(p => {
+    const entradasP = soma(ateOFim.filter(l => l.tipo === 'entrada' && dono(l) === p.userId))
+    const saidasP = soma(ateOFim.filter(l => l.tipo === 'saida' && l.autor_id === p.userId))
+    const recebeu = soma(repassesAteOFim.filter(r => r.para_id === p.userId))
+    const enviou = soma(repassesAteOFim.filter(r => r.de_id === p.userId))
+    return {
+      userId: p.userId,
+      nome: p.nome.split(' ')[0],
+      iniciais: p.iniciais,
+      entradas: entradasP,
+      saidas: saidasP,
+      recebeu,
+      enviou,
+      ficou: entradasP + recebeu - enviou,
+      emMaos: entradasP - saidasP + recebeu - enviou,
+    }
+  })
+  // Com uma pessoa só não há caixa a separar nem acerto a fazer.
+  const comCadaUm = caixas.length > 1 ? caixas : []
+
+  // Acerto: o resultado da obra (o que entrou menos o que saiu) dividido em partes iguais.
+  // Cada um deveria terminar com a própria parte em mãos; quem tem mais, passa a diferença a
+  // quem tem menos. Usa o dinheiro que entrou, não o contrato: com saldo a receber, a parte
+  // que ainda não chegou não está no caixa de ninguém.
+  let acerto: Acerto | null = null
+  if (comCadaUm.length) {
+    const resultado = soma(ateOFim.filter(l => l.tipo === 'entrada')) - soma(ateOFim.filter(l => l.tipo === 'saida'))
+    const parte = resultado / comCadaUm.length
+    const centavos = (v: number) => Math.round(v * 100) / 100
+    const devem = comCadaUm.map(c => ({ nome: c.nome, sobra: centavos(c.emMaos - parte) })).filter(c => c.sobra > 0.5)
+    const recebem = comCadaUm.map(c => ({ nome: c.nome, falta: centavos(parte - c.emMaos) })).filter(c => c.falta > 0.5)
+    const transferencias: Acerto['transferencias'] = []
+    // Quem mais deve paga primeiro a quem mais tem a receber: o menor número de Pix.
+    devem.sort((a, b) => b.sobra - a.sobra)
+    recebem.sort((a, b) => b.falta - a.falta)
+    for (const d of devem) {
+      for (const r of recebem) {
+        if (d.sobra <= 0.5) break
+        if (r.falta <= 0.5) continue
+        const valor = centavos(Math.min(d.sobra, r.falta))
+        transferencias.push({ de: d.nome, para: r.nome, valor })
+        d.sobra -= valor
+        r.falta -= valor
+      }
+    }
+    acerto = { resultado, parte, transferencias }
+  }
 
   return {
     titulo: janela.titulo,
@@ -219,6 +296,7 @@ export function montarRelatorio(
       obra: r.obra?.nome ?? null,
     })),
     comCadaUm,
+    acerto,
   }
 }
 
@@ -245,8 +323,18 @@ export function textoResumo(nome: string, relatorio: Relatorio, aberto: number):
     )
   }
   if (relatorio.comCadaUm.length) {
-    linhas.push('', 'Com cada um:')
-    relatorio.comCadaUm.forEach(c => linhas.push(`${c.nome}: ${fmt(c.emMaos)}`))
+    linhas.push('', 'Caixa de cada um:')
+    relatorio.comCadaUm.forEach(c =>
+      linhas.push(`${c.nome}: ficou com ${fmt(c.ficou)}, gastou ${fmt(c.saidas)}, em caixa ${fmt(c.emMaos)}`),
+    )
+  }
+  if (relatorio.acerto) {
+    linhas.push('', `Resultado: ${fmt(relatorio.acerto.resultado)} (${fmt(relatorio.acerto.parte)} para cada)`)
+    if (relatorio.acerto.transferencias.length) {
+      relatorio.acerto.transferencias.forEach(t => linhas.push(`Acerto: ${t.de} passa ${fmt(t.valor)} para ${t.para}`))
+    } else {
+      linhas.push('Acerto: ninguém deve nada')
+    }
   }
   return linhas.join('\n')
 }

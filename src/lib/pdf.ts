@@ -379,8 +379,8 @@ export async function gerarPdfRelatorio(
   }
 
   if (relatorio.comCadaUm.length) {
-    secao(`Com quem está o dinheiro (até ${dataBRCompleta(relatorio.fim)})`)
-    const colunas = ['Recebeu do cliente', 'Gastou', 'Repassou', 'Recebeu repasse', 'Em mãos']
+    secao(`Caixa de cada um (até ${dataBRCompleta(relatorio.fim)})`)
+    const colunas = ['Ficou com', 'Gastou', 'Em caixa']
     const xCol = (k: number) => margem + 110 + k * ((largura - 110) / colunas.length) + (largura - 110) / colunas.length
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
@@ -394,20 +394,46 @@ export async function gerarPdfRelatorio(
       doc.setTextColor(NAVY)
       doc.text(c.nome, margem, y)
       doc.setFont('helvetica', 'normal')
-      ;[c.entradas, -c.saidas, -c.enviou, c.recebeu].forEach((v, k) => {
+      ;[c.ficou, -c.saidas].forEach((v, k) => {
         doc.setTextColor(CINZA)
         doc.text(v === 0 ? '-' : `${v < 0 ? '- ' : ''}${fmt(Math.abs(v))}`, xCol(k), y, { align: 'right' })
       })
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(NAVY)
-      doc.text(fmt(c.emMaos), xCol(4), y, { align: 'right' })
+      doc.text(`${c.emMaos < 0 ? '- ' : ''}${fmt(Math.abs(c.emMaos))}`, xCol(2), y, { align: 'right' })
       y += 18
     })
+
+    // O acerto: a parte igual de cada um e quem passa quanto a quem.
+    const acerto = relatorio.acerto
+    if (acerto) {
+      novaPagina(40 + acerto.transferencias.length * 18)
+      doc.setDrawColor(LINHA)
+      doc.line(margem, y - 8, fimTexto, y - 8)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      doc.setTextColor(CINZA)
+      doc.text(`Resultado (entrou menos saiu): ${fmt(acerto.resultado)} · parte de cada um: ${fmt(acerto.parte)}`, margem, y + 6)
+      y += 24
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      doc.setTextColor(NAVY)
+      if (acerto.transferencias.length) {
+        acerto.transferencias.forEach(t => {
+          doc.text(`${t.de} passa para ${t.para}`, margem, y)
+          doc.text(fmt(t.valor), fimTexto, y, { align: 'right' })
+          y += 18
+        })
+      } else {
+        doc.text('Contas acertadas: ninguém deve nada.', margem, y)
+        y += 18
+      }
+    }
     doc.setFont('helvetica', 'italic')
     doc.setFontSize(8.5)
     doc.setTextColor(CINZA)
     novaPagina(16)
-    doc.text('Recebeu do cliente = entradas que a própria pessoa registrou. Repasses não mudam o total da obra.', margem, y + 4)
+    doc.text('Entrada conta no caixa de quem recebeu o dinheiro. Repasses não mudam o total da obra.', margem, y + 4)
     y += 24
   }
 

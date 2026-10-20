@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { m } from 'motion/react'
-import { carregarRelatorioGeral, listarObras } from '../data/api'
+import { carregarRelatorioGeral, listarObras, listarSocios } from '../data/api'
+import type { Profile } from '../lib/types'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
 import { useObraAtual } from '../lib/obraAtual'
@@ -15,6 +16,8 @@ import { ValorAnimado } from '../components/ValorAnimado'
 import { Grafico3D } from '../components/Grafico3D'
 import { Sino } from '../components/Sino'
 import { useNovidades } from '../lib/notificacoes'
+import { montarRelatorio } from '../lib/relatorio'
+import { CaixaDeCadaUm } from '../components/CaixaDeCadaUm'
 
 function Titulo({ texto, nota }: { texto: string; nota?: string }) {
   return (
@@ -31,14 +34,25 @@ export function Resumo() {
   const { definir } = useObraAtual()
 
   const { dados, carregando, erro, recarregar } = useAsync(async () => {
-    const [obras, geral] = await Promise.all([listarObras(), carregarRelatorioGeral()])
-    return { obras, lancamentos: geral.lancamentos }
+    const [obras, geral, socios] = await Promise.all([
+      listarObras(),
+      carregarRelatorioGeral(),
+      listarSocios().catch(() => [] as Profile[]),
+    ])
+    return { obras, ...geral, socios }
   }, [])
 
   // O sócio lançou em qualquer obra: os números daqui mudam, então a tela se refaz sozinha.
   useNovidades(() => recarregar())
 
   const visao = useMemo(() => (dados ? montarVisao(dados.obras, dados.lancamentos) : null), [dados])
+  // O caixa de cada sócio somando todas as obras, logo na primeira tela: é a primeira coisa
+  // que o sócio procura ao abrir o app (reunião de 19/10/2026).
+  const caixas = useMemo(
+    () =>
+      dados ? montarRelatorio(dados.lancamentos, dados.membros, 'obra', new Date(), null, dados.repasses, dados.socios) : null,
+    [dados],
+  )
 
   if (!dados || !visao) {
     return (
@@ -133,6 +147,8 @@ export function Resumo() {
                 </m.div>
               ))}
             </div>
+
+            {caixas && <CaixaDeCadaUm relatorio={caixas} nota="todas as obras" />}
 
             <Titulo texto="Entrou e saiu" nota="últimos 6 meses" />
             <div className="cd" style={{ padding: '10px 8px 6px', gap: 2 }}>

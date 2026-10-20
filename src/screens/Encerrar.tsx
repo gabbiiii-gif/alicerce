@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { apagarObra, carregarObra, encerrarObra, notasDosLancamentos } from '../data/api'
+import { apagarObra, carregarObra, encerrarObra, listarSocios, notasDosLancamentos } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useAviso } from '../components/Toast'
 import { fmt, hojeISO } from '../lib/format'
@@ -58,7 +58,9 @@ export function Encerrar() {
       // lançamento até hoje, com repasses e as notas fiscais de cada gasto.
       const hoje = hojeISO()
       const inicio = lancamentos.reduce((menor, l) => (l.data < menor ? l.data : menor), lancamentos[0]?.data ?? hoje)
-      const base = montarRelatorio(lancamentos, membros, 'personalizado', new Date(), { inicio, fim: hoje }, repasses)
+      // Os sócios entram no acerto final mesmo sem lançamento (lib/relatorio.ts).
+      const socios = await listarSocios().catch(() => [])
+      const base = montarRelatorio(lancamentos, membros, 'personalizado', new Date(), { inicio, fim: hoje }, repasses, socios)
       const final = {
         ...base,
         titulo: lancamentos.length ? `desde ${inicio.split('-').reverse().join('/')}` : 'obra inteira',

@@ -94,6 +94,8 @@ export type Lancamento = {
   valor: number
   data: string
   comprovante_id: string | null
+  // Entrada: quem recebeu o dinheiro do cliente (0020). Nulo: quem lançou.
+  recebido_por?: string | null
   created_at: string
   autor?: Profile
   categoria?: { id: string; nome: string } | null

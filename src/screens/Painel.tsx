@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  apagarAditivo, apagarLancamento, carregarComprovante, carregarObra, criarAditivo, registrarEntrada, urlComprovante,
+  apagarAditivo, apagarLancamento, carregarComprovante, carregarObra, criarAditivo, listarSocios, registrarEntrada,
+  urlComprovante,
 } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
@@ -22,7 +23,7 @@ import { Sino } from '../components/Sino'
 import { useNovidades } from '../lib/notificacoes'
 import { AnimatePresence, m } from 'motion/react'
 import { CURVA } from '../lib/animacao'
-import type { Aditivo, Lancamento } from '../lib/types'
+import type { Aditivo, Lancamento, Profile } from '../lib/types'
 
 type SheetAberto = 'entrada' | 'aditivo' | null
 
@@ -34,7 +35,12 @@ export function Painel() {
   const { vale } = usePlano()
   const avisar = useAviso()
 
-  const { dados, carregando, erro, recarregar } = useAsync(() => carregarObra(obraId), [obraId])
+  // Os sócios vêm junto: a entrada pergunta quem recebeu o dinheiro, e sócio lança na obra sem
+  // estar em obra_membros (0003).
+  const { dados, carregando, erro, recarregar } = useAsync(async () => {
+    const [completa, socios] = await Promise.all([carregarObra(obraId), listarSocios().catch(() => [] as Profile[])])
+    return { ...completa, socios }
+  }, [obraId])
 
   // O sócio mexeu nesta obra (ou na sociedade, que decide quem vê o quê): os números se
   // refazem na tela aberta. Se ele apagou a obra, não há mais o que mostrar aqui.
@@ -50,6 +56,7 @@ export function Painel() {
   const [sheet, setSheet] = useState<SheetAberto>(null)
   const [valor, setValor] = useState(0)
   const [descricao, setDescricao] = useState('')
+  const [recebedorId, setRecebedorId] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [selecionado, setSelecionado] = useState<Lancamento | null>(null)
   const [verAditivos, setVerAditivos] = useState(false)
@@ -94,22 +101,39 @@ export function Painel() {
 
   const { obra, lancamentos, contas } = dados
 
+  // Quem pode ter recebido o dinheiro: os membros da obra e os sócios, a pessoa primeiro.
+  const pessoasMapa = new Map<string, Profile>()
+  if (perfil) pessoasMapa.set(userId, perfil)
+  dados.membros.forEach(mb => pessoasMapa.set(mb.user_id, mb.profile))
+  dados.socios.forEach(s => pessoasMapa.set(s.id, s))
+  const pessoas = [...pessoasMapa.values()]
+  // `reserva`: o nome que veio junto com o lançamento, para quem já saiu da sociedade.
+  const nomeDe = (id: string, reserva?: string) =>
+    id === userId ? 'você' : (pessoasMapa.get(id)?.nome ?? reserva ?? '').split(' ')[0] || 'sócio'
+  // Com quem ficou o dinheiro de uma entrada: quem a 0020 marcou, ou quem lançou.
+  const comQuem = (l: Lancamento) =>
+    l.recebido_por && l.recebido_por !== l.autor_id ? nomeDe(l.recebido_por) : nomeDe(l.autor_id, l.autor?.nome)
+
   function abrirSheet(qual: Exclude<SheetAberto, null>) {
     setValor(0)
     setDescricao('')
+    // Sozinho na obra, o dinheiro só pode ter ficado com a pessoa. Com sócio, ela escolhe:
+    // marcar errado é o que bagunça o caixa de cada um.
+    setRecebedorId(pessoas.length === 1 ? userId : null)
     setSheet(qual)
   }
 
   async function salvar() {
     if (valor <= 0) return avisar(sheet === 'aditivo' ? 'Informe o valor do aditivo' : 'Informe o valor recebido')
+    if (sheet === 'entrada' && !recebedorId) return avisar('Diga com quem ficou o dinheiro')
     setSalvando(true)
     try {
       if (sheet === 'aditivo') {
         await criarAditivo({ obraId, autorId: userId, descricao, valor })
         avisar('Aditivo somado ao total')
       } else {
-        await registrarEntrada({ obraId, autorId: userId, valor, descricao })
-        avisar('Entrada registrada')
+        await registrarEntrada({ obraId, autorId: userId, valor, descricao, recebidoPor: recebedorId })
+        avisar(recebedorId === userId ? 'Entrada registrada no seu caixa' : `Entrada registrada no caixa de ${nomeDe(recebedorId!)}`)
       }
       setSheet(null)
       await recarregar()
@@ -233,7 +257,9 @@ export function Painel() {
               <b style={{ fontSize: 13.5 }}>{l.descricao}</b>
               <div className="note">
                 {(l.categoria?.nome || 'entrada') + ' · ' + dataCurta(l.data) + ' · ' +
-                  (l.autor_id === userId ? 'você' : (l.autor?.nome ?? '').split(' ')[0] || 'equipe')}
+                  (l.tipo === 'entrada'
+                    ? 'com ' + comQuem(l)
+                    : l.autor_id === userId ? 'você' : (l.autor?.nome ?? '').split(' ')[0] || 'equipe')}
               </div>
             </div>
             <b className="num" style={{ fontSize: 13.5 }}>{(l.tipo === 'saida' ? '−' : '+') + semSimbolo(l.valor)}</b>
@@ -257,6 +283,25 @@ export function Painel() {
             value={descricao}
             onChange={e => setDescricao(e.target.value)}
           />
+          {/* Com quem ficou o dinheiro: é por isto que o relatório sabe o caixa de cada um
+              e quem repassa a quem no fim da obra. */}
+          {sheet === 'entrada' && pessoas.length > 1 && (
+            <>
+              <div className="note">Com quem ficou o dinheiro?</div>
+              <div className="row" style={{ gap: 6, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+                {pessoas.map(p => (
+                  <button
+                    key={p.id}
+                    className={recebedorId === p.id ? 'chip bta' : 'chip'}
+                    style={recebedorId === p.id ? { background: '#2272CC', borderColor: '#2272CC' } : undefined}
+                    onClick={() => setRecebedorId(p.id)}
+                  >
+                    {p.id === userId ? 'Comigo' : p.nome.split(' ')[0] || 'sócio'}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <div className="row" style={{ background: '#E0F4FF', border: '1px solid #C4E4FB', borderRadius: 10, padding: '6px 9px' }}>
             <span className="note" style={{ color: '#0A2A6E' }}>{sheet === 'aditivo' ? 'novo total' : 'fica em aberto'}</span>
             <b className="num" style={{ fontSize: 15 }}>
@@ -280,6 +325,7 @@ export function Painel() {
           <div className="note">
             {(selecionado.categoria?.nome || 'entrada') + ' · ' + dataCurta(selecionado.data) + ' · enviado por ' +
               (selecionado.autor_id === userId ? 'você' : selecionado.autor?.nome ?? 'alguém da equipe')}
+            {selecionado.tipo === 'entrada' && ` · dinheiro com ${comQuem(selecionado)}`}
           </div>
           {notaUrl && (
             <a className="bt" href={notaUrl} target="_blank" rel="noreferrer" style={{ textAlign: 'center', textDecoration: 'none' }}>

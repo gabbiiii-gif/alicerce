@@ -55,6 +55,9 @@ export type ObraCompleta = {
 const SELECT_REPASSE =
   '*, de:profiles!repasses_de_id_fkey(id, nome, iniciais), para:profiles!repasses_para_id_fkey(id, nome, iniciais)'
 
+// Lançamento também aponta duas vezes para profiles desde a 0020 (autor e quem recebeu a
+// entrada). Sem o nome da FK, o PostgREST recusa o embed por ambiguidade e a obra não abre.
+
 export async function carregarObra(obraId: string): Promise<ObraCompleta> {
   const [obraRes, membrosRes, aditivosRes, lancRes, repRes] = await Promise.all([
     supabase.from('obras').select('*').eq('id', obraId).single(),
@@ -62,7 +65,7 @@ export async function carregarObra(obraId: string): Promise<ObraCompleta> {
     supabase.from('aditivos').select('*').eq('obra_id', obraId).order('created_at', { ascending: false }),
     supabase
       .from('lancamentos')
-      .select('*, autor:profiles(id, nome, iniciais), categoria:categorias(id, nome)')
+      .select('*, autor:profiles!lancamentos_autor_id_fkey(id, nome, iniciais), categoria:categorias(id, nome)')
       .eq('obra_id', obraId)
       .order('data', { ascending: false })
       .order('created_at', { ascending: false }),
@@ -107,7 +110,7 @@ export async function carregarRelatorioGeral(): Promise<RelatorioGeral> {
   const [lancRes, membrosRes, repRes] = await Promise.all([
     supabase
       .from('lancamentos')
-      .select('*, autor:profiles(id, nome, iniciais), categoria:categorias(id, nome), obra:obras(id, nome)')
+      .select('*, autor:profiles!lancamentos_autor_id_fkey(id, nome, iniciais), categoria:categorias(id, nome), obra:obras(id, nome)')
       .order('data', { ascending: false })
       .order('created_at', { ascending: false }),
     supabase.from('obra_membros').select('obra_id, user_id, papel, profile:profiles(id, nome, iniciais)'),
@@ -180,6 +183,7 @@ export async function criarObra(dados: {
 
   const obraId = data.id as string
   // Sem entrada a obra nasce só com o valor fechado; o recebimento entra depois pelo painel.
+  // A entrada da criação fica com quem criou a obra: é ele quem repassa ao sócio.
   if (dados.entrada > 0) {
     await registrarEntrada({ obraId, autorId: dados.autorId, valor: dados.entrada, descricao: 'Entrada' })
   }
@@ -192,7 +196,10 @@ export async function registrarEntrada(dados: {
   valor: number
   descricao: string
   comprovanteId?: string | null
+  // Quem recebeu o dinheiro do cliente. Vazio ou igual ao autor: o próprio autor (0020).
+  recebidoPor?: string | null
 }) {
+  const recebidoPor = dados.recebidoPor && dados.recebidoPor !== dados.autorId ? dados.recebidoPor : null
   const { error } = await supabase.from('lancamentos').insert({
     obra_id: dados.obraId,
     autor_id: dados.autorId,
@@ -202,8 +209,16 @@ export async function registrarEntrada(dados: {
     data: hojeISO(),
     comprovante_id: dados.comprovanteId ?? null,
     categoria_id: null,
+    // A coluna só vai quando é outra pessoa: sem a 0020 aplicada, a entrada no próprio nome
+    // continua funcionando.
+    ...(recebidoPor ? { recebido_por: recebidoPor } : {}),
   })
-  if (error) throw error
+  if (error) {
+    if (recebidoPor && /recebido_por/.test(error.message)) {
+      throw new Error('Falta ligar no servidor a entrada em nome do sócio (migration 0020)')
+    }
+    throw error
+  }
 }
 
 export async function registrarSaida(dados: {

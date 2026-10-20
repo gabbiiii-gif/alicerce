@@ -99,6 +99,9 @@ export function NovaObra() {
           {/* Cliente que ainda não pagou é comum: a obra começa assim mesmo, e a entrada vira
               um "+ entrada" normal no painel quando o dinheiro cair. */}
           <div className="ann">Cliente ainda não pagou? Deixe em R$ 0,00 e registre a entrada depois, no painel da obra.</div>
+          {/* Regra combinada com os sócios: quem cria a obra está com o dinheiro da entrada
+              e repassa a parte do outro. As entradas seguintes dizem com quem ficou. */}
+          {entrada > 0 && <div className="note">A entrada fica no seu caixa. Repasse ao sócio pelo painel, em Repasses.</div>}
         </>
       )}
 

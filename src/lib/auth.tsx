@@ -17,7 +17,17 @@ type Contexto = {
   // iPhone, app da Tela de Início: o Google está aberto numa janela à parte e o app espera a
   // volta pela ponte (lib/ponte.ts).
   aguardandoGoogle: boolean
+  // Troca o nome que aparece para os sócios. Quem se cadastrou sem nome ficava com o pedaço
+  // do e-mail antes do @, e era assim que aparecia nos lançamentos e no relatório.
+  renomear: (nome: string) => Promise<void>
   sair: () => Promise<void>
+}
+
+// As mesmas iniciais que o banco calcula no cadastro (handle_new_user, 0002): primeira letra
+// do primeiro e do segundo nome, ou as duas primeiras do nome único.
+export function iniciaisDe(nome: string): string {
+  const [primeiro = '', segundo = ''] = nome.trim().split(/\s+/)
+  return (primeiro.charAt(0) + (segundo.charAt(0) || primeiro.charAt(1))).toUpperCase() || '?'
 }
 
 const AuthContext = createContext<Contexto | null>(null)
@@ -223,6 +233,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       aguardandoGoogle: ponte !== null,
+      renomear: async nome => {
+        const userId = session?.user.id
+        const limpo = nome.trim().replace(/\s+/g, ' ')
+        if (!userId || !limpo) return
+        const supabase = await carregarSupabase()
+        // Só nome e iniciais: o grant de update em profiles é por coluna (0003).
+        const { data, error } = await supabase
+          .from('profiles')
+          .update({ nome: limpo, iniciais: iniciaisDe(limpo) })
+          .eq('id', userId)
+          .select('id, nome, iniciais, avatar_url')
+          .maybeSingle()
+        if (error) throw new Error(traduzErro(error.message))
+        if (data) setPerfil(data as Profile)
+      },
       sair: async () => {
         // O aparelho para de receber os avisos desta conta antes de a sessão acabar: sem ela,
         // o banco não deixaria apagar. Import dinâmico: o push não entra na primeira tela, e

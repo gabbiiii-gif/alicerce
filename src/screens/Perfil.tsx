@@ -43,7 +43,23 @@ function textoDoPush(estado: Exclude<EstadoPush, 'sem-suporte'>): { nota: string
 
 export function Perfil() {
   const navigate = useNavigate()
-  const { session, sair } = useAuth()
+  const { session, sair, renomear } = useAuth()
+  const [novoNome, setNovoNome] = useState<string | null>(null)
+  const [renomeando, setRenomeando] = useState(false)
+
+  async function salvarNome() {
+    if (!novoNome?.trim()) return avisar('Escreva seu nome')
+    setRenomeando(true)
+    try {
+      await renomear(novoNome)
+      setNovoNome(null)
+      avisar('Nome atualizado')
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : 'não deu para salvar o nome')
+    } finally {
+      setRenomeando(false)
+    }
+  }
   const { userId, perfil } = useUsuario()
   const { obraId } = useObraAtual()
   const avisar = useAviso()
@@ -148,18 +164,24 @@ export function Perfil() {
   return (
     <>
       <Tela titulo="Perfil" comAbas>
-        <div className="cd" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        {/* Tocável: o nome é o que os sócios veem em cada lançamento e no relatório. */}
+        <button
+          className="cd"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, cursor: 'pointer', textAlign: 'left' }}
+          onClick={() => setNovoNome(perfil?.nome ?? '')}
+        >
           {/* Quem entrou pelo Google já tem foto; os outros ficam com as iniciais. */}
           {perfil?.avatar_url ? (
             <img className="av" src={perfil.avatar_url} alt="" referrerPolicy="no-referrer" />
           ) : (
             <div className="av">{perfil?.iniciais ?? '·'}</div>
           )}
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <b style={{ fontSize: 15 }}>{perfil?.nome ?? 'você'}</b>
             <div className="note">{souDono ? 'dono de obra' : 'lança os próprios gastos'} · {session?.user.email}</div>
           </div>
-        </div>
+          <span className="note" style={{ color: '#2272CC' }}>editar</span>
+        </button>
 
         <button className="li" onClick={() => navigate('/notificacoes', { state: { de: '/perfil' } })}>
           <div style={{ flex: 1, textAlign: 'left' }}>
@@ -241,6 +263,25 @@ export function Perfil() {
         </div>
       </Tela>
       <TabBar ativa="perfil" />
+
+      {novoNome !== null && (
+        <Sheet aoFechar={() => setNovoNome(null)}>
+          <b style={{ fontSize: 17 }}>Seu nome</b>
+          <span className="note">É como os sócios veem você nos lançamentos, nas entradas e no relatório.</span>
+          <input
+            className="inp"
+            autoCapitalize="words"
+            placeholder="Nome e sobrenome"
+            value={novoNome}
+            onChange={e => setNovoNome(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && salvarNome()}
+            autoFocus
+          />
+          <button className="bt btp" style={{ width: '100%' }} onClick={salvarNome} disabled={renomeando || !novoNome.trim()}>
+            {renomeando ? 'salvando…' : 'Salvar nome'}
+          </button>
+        </Sheet>
+      )}
 
       {confirmando && (
         <Sheet aoFechar={() => setConfirmando(false)}>
