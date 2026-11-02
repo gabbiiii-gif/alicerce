@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { apagarRepasse, criarRepasse, listarSocios } from '../data/api'
-import { brParaISO, fmt, hojeISO, isoParaBR, semSimbolo } from '../lib/format'
+import { brParaISO, fmt, hojeISO, isoParaBR } from '../lib/format'
 import type { Membro, Profile, Repasse } from '../lib/types'
 import { useAviso } from './Toast'
 import { Sheet } from './Sheet'
@@ -184,7 +184,7 @@ export function RepassesSheet({
                   <span className="note">{[isoParaBR(r.data), r.descricao].filter(Boolean).join(' · ')}</span>
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
-                  <span className="num" style={{ fontSize: 14, fontWeight: 500 }}>{semSimbolo(r.valor)}</span>
+                  <span className="num" style={{ fontSize: 14, fontWeight: 500 }}>{fmt(r.valor)}</span>
                   {r.autor_id === userId && (
                     <button
                       className="chip"

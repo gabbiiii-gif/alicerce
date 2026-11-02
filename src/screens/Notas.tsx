@@ -3,7 +3,7 @@ import { m } from 'motion/react'
 import { listarNotas, type NotaEnviada } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
-import { dataCurta, semSimbolo } from '../lib/format'
+import { dataCurta, fmt } from '../lib/format'
 import { CURVA } from '../lib/animacao'
 import { Carregando, Tela } from '../components/Tela'
 
@@ -115,7 +115,7 @@ function LinhaNota({
           <b style={{ fontSize: 14 }}>{titulo}</b>
           <span className="note">
             {data + ' · ' + quem}
-            {valor != null && ` · ${semSimbolo(valor)}`}
+            {valor != null && ` · ${fmt(valor)}`}
             {!url && ' · arquivo indisponível'}
           </span>
         </span>

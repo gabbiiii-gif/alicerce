@@ -6,7 +6,7 @@ import type { Profile } from '../lib/types'
 import { useAsync } from '../lib/hooks'
 import { useObraAtual } from '../lib/obraAtual'
 import { montarVisao, type MesResumo } from '../lib/dashboard'
-import { curto, dataCurta, fmt, semSimbolo } from '../lib/format'
+import { curto, dataCurta, fmt } from '../lib/format'
 import { CURVA } from '../lib/animacao'
 import { Carregando, Secao, Tela, Vazio } from '../components/Tela'
 import { AvisoPlano } from '../components/AvisoPlano'
@@ -205,11 +205,11 @@ export function Resumo() {
             <div className="cd" style={{ padding: '12px 16px', gap: 7 }}>
               <div className="conta">
                 <span>Entrou este mês</span>
-                <b style={{ color: 'var(--azul-700)' }}>+{semSimbolo(visao.mesEntradas)}</b>
+                <b style={{ color: 'var(--azul-700)' }}>+{fmt(visao.mesEntradas)}</b>
               </div>
               <div className="conta">
                 <span>Saiu este mês</span>
-                <b>−{semSimbolo(visao.mesSaidas)}</b>
+                <b>−{fmt(visao.mesSaidas)}</b>
               </div>
               <div className="conta total">
                 <span>Do contrato já executado</span>
@@ -247,7 +247,7 @@ export function Resumo() {
                           style={{ height: '100%', borderRadius: 5, background: c.cor }}
                         />
                       </div>
-                      <span className="num" style={{ fontSize: 12.5, fontWeight: 500, width: 56, flex: 'none', textAlign: 'right' }}>
+                      <span className="num" style={{ fontSize: 12.5, fontWeight: 500, minWidth: 74, flex: 'none', textAlign: 'right' }}>
                         {curto(c.valor)}
                       </span>
                     </m.div>
@@ -312,7 +312,7 @@ export function Resumo() {
                           color: l.tipo === 'saida' ? 'var(--navy)' : 'var(--azul-700)',
                         }}
                       >
-                        {l.tipo === 'saida' ? '−' : '+'}{semSimbolo(l.valor)}
+                        {l.tipo === 'saida' ? '−' : '+'}{fmt(l.valor)}
                       </span>
                     </div>
                   ))}

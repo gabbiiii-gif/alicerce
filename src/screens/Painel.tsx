@@ -9,7 +9,7 @@ import { useUsuario } from '../lib/auth'
 import { useObraAtual } from '../lib/obraAtual'
 import { usePlano } from '../lib/plano'
 import { useAviso } from '../components/Toast'
-import { curto, dataCurta, fmt, semSimbolo } from '../lib/format'
+import { curto, dataCurta, fmt } from '../lib/format'
 import { Secao, Tela, TelaCarregando, Vazio } from '../components/Tela'
 import { AvisoPlano } from '../components/AvisoPlano'
 import { ValorAnimado } from '../components/ValorAnimado'
@@ -287,7 +287,7 @@ export function Painel() {
                     </span>
                     {/* Entrada em azul, saída em navy: dá para ler a lista pela cor antes do sinal. */}
                     <span className="num" style={{ ...VALOR, color: l.tipo === 'saida' ? 'var(--navy)' : 'var(--azul-700)' }}>
-                      {(l.tipo === 'saida' ? '−' : '+') + semSimbolo(l.valor)}
+                      {(l.tipo === 'saida' ? '−' : '+') + fmt(l.valor)}
                     </span>
                   </m.button>
                 ))}
@@ -400,7 +400,7 @@ export function Painel() {
                     </span>
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
-                    <span className="num" style={VALOR}>{'+' + semSimbolo(a.valor)}</span>
+                    <span className="num" style={VALOR}>{'+' + fmt(a.valor)}</span>
                     {a.autor_id === userId && (
                       <button
                         className="chip"
