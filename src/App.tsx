@@ -81,7 +81,12 @@ let precarregou = false
 function precarregarTelas() {
   if (precarregou) return
   precarregou = true
-  const fila = PROTEGIDAS.map(([, rota]) => rota.carregar)
+  // As cinco telas do menu lateral e das abas vêm já, juntas: é onde a pessoa clica nos
+  // primeiros segundos, e esperar o tempo livre deixava o clique diante de uma tela em
+  // branco enquanto o arquivo baixava. O resto segue na fila, uma por vez.
+  const abas = [Resumo, Obras, Enviar, Relatorios, Perfil]
+  abas.forEach(rota => rota.carregar().catch(() => {}))
+  const fila = PROTEGIDAS.map(([, rota]) => rota.carregar).filter(c => !abas.some(r => r.carregar === c))
   const proxima = () => {
     const carregar = fila.shift()
     if (carregar) carregar().catch(() => {}).finally(() => quandoOcioso(proxima))

@@ -957,7 +957,8 @@ button.ntf:active { opacity: .7; }
   flex: none;
   overflow: hidden;
   border-radius: 12px;
-  background: var(--linha-suave);
+  /* --linha-suave quase não se distingue do fundo: a espera parecia uma tela em branco. */
+  background: var(--linha);
 }
 .esq::after {
   content: '';
