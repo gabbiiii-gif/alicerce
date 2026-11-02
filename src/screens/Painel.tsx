@@ -9,7 +9,7 @@ import { useUsuario } from '../lib/auth'
 import { useObraAtual } from '../lib/obraAtual'
 import { usePlano } from '../lib/plano'
 import { useAviso } from '../components/Toast'
-import { curto, dataCurta, fmt, semSimbolo } from '../lib/format'
+import { curto, dataCurta, fmt } from '../lib/format'
 import { Tela, TelaCarregando } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
 import { AvisoPlano } from '../components/AvisoPlano'
@@ -262,7 +262,7 @@ export function Painel() {
                     : l.autor_id === userId ? 'você' : (l.autor?.nome ?? '').split(' ')[0] || 'equipe')}
               </div>
             </div>
-            <b className="num" style={{ fontSize: 13.5 }}>{(l.tipo === 'saida' ? '−' : '+') + semSimbolo(l.valor)}</b>
+            <b className="num" style={{ fontSize: 13.5 }}>{(l.tipo === 'saida' ? '−' : '+') + fmt(l.valor)}</b>
           </m.button>
         ))}
 
@@ -361,7 +361,7 @@ export function Painel() {
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <b className="num" style={{ fontSize: 13.5 }}>{'+' + semSimbolo(a.valor)}</b>
+                <b className="num" style={{ fontSize: 13.5 }}>{'+' + fmt(a.valor)}</b>
                 {a.autor_id === userId && (
                   <button
                     className="chip"

@@ -7,7 +7,7 @@ import {
 import type { Profile } from '../lib/types'
 import { useAsync } from '../lib/hooks'
 import { useAviso } from '../components/Toast'
-import { brParaISO, curto, fmt, hojeISO, isoParaBR, semSimbolo } from '../lib/format'
+import { brParaISO, curto, fmt, hojeISO, isoParaBR } from '../lib/format'
 import { montarRelatorio, textoResumo, type Intervalo, type Periodo, type Relatorio } from '../lib/relatorio'
 import { baixarOuCompartilhar, gerarPdfRelatorio } from '../lib/pdf'
 import { CURVA } from '../lib/animacao'
@@ -224,7 +224,7 @@ export function Relatorios() {
           </div>
           <div className="row">
             <span className="note">Saídas</span>
-            <b className="num" style={{ fontSize: 14 }}>−{semSimbolo(relatorio.saidas)}</b>
+            <b className="num" style={{ fontSize: 14 }}>−{fmt(relatorio.saidas)}</b>
           </div>
           <div className="row" style={{ borderTop: '1px solid #E1EAF6', paddingTop: 5 }}>
             <span style={{ fontSize: 14 }}>em aberto{!obraId && obras && obras.length > 1 ? ' (soma)' : ''}</span>
@@ -253,7 +253,7 @@ export function Relatorios() {
                   <b style={{ fontSize: 13.5 }}>{o.nome}</b>
                   <div className="note">entrou {curto(o.entradas)}</div>
                 </div>
-                <b className="num" style={{ fontSize: 13.5 }}>−{semSimbolo(o.saidas)}</b>
+                <b className="num" style={{ fontSize: 13.5 }}>−{fmt(o.saidas)}</b>
               </m.button>
             ))}
           </>
@@ -265,7 +265,7 @@ export function Relatorios() {
             <div style={{ flex: 1 }}>
               <Barra pct={c.pct} />
             </div>
-            <b className="num" style={{ fontSize: 12.5, width: 44, textAlign: 'right' }}>{curto(c.valor)}</b>
+            <b className="num" style={{ fontSize: 12.5, minWidth: 74, textAlign: 'right' }}>{curto(c.valor)}</b>
           </div>
         ))}
 
@@ -369,7 +369,7 @@ function ColunasPessoas({ relatorio, notas }: { relatorio: Relatorio; notas: Map
               <div key={i.id} className="cd" style={{ padding: 8, gap: 3, minWidth: 0 }}>
                 <div className="row" style={{ gap: 4 }}>
                   <span className="note" style={{ fontSize: 11.5 }}>{isoParaBR(i.data)}</span>
-                  <b className="num" style={{ fontSize: 13 }}>{semSimbolo(i.valor)}</b>
+                  <b className="num" style={{ fontSize: 13 }}>{fmt(i.valor)}</b>
                 </div>
                 <b style={{ fontSize: 13, lineHeight: 1.25, overflowWrap: 'anywhere' }}>{i.descricao}</b>
                 <span className="note" style={{ fontSize: 11.5 }}>{i.categoria}</span>
@@ -431,7 +431,7 @@ function Repasses({ relatorio }: { relatorio: Relatorio }) {
                     {[isoParaBR(r.data), r.descricao, r.obra].filter(Boolean).join(' · ')}
                   </div>
                 </div>
-                <b className="num" style={{ fontSize: 13.5 }}>{semSimbolo(r.valor)}</b>
+                <b className="num" style={{ fontSize: 13.5 }}>{fmt(r.valor)}</b>
               </div>
             ))}
           </div>

@@ -7,7 +7,7 @@ import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
 import { useObraAtual } from '../lib/obraAtual'
 import { montarVisao, COR_ENTRADA, COR_ENTRADA_TEXTO, COR_SAIDA, COR_SAIDA_TEXTO } from '../lib/dashboard'
-import { curto, dataCurta, fmt, semSimbolo } from '../lib/format'
+import { curto, dataCurta, fmt } from '../lib/format'
 import { CURVA } from '../lib/animacao'
 import { Carregando, Tela, Vazio } from '../components/Tela'
 import { TabBar } from '../components/TabBar'
@@ -169,11 +169,11 @@ export function Resumo() {
             <div className="cd" style={{ gap: 5 }}>
               <div className="row">
                 <span className="note">Entrou este mês</span>
-                <b className="num" style={{ fontSize: 14, color: COR_ENTRADA_TEXTO }}>+{semSimbolo(visao.mesEntradas)}</b>
+                <b className="num" style={{ fontSize: 14, color: COR_ENTRADA_TEXTO }}>+{fmt(visao.mesEntradas)}</b>
               </div>
               <div className="row">
                 <span className="note">Saiu este mês</span>
-                <b className="num" style={{ fontSize: 14, color: COR_SAIDA_TEXTO }}>−{semSimbolo(visao.mesSaidas)}</b>
+                <b className="num" style={{ fontSize: 14, color: COR_SAIDA_TEXTO }}>−{fmt(visao.mesSaidas)}</b>
               </div>
               <div className="row" style={{ borderTop: '1px solid var(--linha)', paddingTop: 5 }}>
                 <span style={{ fontSize: 14 }}>Do contrato já executado</span>
@@ -203,7 +203,7 @@ export function Resumo() {
                         style={{ height: '100%', borderRadius: 5, background: c.cor }}
                       />
                     </div>
-                    <b className="num" style={{ fontSize: 12.5, width: 56, textAlign: 'right' }}>{curto(c.valor)}</b>
+                    <b className="num" style={{ fontSize: 12.5, minWidth: 74, textAlign: 'right' }}>{curto(c.valor)}</b>
                   </m.div>
                 ))}
               </>
@@ -237,7 +237,7 @@ export function Resumo() {
                       </span>
                     </div>
                     <b className="num" style={{ fontSize: 13, color: l.tipo === 'saida' ? COR_SAIDA_TEXTO : COR_ENTRADA_TEXTO }}>
-                      {l.tipo === 'saida' ? '−' : '+'}{semSimbolo(l.valor)}
+                      {l.tipo === 'saida' ? '−' : '+'}{fmt(l.valor)}
                     </b>
                   </div>
                 ))}

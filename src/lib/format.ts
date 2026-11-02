@@ -26,15 +26,12 @@ export function fmt(valor: number | null | undefined): string {
   return 'R$ ' + numero(valor)
 }
 
-export function semSimbolo(valor: number | null | undefined): string {
-  return numero(valor)
-}
-
-// Valores curtos para barras e resumos: 4500 -> "4k"
+// Valores curtos para barras e resumos: 4500 -> "R$ 4k". Sempre com o R$: número solto
+// numa lista não diz se é dinheiro, quantidade ou percentual.
 export function curto(valor: number | null | undefined): string {
   const v = Math.round(valor || 0)
   // Abaixo de mil não há abreviação a fazer, então os centavos ficam.
-  return v >= 1000 ? Math.round(v / 1000) + 'k' : numero(valor)
+  return 'R$ ' + (v >= 1000 ? Math.round(v / 1000) + 'k' : numero(valor))
 }
 
 // Entrada de dinheiro no celular: o usuário digita só dígitos e o campo formata.
