@@ -21,7 +21,7 @@ export function Notas() {
 
       {erro && !carregando && (
         <>
-          <div className="ann">Não deu para abrir as notas: {erro}</div>
+          <div className="ann ann-alerta">Não deu para abrir as notas: {erro}</div>
           <button className="bt" onClick={() => recarregar()}>Tentar de novo</button>
         </>
       )}
@@ -30,25 +30,37 @@ export function Notas() {
         <div className="dsh" style={{ padding: 18 }}>Nenhuma nota enviada nesta obra ainda</div>
       )}
 
-      {dados?.map((nota, i) => (
-        <m.div
-          key={nota.comprovante.id}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...CURVA, delay: Math.min(i, 8) * 0.035 }}
-        >
-          <LinhaNota nota={nota} userId={userId} aoConferir={() => navigate(`/obra/${obraId}/revisar/${nota.comprovante.id}`)} />
-        </m.div>
-      ))}
-
       {dados && dados.length > 0 && (
-        <div className="note" style={{ textAlign: 'center' }}>Toque na nota para abrir o arquivo.</div>
+        <>
+          <div className="lista">
+            {dados.map((nota, i) => (
+              <LinhaNota
+                key={nota.comprovante.id}
+                nota={nota}
+                ordem={i}
+                userId={userId}
+                aoConferir={() => navigate(`/obra/${obraId}/revisar/${nota.comprovante.id}`)}
+              />
+            ))}
+          </div>
+          <div className="note" style={{ textAlign: 'center', fontSize: 13 }}>Toque na nota para abrir o arquivo.</div>
+        </>
       )}
     </Tela>
   )
 }
 
-function LinhaNota({ nota, userId, aoConferir }: { nota: NotaEnviada; userId: string; aoConferir: () => void }) {
+function LinhaNota({
+  nota,
+  ordem,
+  userId,
+  aoConferir,
+}: {
+  nota: NotaEnviada
+  ordem: number
+  userId: string
+  aoConferir: () => void
+}) {
   const { comprovante: c, autor, url, lancamento } = nota
   const quem = c.autor_id === userId ? 'você' : (autor?.nome ?? '').split(' ')[0] || 'equipe'
   const lido = c.extraido
@@ -60,53 +72,62 @@ function LinhaNota({ nota, userId, aoConferir }: { nota: NotaEnviada; userId: st
   const pendente = c.status !== 'confirmado' && c.autor_id === userId
 
   return (
-    <div className="li" style={{ gap: 10, cursor: 'default' }}>
-      {/* O arquivo abre no navegador: foto em tela cheia, PDF no leitor do aparelho. */}
+    <m.div
+      className="linha"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...CURVA, delay: Math.min(ordem, 8) * 0.035 }}
+      style={{ gap: 12 }}
+    >
+      {/* O arquivo abre no navegador: foto em tela cheia, PDF no leitor do aparelho. O
+          "conferir" fica fora do link, porque leva a outro lugar (a ficha do Revisar). */}
       <a
         href={url ?? undefined}
         target="_blank"
         rel="noreferrer"
-        style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
+        style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
       >
-        <div
+        <span
           style={{
             width: 44,
             height: 44,
             flex: 'none',
-            borderRadius: 8,
-            border: '1px solid #E1EAF6',
+            borderRadius: 10,
+            border: '1px solid var(--linha)',
+            background: 'var(--fundo)',
+            color: 'var(--texto-secundario)',
             overflow: 'hidden',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 11,
-            color: '#8CA3BF',
           }}
         >
           {ehImagem && url ? (
             <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            'PDF'
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21z" />
+              <path d="M9 8h6M9 11.5h6M9 15h4" />
+            </svg>
           )}
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <b style={{ fontSize: 13.5, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {titulo}
-          </b>
-          <div className="note">
+        </span>
+        <span className="linha-txt">
+          <b style={{ fontSize: 14 }}>{titulo}</b>
+          <span className="note">
             {data + ' · ' + quem}
             {valor != null && ` · ${semSimbolo(valor)}`}
             {!url && ' · arquivo indisponível'}
-          </div>
-        </div>
+          </span>
+        </span>
       </a>
       {pendente ? (
-        <button className="chip" onClick={aoConferir} style={{ whiteSpace: 'nowrap' }}>
+        <button className="chip" onClick={aoConferir}>
           {c.status === 'lendo' ? 'lendo…' : 'conferir'}
         </button>
       ) : (
-        <span className="chip bta" style={{ background: '#2272CC', borderColor: '#2272CC', whiteSpace: 'nowrap' }}>lançada</span>
+        // O `.chip` do CSS vem depois do `.bta` e repõe o fundo branco; o azul vai à mão.
+        <span className="chip bta" style={{ background: 'var(--azul-700)', borderColor: 'var(--azul-700)' }}>lançada</span>
       )}
-    </div>
+    </m.div>
   )
 }

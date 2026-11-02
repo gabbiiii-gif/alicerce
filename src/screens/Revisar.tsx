@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   carregarComprovante, carregarObra, descartarComprovante, lerDeNovo, listarCategorias,
@@ -11,9 +11,12 @@ import { brParaISO, hojeISO, isoParaBR } from '../lib/format'
 import { Carregando, Tela } from '../components/Tela'
 import { MoedaInput } from '../components/MoedaInput'
 
+// Valor e data são dado: em mono, como no resto do app.
+const MONO = { fontFamily: 'var(--fonte-dados)', letterSpacing: '-.02em' }
+// O `.chip` do CSS vem depois do `.bta` e repõe o fundo branco; o azul vai à mão.
+const AZUL = { background: 'var(--azul-700)', borderColor: 'var(--azul-700)' }
+
 export function Revisar() {
-  // Liga cada rótulo ao seu campo: tocar no rótulo foca o campo, e o leitor de tela diz o nome.
-  const campo = useId()
   const { obraId = '', comprovanteId = '' } = useParams()
   const navigate = useNavigate()
   const { userId } = useUsuario()
@@ -54,7 +57,7 @@ export function Revisar() {
         {carregando && <Carregando />}
         {erro && !carregando && (
           <>
-            <div className="ann">Não deu para abrir o comprovante: {erro}</div>
+            <div className="ann ann-alerta">Não deu para abrir o comprovante: {erro}</div>
             <button className="bt" onClick={() => recarregar()}>Tentar de novo</button>
           </>
         )}
@@ -119,27 +122,69 @@ export function Revisar() {
 
   return (
     <Tela titulo="Conferir lançamento" voltar={`/obra/${obraId}/enviar`}>
+      {/* A foto abre inteira no navegador, como nas Notas fiscais: no recorte de 150 px
+          não dá para ler o valor miúdo da nota. */}
       {ehImagem && url ? (
-        <img
-          src={url}
-          alt="foto da nota"
-          style={{ height: 140, width: '100%', objectFit: 'cover', borderRadius: 12, border: '1px solid #E1EAF6', flex: 'none' }}
-        />
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            position: 'relative',
+            display: 'block',
+            height: 150,
+            borderRadius: 16,
+            overflow: 'hidden',
+            border: '1px solid var(--linha)',
+            flex: 'none',
+          }}
+        >
+          <img src={url} alt="foto da nota" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <span
+            style={{
+              position: 'absolute',
+              right: 8,
+              bottom: 8,
+              background: 'rgba(255, 255, 255, .92)',
+              borderRadius: 999,
+              padding: '4px 10px',
+              fontSize: 12,
+              color: 'var(--azul-700)',
+            }}
+          >
+            toque para ampliar
+          </span>
+        </a>
       ) : (
-        <a className="dsh" style={{ height: 104, textDecoration: 'none' }} href={url ?? '#'} target="_blank" rel="noreferrer">
+        <a
+          className="dsh"
+          style={{ height: 150, gap: 6, fontSize: 13, textDecoration: 'none' }}
+          href={url ?? '#'}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21z" />
+            <path d="M9 8h6M9 11.5h6M9 15h4" />
+          </svg>
           {url ? 'abrir o arquivo da nota' : 'comprovante indisponível'}
+          {url && <span style={{ fontSize: 12, color: 'var(--azul-700)' }}>toque para abrir</span>}
         </a>
       )}
 
       <div className="row">
-        <span className="chip bta" style={{ background: '#2272CC', borderColor: '#2272CC' }}>
-          {/* Só 'pronto' veio do agente. 'lendo' aqui é a nota que travou e o usuário abriu na mão. */}
-          {comprovante.status === 'pronto' ? 'lido pelo agente' : 'preencha na mão'}
-        </span>
-        <span className="note">{obra.nome}</span>
+        {/* Só 'pronto' veio do agente. 'lendo' aqui é a nota que travou e o usuário abriu na mão. */}
+        {comprovante.status === 'pronto' ? (
+          <span className="chip bta" style={AZUL}>lido pelo agente</span>
+        ) : (
+          <span className="chip">preencha na mão</span>
+        )}
+        <span className="note" style={{ fontSize: 13 }}>{obra.nome}</span>
       </div>
 
-      {comprovante.status === 'erro' && comprovante.erro && <div className="ann">O agente não conseguiu ler: {comprovante.erro}</div>}
+      {comprovante.status === 'erro' && comprovante.erro && (
+        <div className="ann ann-alerta">O agente não conseguiu ler: {comprovante.erro}</div>
+      )}
 
       {/* Nota que falhou (chave vencida, IA fora do ar) ou travou em "lendo": resolvido o
           problema, um toque lê de novo em vez de digitar tudo. */}
@@ -149,48 +194,58 @@ export function Revisar() {
         </button>
       )}
 
-      <label className="note" htmlFor={`${campo}-fornecedor`}>Fornecedor</label>
-      <input id={`${campo}-fornecedor`} className="inp" value={fornecedor} onChange={e => setFornecedor(e.target.value)} />
+      {/* O rótulo envolve o campo: tocar nele foca o campo, e o leitor de tela diz o nome. */}
+      <label className="rotulo">
+        Fornecedor
+        <input className="inp" placeholder="De quem é a nota?" value={fornecedor} onChange={e => setFornecedor(e.target.value)} />
+      </label>
 
-      <label className="note" htmlFor={`${campo}-descricao`}>Descrição</label>
-      <input
-        id={`${campo}-descricao`}
-        className="inp"
-        placeholder="O que foi comprado (opcional)"
-        value={descricao}
-        onChange={e => setDescricao(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && confirmar()}
-      />
+      <label className="rotulo">
+        Descrição
+        <input
+          className="inp"
+          placeholder="O que foi comprado (opcional)"
+          value={descricao}
+          onChange={e => setDescricao(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && confirmar()}
+        />
+      </label>
 
-      <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <label className="note" htmlFor={`${campo}-valor`}>Valor</label>
-          <MoedaInput id={`${campo}-valor`} valor={valor} aoMudar={setValor} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label className="note" htmlFor={`${campo}-data`}>Data</label>
-          <input id={`${campo}-data`} className="inp" inputMode="numeric" placeholder="dd/mm/aaaa" value={data} onChange={e => setData(e.target.value)} />
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, flex: 'none' }}>
+        <label className="rotulo" style={{ minWidth: 0 }}>
+          Valor
+          <MoedaInput valor={valor} aoMudar={setValor} placeholder="R$ 0,00" style={MONO} />
+        </label>
+        <label className="rotulo" style={{ minWidth: 0 }}>
+          Data
+          <input className="inp" inputMode="numeric" placeholder="dd/mm/aaaa" value={data} onChange={e => setData(e.target.value)} style={MONO} />
+        </label>
       </div>
 
-      <div className="note">Categoria</div>
-      <div className="row" style={{ flexWrap: 'wrap', gap: 6, justifyContent: 'flex-start' }}>
-        {categorias.map(c => (
-          <button
-            key={c.id}
-            className={categoriaId === c.id ? 'chip bta' : 'chip'}
-            style={categoriaId === c.id ? { background: '#2272CC', borderColor: '#2272CC' } : undefined}
-            onClick={() => setCategoriaId(c.id)}
-          >
-            {c.nome}
-          </button>
-        ))}
+      <span className="note">Categoria</span>
+      <div role="group" aria-label="Categoria" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, flex: 'none' }}>
+        {categorias.map(c => {
+          const escolhida = categoriaId === c.id
+          return (
+            <button
+              key={c.id}
+              className={escolhida ? 'chip bta' : 'chip'}
+              style={escolhida ? AZUL : undefined}
+              aria-pressed={escolhida}
+              onClick={() => setCategoriaId(c.id)}
+            >
+              {c.nome}
+            </button>
+          )
+        })}
       </div>
 
       {/* Enquanto o agente relê, nada de lançar nem descartar: a resposta dele chegaria
           depois e devolveria à fila uma nota já lançada. */}
-      <div className="row" style={{ marginTop: 'auto', gap: 8, paddingTop: 10 }}>
-        <button className="bt" style={{ flex: 1 }} onClick={descartar} disabled={relendo}>Descartar</button>
+      <div className="par" style={{ marginTop: 'auto', paddingTop: 12 }}>
+        <button className="bt" style={{ minHeight: 50, borderRadius: 14 }} onClick={descartar} disabled={relendo}>
+          Descartar
+        </button>
         <button className="bt btp" style={{ flex: 2 }} onClick={confirmar} disabled={salvando || relendo}>
           {salvando ? 'lançando…' : 'Confirmar'}
         </button>

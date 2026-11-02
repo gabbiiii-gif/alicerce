@@ -60,42 +60,49 @@ export function EditarObraSheet({
 
   return (
     <Sheet aoFechar={aoFechar}>
-      <b style={{ fontSize: 17 }}>Editar obra</b>
+      <div className="sheet-titulo">
+        <b>Editar obra</b>
+      </div>
 
-      <label className="note" htmlFor="obra-nome">Nome da obra</label>
-      <input id="obra-nome" className="inp" value={nome} onChange={e => setNome(e.target.value)} />
+      <label className="rotulo" htmlFor="obra-nome">
+        Nome da obra
+        <input id="obra-nome" className="inp" value={nome} onChange={e => setNome(e.target.value)} />
+      </label>
 
-      <label className="note" htmlFor="obra-endereco">Endereço</label>
-      <input
-        id="obra-endereco"
-        className="inp"
-        placeholder="sem endereço"
-        value={endereco}
-        onChange={e => setEndereco(e.target.value)}
-      />
+      <label className="rotulo" htmlFor="obra-endereco">
+        Endereço
+        <input
+          id="obra-endereco"
+          className="inp"
+          placeholder="sem endereço"
+          value={endereco}
+          onChange={e => setEndereco(e.target.value)}
+        />
+      </label>
 
-      <label className="note" htmlFor="obra-valor">Valor fechado com o cliente</label>
-      <MoedaInput id="obra-valor" valor={valor} aoMudar={setValor} />
+      <label className="rotulo" htmlFor="obra-valor">
+        Valor fechado com o cliente
+        <MoedaInput id="obra-valor" valor={valor} aoMudar={setValor} />
+      </label>
 
       {mudouValor && valor > 0 && (
-        <div className="row" style={{ background: '#E0F4FF', border: '1px solid #C4E4FB', borderRadius: 10, padding: '6px 9px' }}>
-          <span className="note" style={{ color: '#0A2A6E' }}>
+        <div className="ann" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
             novo total <span className="num">{fmt(novoTotal)}</span>
           </span>
-          <span className="note" style={{ color: '#0A2A6E' }}>
-            em aberto <b className="num" style={{ fontSize: 14 }}>{fmt(novoAberto)}</b>
+          <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+            em aberto
+            <span className="num" style={{ fontSize: 15, fontWeight: 500, color: 'var(--navy)' }}>{fmt(novoAberto)}</span>
           </span>
         </div>
       )}
 
-      <div className="note">Quem divide a obra com você recebe um aviso com o que mudou.</div>
+      <div className="note" style={{ fontSize: 13 }}>Quem divide a obra com você recebe um aviso com o que mudou.</div>
 
       <button className="bt btp" onClick={salvar} disabled={salvando || !mudou}>
         {salvando ? 'salvando…' : 'Salvar alterações'}
       </button>
-      <div className="note" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={aoFechar}>
-        fechar
-      </div>
+      <button className="bt-texto" onClick={aoFechar}>fechar</button>
     </Sheet>
   )
 }

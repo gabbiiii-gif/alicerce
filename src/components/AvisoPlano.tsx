@@ -42,29 +42,36 @@ export function AvisoPlano() {
   if (!tom) return null
   if (!souTitular && tom === 'atencao') return null
 
-  // Mesmo âmbar do "Desfazer sociedade" no Perfil: é a cor que este app já usa para
-  // "atenção", e inventar outra só faria a faixa parecer de outro produto.
-  const BORDA = '#FBD5B5'
-  const TEXTO = '#9A3412'
-
+  // A faixa laranja de `.ann-alerta` (fundo, borda e texto): é o mesmo âmbar do "Desfazer
+  // sociedade" no Perfil, a cor que este app já usa para "atenção" — inventar outra só faria
+  // a faixa parecer de outro produto. A pílula da ação herda a cor do texto.
   return (
     <button
-      className="cd"
+      className="ann ann-alerta"
       onClick={() => navigate('/plano')}
       style={{
-        flexDirection: 'row',
+        display: 'flex',
         alignItems: 'center',
         gap: 10,
-        padding: 12,
-        cursor: 'pointer',
+        width: '100%',
+        padding: '12px 14px',
+        borderRadius: 14,
         textAlign: 'left',
-        borderColor: BORDA,
+        cursor: 'pointer',
+        fontFamily: 'var(--fonte-texto)',
       }}
     >
-      <div style={{ flex: 1 }}>
-        <b style={{ fontSize: 13.5, color: TEXTO }}>{texto}</b>
-      </div>
-      <span className="chip" style={{ borderColor: BORDA, color: TEXTO, whiteSpace: 'nowrap' }}>
+      <b style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, lineHeight: 1.35 }}>{texto}</b>
+      <span
+        style={{
+          flex: 'none',
+          border: '1px solid var(--alerta-borda)',
+          borderRadius: 999,
+          padding: '6px 12px',
+          fontSize: 12.5,
+          whiteSpace: 'nowrap',
+        }}
+      >
         {acao}
       </span>
     </button>

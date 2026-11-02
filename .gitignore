@@ -9,3 +9,6 @@ dev-dist
 
 # Cache local do CLI do Supabase
 supabase/.temp/
+
+# Lock de agentes (Claude Code / Antigravity)
+.agent-lock

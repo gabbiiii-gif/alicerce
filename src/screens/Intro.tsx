@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AnimatePresence, m } from 'motion/react'
 import { CURVA } from '../lib/animacao'
+import { Marca } from '../components/Marca'
 
 const CHAVE = 'alicerce:intro-vista'
 
@@ -73,15 +74,30 @@ export function Intro({ aoTerminar }: { aoTerminar: () => void }) {
       exit={{ opacity: 0, x: -16 }}
       transition={CURVA}
     >
-      <div className="bd" style={{ padding: '26px 24px 22px', gap: 0 }}>
-        {/* A marca pequena no topo, sem nome: a pessoa acabou de ver o nome na abertura. */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 'none' }}>
-          <i style={{ width: 16, height: 3.5, background: '#6CB4F0', display: 'block' }} />
-          <i style={{ width: 23, height: 3.5, background: '#1B8FE8', display: 'block' }} />
-          <i style={{ width: 20, height: 3.5, background: '#0A2A6E', display: 'block' }} />
+      {/* Uma coluna branca de celular: no desktop ela fica no meio, sobre o fundo do app,
+          em vez de esticar três frases curtas pela tela inteira. */}
+      <div
+        className="bd"
+        style={{
+          width: '100%',
+          maxWidth: 440,
+          margin: '0 auto',
+          background: '#fff',
+          gap: 0,
+          padding: 'calc(28px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))',
+        }}
+      >
+        {/* A marca pequena no topo, sem nome: a pessoa acabou de ver o nome na abertura.
+            O "pular" fica do lado, à mão desde o primeiro passo; no último, o botão de baixo
+            já entra, e ele vira o atalho de quem já tem conta. */}
+        <div className="row" style={{ flex: 'none' }}>
+          <Marca largura={34} />
+          <button className="bt-texto" onClick={terminar} style={{ fontSize: 14, padding: '8px 0 8px 12px' }}>
+            {ultimo ? 'já tenho conta' : 'pular'}
+          </button>
         </div>
 
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16 }}>
+        <div style={{ flex: '1 0 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '24px 0' }}>
           {/* A troca anima só o conteúdo: a marca, os pontos e o botão ficam parados,
               então o que muda é o que a pessoa precisa reler. */}
           <AnimatePresence mode="wait" initial={false}>
@@ -99,33 +115,47 @@ export function Intro({ aoTerminar }: { aoTerminar: () => void }) {
                   fontSize: 11,
                   fontWeight: 500,
                   letterSpacing: '.16em',
-                  color: '#2272CC',
+                  color: 'var(--azul-700)',
                 }}
               >
                 {atual.kicker}
               </div>
-              <div
+              <h1
                 style={{
+                  margin: 0,
                   fontFamily: 'var(--fonte-titulo)',
-                  fontSize: 27,
+                  fontSize: 30,
                   fontWeight: 500,
-                  lineHeight: 1.15,
+                  lineHeight: 1.12,
                   letterSpacing: '-.02em',
+                  textWrap: 'pretty',
                 }}
               >
                 {atual.titulo}
-              </div>
-              <div className="note" style={{ maxWidth: 250, lineHeight: 1.5 }}>{atual.texto}</div>
+              </h1>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  color: 'var(--texto-secundario)',
+                  maxWidth: 280,
+                  textWrap: 'pretty',
+                }}
+              >
+                {atual.texto}
+              </p>
 
               {passo === 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, paddingTop: 6 }}>
-                  <div style={{ height: 8, borderRadius: 99, background: '#E4EDF8', overflow: 'hidden' }}>
-                    {/* Escala em vez de largura: cresce na placa de vídeo, sem recalcular layout. */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
+                  <div className="bar">
+                    {/* Desliza em vez de crescer: é transform, que a placa de vídeo move sem
+                        recalcular layout, e a ponta redonda não deforma como na escala. */}
                     <m.div
-                      initial={{ scaleX: 0 }}
-                      animate={{ scaleX: 0.62 }}
-                      transition={{ ...CURVA, delay: 0.15 }}
-                      style={{ background: '#1B8FE8', height: '100%', transformOrigin: 'left' }}
+                      initial={{ x: '-100%' }}
+                      animate={{ x: 0 }}
+                      transition={{ ...CURVA, duration: 0.5, delay: 0.15 }}
+                      style={{ width: '62%', height: '100%', background: 'var(--azul)', borderRadius: 99 }}
                     />
                   </div>
                   <div className="row">
@@ -136,49 +166,55 @@ export function Intro({ aoTerminar }: { aoTerminar: () => void }) {
               )}
 
               {passo === 1 && (
-                <div className="cd" style={{ marginTop: 6 }}>
+                <div className="cd" style={{ marginTop: 6, padding: '14px 16px', gap: 10 }}>
                   <div className="row">
-                    <span className="note">Depósito Areia Boa</span>
-                    <b className="num" style={{ fontSize: 14 }}>R$ 1.240</b>
+                    <span style={{ fontSize: 14 }}>Depósito Areia Boa</span>
+                    <span className="num" style={{ fontSize: 15, fontWeight: 500 }}>R$ 1.240</span>
                   </div>
                   <div className="row">
-                    <span className="chip">Material</span>
-                    <span className="note">Lido da nota</span>
+                    {/* Só o desenho do chip: aqui ele não é botão, então sem a mãozinha. */}
+                    <span className="chip" style={{ cursor: 'default' }}>Material</span>
+                    <span style={{ fontSize: 12.5, color: 'var(--azul-700)' }}>Lido da nota</span>
                   </div>
                 </div>
               )}
 
               {passo === 2 && (
-                <div className="row" style={{ justifyContent: 'flex-start', gap: 8, paddingTop: 6 }}>
-                  <div className="av">JP</div>
-                  <div className="av">MR</div>
-                  <span className="note">Um histórico, dois nomes</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 6 }}>
+                  <span className="av" style={{ width: 36, height: 36 }}>JP</span>
+                  {/* Sobreposto ao primeiro, com o aro branco separando os dois: um histórico só. */}
+                  <span className="av socio" style={{ width: 36, height: 36, marginLeft: -18, border: '2px solid #fff' }}>
+                    MR
+                  </span>
+                  <span style={{ fontSize: 13, color: 'var(--texto-secundario)' }}>Um histórico, dois nomes</span>
                 </div>
               )}
             </m.div>
           </AnimatePresence>
         </div>
 
-        <div className="row" style={{ gap: 5, justifyContent: 'flex-start', paddingBottom: 16, flex: 'none' }}>
+        <div style={{ display: 'flex', gap: 6, paddingBottom: 18, flex: 'none' }} aria-hidden="true">
           {PASSOS.map((_, i) => (
             <m.i
               key={i}
-              animate={{ width: passo === i ? 18 : 6 }}
+              animate={{ width: passo === i ? 20 : 6 }}
               transition={{ duration: 0.2 }}
-              style={{ height: 6, borderRadius: 99, background: passo === i ? '#1B8FE8' : '#D5E2F2', display: 'block' }}
+              style={{
+                height: 6,
+                borderRadius: 99,
+                background: passo === i ? 'var(--azul)' : 'var(--linha-forte)',
+                display: 'block',
+              }}
             />
           ))}
         </div>
+        {/* Os pontos são só desenho; o leitor de tela ouve em que passo está. */}
+        <span className="so-leitor" aria-live="polite">
+          Passo {passo + 1} de {PASSOS.length}
+        </span>
 
         <button className="bt btp" onClick={() => (ultimo ? terminar() : setPasso(passo + 1))}>
           {ultimo ? 'Entrar' : 'Continuar'}
-        </button>
-        <button
-          className="note"
-          onClick={terminar}
-          style={{ background: 'none', border: 'none', textAlign: 'center', paddingTop: 10, cursor: 'pointer', fontFamily: 'inherit' }}
-        >
-          {ultimo ? 'já tenho conta' : 'pular'}
         </button>
       </div>
     </m.div>

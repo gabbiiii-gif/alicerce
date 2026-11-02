@@ -107,22 +107,30 @@ export function Notificacoes() {
       )}
 
       {porDia.map(([rotulo, itens]) => (
-        <section key={rotulo} aria-label={rotulo} style={{ display: 'flex', flexDirection: 'column', gap: 7, flex: 'none' }}>
-          <span className="note" style={{ marginTop: 4 }}>{rotulo}</span>
+        <section key={rotulo} aria-label={rotulo} style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 'none' }}>
+          <span className="note" style={{ marginTop: 6, padding: '0 4px' }}>{rotulo}</span>
           {itens.map(n => {
             const caminho = destino(n, obraId)
             const nova = novas.has(n.id)
             const conteudo = (
               <>
-                <span className="av" aria-hidden="true">{n.dados?.iniciais || '✓'}</span>
+                <span className="av" aria-hidden="true" style={{ width: 32, height: 32, background: '#fff' }}>
+                  {n.dados?.iniciais || '✓'}
+                </span>
                 <span className="ntf-txt">
-                  <b>
+                  <b style={{ fontSize: 14, lineHeight: 1.3 }}>
                     {nova && <span className="so-leitor">Nova: </span>}
                     {n.titulo}
                   </b>
-                  {n.corpo && <span className="note">{n.corpo}</span>}
+                  {n.corpo && (
+                    <span className="note" style={{ color: '#4E6787', lineHeight: 1.3 }}>
+                      {n.corpo}
+                    </span>
+                  )}
                 </span>
-                <span className="note num ntf-hora">{quando(n.created_at)}</span>
+                <span className="note num ntf-hora" style={{ fontSize: 12, paddingTop: 2 }}>
+                  {quando(n.created_at)}
+                </span>
               </>
             )
             const animacao = {
@@ -130,12 +138,20 @@ export function Notificacoes() {
               animate: { opacity: 1, y: 0 },
               transition: { ...CURVA, delay: Math.min(posicao++, 8) * 0.03 },
             }
+            // Cartão mais folgado que o .ntf da base, como no desenho da v2.
+            const estilo = { padding: '12px 14px', borderRadius: 14 }
             return caminho ? (
-              <m.button key={n.id} className={nova ? 'ntf nova' : 'ntf'} onClick={() => abrir(n, caminho)} {...animacao}>
+              <m.button
+                key={n.id}
+                className={nova ? 'ntf nova' : 'ntf'}
+                style={estilo}
+                onClick={() => abrir(n, caminho)}
+                {...animacao}
+              >
                 {conteudo}
               </m.button>
             ) : (
-              <m.div key={n.id} className={nova ? 'ntf nova' : 'ntf'} {...animacao}>
+              <m.div key={n.id} className={nova ? 'ntf nova' : 'ntf'} style={estilo} {...animacao}>
                 {conteudo}
               </m.div>
             )
@@ -144,7 +160,7 @@ export function Notificacoes() {
       ))}
 
       {dados && dados.length > 0 && (
-        <div className="ann">
+        <div className="ann" style={{ marginTop: 6 }}>
           Aqui aparece o que as outras pessoas das suas obras fazem. O que você mesmo lança não gera aviso
           para você.
         </div>

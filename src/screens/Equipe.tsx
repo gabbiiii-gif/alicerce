@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { AnimatePresence } from 'motion/react'
 import { carregarObra, criarConvite, listarSocios } from '../data/api'
 import { useAsync } from '../lib/hooks'
 import { useUsuario } from '../lib/auth'
@@ -89,63 +90,101 @@ export function Equipe() {
   return (
     <>
       <Tela titulo="Quem está na obra" voltar={`/obra/${obraId}`}>
-        <div className="note">{obra.nome}</div>
+        <span className="note" style={{ fontSize: 13, padding: '0 4px' }}>{obra.nome}</span>
 
         {gente.map(p => (
-          <div className="cd" key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <div className="av">{p.iniciais}</div>
-            <div style={{ flex: 1 }}>
-              <b style={{ fontSize: 14 }}>{p.nome}</b>
-              <div className="note">{p.papel}</div>
-            </div>
+          <div className="cd" key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+            <span className="av" style={{ width: 40, height: 40, fontSize: 13 }}>{p.iniciais}</span>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+              <b style={{ fontSize: 15 }}>{p.nome}</b>
+              <span className="note" style={{ fontSize: 13 }}>{p.papel}</span>
+            </span>
           </div>
         ))}
 
         {souDono && (
-          <button className="bt" style={{ borderStyle: 'dashed', color: '#5B7392' }} onClick={convidar} disabled={gerando}>
+          <button
+            className="bt"
+            style={{
+              minHeight: 50,
+              borderRadius: 14,
+              borderStyle: 'dashed',
+              borderColor: 'var(--placeholder)',
+              color: 'var(--texto-secundario)',
+            }}
+            onClick={convidar}
+            disabled={gerando}
+          >
             {gerando ? 'gerando…' : '+ convidar alguém'}
           </button>
         )}
 
-        <div className="cd" style={{ background: '#E0F4FF', borderColor: '#1B8FE8', borderStyle: 'dashed' }}>
-          <b style={{ fontSize: 14 }}>Como funciona a dois</b>
-          <div className="note" style={{ color: '#123A73' }}>
+        <div
+          className="cd"
+          style={{
+            background: 'var(--azul-claro)',
+            borderColor: 'var(--azul)',
+            borderStyle: 'dashed',
+            boxShadow: 'none',
+            padding: '14px 16px',
+            marginTop: 6,
+          }}
+        >
+          <b style={{ fontSize: 14.5 }}>Como funciona a dois</b>
+          <span style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--navy-700)' }}>
             O histórico da obra é compartilhado: cada lançamento mostra quem enviou.
-          </div>
-          <div className="note" style={{ color: '#123A73' }}>
+          </span>
+          <span style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--navy-700)' }}>
             Editar ou apagar, só quem lançou. O relatório soma os dois, nota a nota.
-          </div>
+          </span>
         </div>
       </Tela>
 
-      {link && (
-        <Sheet aoFechar={() => setLink(null)}>
-          <b style={{ fontSize: 17 }}>Convidar para {obra.nome}</b>
-          <div className="fld" style={{ justifyContent: 'center', fontSize: 13.5, color: '#0A2A6E', wordBreak: 'break-all' }}>
-            {link}
-          </div>
-          <div className="row" style={{ gap: 7 }}>
-            <button className="bt" style={{ flex: 1, fontSize: 13.5, padding: 6 }} onClick={copiar}>Copiar</button>
-            <a
-              className="bt bta"
-              style={{ flex: 1, fontSize: 13.5, padding: 6, textDecoration: 'none' }}
-              href={`https://wa.me/?text=${encodeURIComponent(`Entra na obra ${obra.nome} no Alicerce: ${link}`)}`}
-              target="_blank"
-              rel="noreferrer"
+      <AnimatePresence>
+        {link && (
+          <Sheet aoFechar={() => setLink(null)}>
+            <div className="sheet-titulo">
+              <b style={{ fontSize: 17 }}>Convidar para {obra.nome}</b>
+            </div>
+            {/* O link em mono e quebrando onde precisar: é para conferir e copiar, não para ler. */}
+            <div
+              style={{
+                border: '1px solid var(--linha-forte)',
+                borderRadius: 12,
+                padding: '12px 14px',
+                fontFamily: 'var(--fonte-dados)',
+                fontSize: 13.5,
+                letterSpacing: '-.02em',
+                textAlign: 'center',
+                wordBreak: 'break-all',
+                color: 'var(--navy)',
+                userSelect: 'all',
+              }}
             >
-              WhatsApp
-            </a>
-          </div>
-          <div className="ann">
-            <b>Atenção:</b> quem aceitar este convite vira seu sócio no Alicerce — passa a ver
-            todas as suas obras, inclusive as que você criar depois, e pode lançar e editar
-            nelas. Não é acesso só a esta obra. O link vale 24 horas e serve para uma pessoa.
-          </div>
-          <div className="note" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setLink(null)}>
-            fechar
-          </div>
-        </Sheet>
-      )}
+              {link}
+            </div>
+            <div className="par">
+              <button className="bt" onClick={copiar}>Copiar</button>
+              <a
+                className="bt bta"
+                href={`https://wa.me/?text=${encodeURIComponent(`Entra na obra ${obra.nome} no Alicerce: ${link}`)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                WhatsApp
+              </a>
+            </div>
+            {/* Não é exagero: o aceite junta os dois grupos (aceitar_convite, 0003), e o
+                convidado passa a ver tudo do dono, não só esta obra. */}
+            <div className="ann">
+              <b style={{ fontWeight: 600 }}>Atenção:</b> quem aceitar este convite vira seu sócio no Alicerce — passa a ver
+              todas as suas obras, inclusive as que você criar depois, e pode lançar e editar
+              nelas. Não é acesso só a esta obra. O link vale 24 horas e serve para uma pessoa.
+            </div>
+            <button className="bt-texto" onClick={() => setLink(null)}>fechar</button>
+          </Sheet>
+        )}
+      </AnimatePresence>
     </>
   )
 }

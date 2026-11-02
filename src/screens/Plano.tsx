@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { conferirPix, gerarPix, type Pix } from '../data/api'
 import { usePlano } from '../lib/plano'
 import { useUsuario } from '../lib/auth'
@@ -9,6 +9,10 @@ import { Carregando, Tela } from '../components/Tela'
 // De quanto em quanto tempo a tela pergunta se o Pix caiu. O webhook costuma chegar antes,
 // mas é outro caminho — se ele falhar, é isto que libera o plano de quem pagou.
 const CONFERIR_A_CADA_MS = 5000
+
+// O texto de apoio dentro do cartão navy: o azul-claro de rótulo do herói, um pouco maior
+// porque aqui são frases inteiras, não rótulos.
+const TEXTO_HEROI: CSSProperties = { fontSize: 13.5, lineHeight: 1.45, color: '#9FC4F0' }
 
 export function Plano() {
   const { userId } = useUsuario()
@@ -83,68 +87,75 @@ export function Plano() {
 
   const primeiroNome = (titular?.nome ?? '').split(' ')[0]
 
+  // A data em mono e navy, como os outros números do app: é o dado que a pessoa procura
+  // na frase.
+  const data = (texto: string | null) => (
+    <span className="num" style={{ color: 'var(--navy)' }}>{texto}</span>
+  )
+
   return (
     <Tela titulo="Plano" voltar="/perfil">
       {carregando && !dados && <Carregando />}
 
       {erro && !carregando && (
         <>
-          <div className="ann">Não deu para ler seu plano: {erro}</div>
+          <div className="ann ann-alerta">Não deu para ler seu plano: {erro}</div>
           <button className="bt" onClick={() => recarregar()}>Tentar de novo</button>
         </>
       )}
 
       {/* Convidado não vê preço nem Pix: ele não tem o que pagar nem o que decidir. */}
       {souConvidado ? (
-        <div className="cd">
-          <div className="row">
-            <b style={{ fontSize: 17 }}>Você é convidado</b>
-            <span className="chip bta" style={{ background: '#2272CC', borderColor: '#2272CC' }}>liberado</span>
+        <div className="heroi" style={{ padding: 18, gap: 8 }}>
+          <div className="row" style={{ alignItems: 'baseline' }}>
+            <b style={{ fontSize: 20, letterSpacing: '-.015em' }}>Você é convidado</b>
+            <span className="chip bta">liberado</span>
           </div>
-          <div className="note">
+          <span style={TEXTO_HEROI}>
             {primeiroNome
               ? `Você está no plano de ${titular?.nome}. Não há nada a pagar.`
               : 'Você está no plano de quem te convidou. Não há nada a pagar.'}
-          </div>
-          <div className="note">Quem cuida do pagamento é quem assinou.</div>
+          </span>
+          <span style={TEXTO_HEROI}>Quem cuida do pagamento é quem assinou.</span>
         </div>
       ) : (
-        <div className="cd">
-          <div className="row">
-            <b style={{ fontSize: 17 }}>Alicerce</b>
-            <b className="num" style={{ fontSize: 17 }}>R$ 150<span className="note">/mês</span></b>
+        <div className="heroi" style={{ padding: 18, gap: 8 }}>
+          <div className="row" style={{ alignItems: 'baseline' }}>
+            <b style={{ fontSize: 20, letterSpacing: '-.015em' }}>Alicerce</b>
+            {/* Num <b>, a regra `.scr b` ganharia de `.num`: a fonte de dados vai explícita. */}
+            <b className="num" style={{ fontFamily: 'var(--fonte-dados)', fontSize: 22, letterSpacing: '-.02em' }}>
+              R$ 150
+              <span style={{ fontFamily: 'var(--fonte-texto)', fontSize: 13, letterSpacing: 0, color: '#9FC4F0' }}>/mês</span>
+            </b>
           </div>
-          <div className="note">Obras, lançamentos e leitura de notas pelo agente, sem limite.</div>
-          <div className="note">Você e mais uma pessoa da sua equipe, no mesmo plano.</div>
-          <div className="note">Pagamento por Pix, pelo Mercado Pago.</div>
+          <span style={TEXTO_HEROI}>Obras, lançamentos e leitura de notas pelo agente, sem limite.</span>
+          <span style={TEXTO_HEROI}>Você e mais uma pessoa da sua equipe, no mesmo plano.</span>
+          <span style={TEXTO_HEROI}>Pagamento por Pix, pelo Mercado Pago.</span>
         </div>
       )}
 
       {!carregando && !souConvidado && (
-        <div className="cd" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <span
-            className={vale ? 'chip bta' : 'chip'}
-            style={vale && !ehCortesia ? { background: '#2272CC', borderColor: '#2272CC' } : undefined}
-          >
+        <div className="cd" style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: '14px 16px' }}>
+          <span className={vale ? 'chip bta' : 'chip'} style={{ padding: '6px 12px' }}>
             {!vale ? 'sem plano' : ehCortesia ? 'cortesia' : 'pago'}
           </span>
-          <div className="note" style={{ flex: 1 }}>
-            {!vale && (ate ? `Seu plano venceu em ${ate}.` : 'Seu grupo ainda não tem plano.')}
-            {vale && ehCortesia && `Seu acesso vai até ${ate}.`}
-            {vale && !ehCortesia && `Pago até ${ate}. Próximo pagamento nesse dia.`}
-          </div>
+          <span className="note" style={{ flex: 1, fontSize: 13.5, lineHeight: 1.4 }}>
+            {!vale && (ate ? <>Seu plano venceu em {data(ate)}.</> : 'Seu grupo ainda não tem plano.')}
+            {vale && ehCortesia && <>Seu acesso vai até {data(ate)}.</>}
+            {vale && !ehCortesia && <>Pago até {data(ate)}. Próximo pagamento nesse dia.</>}
+          </span>
         </div>
       )}
 
       {!carregando && !souConvidado && pix && (
-        <div className="cd" style={{ alignItems: 'center', gap: 10 }}>
-          <b style={{ fontSize: 15 }}>Pague R$ {pix.valor} com o app do seu banco</b>
+        <div className="cd" style={{ alignItems: 'center', gap: 10, padding: '16px' }}>
+          <b style={{ fontSize: 16, textAlign: 'center' }}>Pague R$ {pix.valor} com o app do seu banco</b>
           <img
             src={`data:image/png;base64,${pix.qr_code_base64}`}
             alt="QR Code do Pix"
             style={{ width: 220, height: 220, maxWidth: '100%' }}
           />
-          <div className="note" style={{ textAlign: 'center' }}>
+          <div className="note" style={{ textAlign: 'center', fontSize: 13 }}>
             No celular, use o Pix copia e cola. Vale até{' '}
             {new Date(pix.expira_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.
           </div>
@@ -152,7 +163,7 @@ export function Plano() {
           <button className="bt" style={{ width: '100%' }} onClick={() => conferir(true)} disabled={conferindo}>
             {conferindo ? 'conferindo…' : 'Já paguei'}
           </button>
-          <div className="note" style={{ textAlign: 'center' }}>
+          <div className="note" style={{ textAlign: 'center', fontSize: 13 }}>
             A confirmação aparece aqui sozinha em alguns segundos depois do pagamento.
           </div>
         </div>

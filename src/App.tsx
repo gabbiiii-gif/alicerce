@@ -9,6 +9,7 @@ import { talvezTenhaSessao } from './lib/sessao'
 import { codigoParaEntregar } from './lib/ponte'
 import { Intro, introJaVista } from './screens/Intro'
 import { Carregando, TelaCarregando } from './components/Tela'
+import { MenuLateral, TabBar } from './components/TabBar'
 import { Login } from './screens/Login'
 
 // Cada tela é um arquivo à parte, baixado quando é preciso.
@@ -184,10 +185,16 @@ export function App() {
     if (session) precarregarTelas()
   }, [session])
 
+  // Menu lateral (desktop) e abas (celular) ficam fora das telas: não animam a cada troca
+  // de rota e não somem enquanto a tela seguinte ainda baixa. O CSS mostra um ou outro.
+  const comNavegacao = !!session && !mostraIntro && location.pathname !== '/login' && !location.pathname.startsWith('/e/')
+
   return (
-    // <main>: o marco "conteúdo principal" que o leitor de tela usa para pular direto
-    // para a tela, passando por cima do que é navegação.
-    <main className="app">
+    <div className="app">
+      {comNavegacao && <MenuLateral />}
+      {/* <main>: o marco "conteúdo principal" que o leitor de tela usa para pular direto
+          para a tela, passando por cima do que é navegação. */}
+      <main className="palco">
       <AnimatePresence initial={false}>
         {mostraIntro && <Intro key="intro" aoTerminar={() => setIntroPendente(false)} />}
       </AnimatePresence>
@@ -216,6 +223,8 @@ export function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AnimatePresence>
-    </main>
+      </main>
+      {comNavegacao && <TabBar />}
+    </div>
   )
 }

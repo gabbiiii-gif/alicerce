@@ -5,6 +5,7 @@ import type { Membro, Profile, Repasse } from '../lib/types'
 import { useAviso } from './Toast'
 import { Sheet } from './Sheet'
 import { MoedaInput } from './MoedaInput'
+import { Secao } from './Tela'
 
 // Repasse: dinheiro que um sócio passa para o outro. Não é entrada nem saída — o total da
 // obra não muda. Serve para o relatório dizer quanto foi repassado e com quem está o dinheiro.
@@ -92,43 +93,32 @@ export function RepassesSheet({
     }
   }
 
-  const seg = (ativo: boolean) => ({
-    flex: 1,
-    padding: '6px 4px',
-    border: 'none',
-    cursor: 'pointer',
-    background: ativo ? '#0A2A6E' : '#fff',
-    color: ativo ? '#fff' : '#0A2A6E',
-    fontFamily: 'var(--fonte-texto)',
-    fontSize: 13.5,
-  })
-
   return (
     <Sheet aoFechar={aoFechar}>
-      <div className="row">
-        <b style={{ fontSize: 17 }}>Repasse</b>
+      <div className="sheet-titulo">
+        <b>Repasse</b>
         <span className="note">não muda o total da obra</span>
       </div>
 
       {podeLancar ? (
         <>
-          <div style={{ display: 'flex', border: '1px solid #C9D8EC', borderRadius: 10, overflow: 'hidden' }}>
-            <button style={seg(direcao === 'enviei')} onClick={() => setDirecao('enviei')}>
+          <div className="seg" role="group" aria-label="Direção do repasse">
+            <button className={direcao === 'enviei' ? 'on' : undefined} aria-pressed={direcao === 'enviei'} onClick={() => setDirecao('enviei')}>
               Eu enviei
             </button>
-            <button style={seg(direcao === 'recebi')} onClick={() => setDirecao('recebi')}>
+            <button className={direcao === 'recebi' ? 'on' : undefined} aria-pressed={direcao === 'recebi'} onClick={() => setDirecao('recebi')}>
               Eu recebi
             </button>
           </div>
 
           {pessoas.length > 1 && (
-            <div className="row" style={{ gap: 6, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
-              <span className="note">{direcao === 'enviei' ? 'para' : 'de'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span className="note" style={{ fontSize: 13 }}>{direcao === 'enviei' ? 'para' : 'de'}</span>
               {pessoas.map(p => (
                 <button
                   key={p.id}
-                  className={outro?.id === p.id ? 'chip bta' : 'chip'}
-                  style={outro?.id === p.id ? { background: '#2272CC', borderColor: '#2272CC' } : undefined}
+                  className={outro?.id === p.id ? 'chip on' : 'chip'}
+                  aria-pressed={outro?.id === p.id}
                   onClick={() => setOutroId(p.id)}
                 >
                   {primeiro(p.nome)}
@@ -138,26 +128,32 @@ export function RepassesSheet({
           )}
           {pessoas.length === 0 && <div className="ann">Nenhum sócio nesta obra ainda. Convide alguém em Equipe.</div>}
 
-          <MoedaInput valor={valor} aoMudar={setValor} style={{ fontSize: 23, textAlign: 'center', padding: 10 }} />
-          <div className="row" style={{ gap: 8 }}>
-            <input
-              className="inp"
-              style={{ flex: 1 }}
-              inputMode="numeric"
-              placeholder="dd/mm/aaaa"
-              value={data}
-              onChange={e => setData(e.target.value)}
-            />
-            <input
-              className="inp"
-              style={{ flex: 2 }}
-              placeholder="Observação (opcional)"
-              value={descricao}
-              onChange={e => setDescricao(e.target.value)}
-            />
+          <MoedaInput destaque rotulo="Valor do repasse" valor={valor} aoMudar={setValor} />
+          {/* A data não encolhe abaixo do que "00/00/0000" ocupa: no celular estreito a
+              observação é que cede espaço. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(128px, 1fr) 2fr', gap: 10 }}>
+            <label className="rotulo">
+              Data
+              <input
+                className="inp"
+                inputMode="numeric"
+                placeholder="dd/mm/aaaa"
+                value={data}
+                onChange={e => setData(e.target.value)}
+              />
+            </label>
+            <label className="rotulo" style={{ minWidth: 0 }}>
+              Observação
+              <input
+                className="inp"
+                placeholder="opcional"
+                value={descricao}
+                onChange={e => setDescricao(e.target.value)}
+              />
+            </label>
           </div>
           {outro && valor > 0 && (
-            <div className="note" style={{ textAlign: 'center' }}>
+            <div className="note" style={{ textAlign: 'center', fontSize: 13 }}>
               {direcao === 'enviei'
                 ? `Você → ${primeiro(outro.nome)}: ${fmt(valor)}`
                 : `${primeiro(outro.nome)} → você: ${fmt(valor)}`}
@@ -173,38 +169,39 @@ export function RepassesSheet({
 
       {repasses.length > 0 && (
         <>
-          <div className="row" style={{ marginTop: 4 }}>
-            <b style={{ fontSize: 14 }}>Já repassado</b>
-            <b className="num" style={{ fontSize: 14 }}>{fmt(total)}</b>
+          <Secao
+            titulo="Já repassado"
+            nota={<span className="num" style={{ color: 'var(--navy)', fontWeight: 500 }}>{fmt(total)}</span>}
+          />
+          <div className="lista">
+            {repasses.map(r => (
+              <div key={r.id} className="linha">
+                <span className="linha-txt">
+                  {/* A folha fica fora do .scr, onde o negrito da base não chega. */}
+                  <b style={{ fontFamily: 'var(--fonte-titulo)', fontWeight: 500, fontSize: 14 }}>
+                    {(r.de_id === userId ? 'Você' : primeiro(r.de?.nome)) + ' → ' + (r.para_id === userId ? 'você' : primeiro(r.para?.nome))}
+                  </b>
+                  <span className="note">{[isoParaBR(r.data), r.descricao].filter(Boolean).join(' · ')}</span>
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
+                  <span className="num" style={{ fontSize: 14, fontWeight: 500 }}>{semSimbolo(r.valor)}</span>
+                  {r.autor_id === userId && (
+                    <button
+                      className="chip"
+                      onClick={() => remover(r)}
+                      style={removerId === r.id ? { borderColor: 'var(--alerta-borda)', color: 'var(--alerta)' } : undefined}
+                    >
+                      {removerId === r.id ? 'confirmar' : 'apagar'}
+                    </button>
+                  )}
+                </span>
+              </div>
+            ))}
           </div>
-          {repasses.map(r => (
-            <div key={r.id} className="li" style={{ cursor: 'default' }}>
-              <div style={{ minWidth: 0 }}>
-                <b style={{ fontSize: 13.5 }}>
-                  {(r.de_id === userId ? 'Você' : primeiro(r.de?.nome)) + ' → ' + (r.para_id === userId ? 'você' : primeiro(r.para?.nome))}
-                </b>
-                <div className="note">{[isoParaBR(r.data), r.descricao].filter(Boolean).join(' · ')}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <b className="num" style={{ fontSize: 13.5 }}>{semSimbolo(r.valor)}</b>
-                {r.autor_id === userId && (
-                  <button
-                    className="chip"
-                    onClick={() => remover(r)}
-                    style={removerId === r.id ? { borderColor: '#FBD5B5', color: '#9A3412' } : undefined}
-                  >
-                    {removerId === r.id ? 'confirmar' : 'apagar'}
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
         </>
       )}
 
-      <div className="note" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={aoFechar}>
-        fechar
-      </div>
+      <button className="bt-texto" onClick={aoFechar}>fechar</button>
     </Sheet>
   )
 }

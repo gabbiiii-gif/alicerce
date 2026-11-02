@@ -30,16 +30,32 @@ export function AceitarConvite() {
 
   return (
     <Tela titulo="Convite">
-      <div style={{ alignSelf: 'center', padding: '24px 0 12px' }}>
-        <Marca escala={0.8} />
+      {/* Um cartão só, que troca de "entrando" para o erro no mesmo lugar: o leitor de tela
+          anuncia a troca (aria-live), e a tela não pula. */}
+      <div
+        className="cd"
+        aria-live="polite"
+        style={{ alignItems: 'center', textAlign: 'center', gap: 12, padding: '28px 20px 24px', marginTop: 8 }}
+      >
+        <Marca largura={56} />
+        {erro ? (
+          <>
+            <b style={{ fontSize: 18, lineHeight: 1.25, paddingTop: 4 }}>Não deu para usar este convite</b>
+            <div className="ann ann-alerta" style={{ alignSelf: 'stretch', textAlign: 'left' }}>
+              {erro}
+            </div>
+          </>
+        ) : (
+          <>
+            <b style={{ fontSize: 18, lineHeight: 1.25, paddingTop: 4 }}>Entrando na obra…</b>
+            <div className="carregando" aria-hidden="true" />
+          </>
+        )}
       </div>
-      {erro ? (
-        <>
-          <div className="ann">Não deu para usar este convite: {erro}</div>
-          <button className="bt" onClick={() => navigate('/obras')}>Ir para as obras</button>
-        </>
-      ) : (
-        <div className="note" style={{ textAlign: 'center' }}>Entrando na obra…</div>
+      {erro && (
+        <button className="bt btp" onClick={() => navigate('/obras')}>
+          Ir para as obras
+        </button>
       )}
     </Tela>
   )

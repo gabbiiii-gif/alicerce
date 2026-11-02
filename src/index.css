@@ -55,7 +55,12 @@
   --linha-suave: #EDF2F9;
   --borda-nav: #E4EDF8;
   --placeholder: #B9CFE8;
-  --sheet-max: 460px;
+  --sheet-max: 480px;
+  --sombra: 0 1px 2px rgba(10, 42, 110, .04);
+  /* Laranja de alerta (plano acabando, saldo em aberto ao encerrar): 6,4:1 sobre o fundo. */
+  --alerta: #9A3412;
+  --alerta-fundo: #FFF7ED;
+  --alerta-borda: #FBD5B5;
 
   /* Três papéis, três famílias. Fallbacks com nomes reais: se a fonte da web não chegar
      (rede ruim, primeira abertura offline), o texto cai numa fonte do próprio sistema em
@@ -106,42 +111,45 @@ a { color: var(--azul-700); }
 @keyframes fdIn { from { opacity: 0 } to { opacity: 1 } }
 @keyframes girar { to { transform: rotate(360deg) } }
 
-/* Casca do app: tela cheia no celular, coluna centrada no desktop */
+/* Casca do app (v2): tela cheia em qualquer tamanho. No celular é uma coluna — o palco
+   em cima, as abas embaixo; a partir de 840 px vira linha, com o menu lateral à
+   esquerda. As telas moram no palco.
+
+   A casca fica presa à tela (fixed), e não à altura calculada (100dvh). No app da Tela de
+   Início do iPhone, depois do teclado, a página ficava rolada: o título ia para baixo do
+   relógio, sobrava uma faixa vazia sob as abas e o fim da lista saía de alcance. */
 .app {
-  position: relative;
-  width: 100%;
-  max-width: var(--sheet-max);
-  margin: 0 auto;
-  height: 100dvh;
-  background: #fff;
-  overflow: hidden;
-  /* clip, e não só hidden: hidden ainda deixa o navegador rolar a casca por código (para
-     mostrar um campo em foco, por exemplo), e casca rolada desloca todas as telas. */
-  overflow: clip;
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
+  background: var(--fundo);
+  /* clip, e não só hidden: hidden ainda deixa o navegador rolar a casca por código (para
+     mostrar um campo em foco, por exemplo), e casca rolada desloca todas as telas. */
+  overflow: hidden;
+  overflow: clip;
 }
 
-/* No celular a casca fica presa à tela, e não à altura calculada (100dvh). No app da Tela
-   de Início do iPhone, depois do teclado, a página ficava rolada: o título ia para baixo
-   do relógio, sobrava uma faixa vazia sob as abas e o fim da lista saía de alcance —
-   inclusive os botões de lançar. Presa à tela, a casca não acompanha essa rolagem. */
-@media (max-width: 619px) {
-  .app {
-    position: fixed;
-    inset: 0;
-    height: auto;
-  }
+.palco {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  overflow: clip;
 }
 
-@media (min-width: 620px) {
-  body { padding: 24px 16px; }
-  .app {
-    height: min(860px, calc(100dvh - 48px));
-    border: 1px solid #DCE7F5;
-    border-radius: 30px;
-    box-shadow: 0 16px 40px rgba(10, 42, 110, .12);
-  }
+@media (min-width: 840px) {
+  .app { flex-direction: row; }
+  .tb { display: none !important; }
+}
+@media (max-width: 839px) {
+  .rail { display: none !important; }
+}
+/* Teclado aberto no celular: a altura útil despenca e as abas só roubariam o espaço do
+   campo. Elas voltam quando o teclado fecha. */
+@media (max-width: 839px) and (max-height: 460px) {
+  .tb { display: none !important; }
 }
 
 .scr {
@@ -149,65 +157,198 @@ a { color: var(--azul-700); }
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--fundo);
+  /* A margem lateral que alinha cabeçalho e miolo na mesma coluna: 16 px no celular e,
+     no desktop, o que sobra para o miolo não passar da largura da tela (--larg, que vem
+     do <Tela>). Percentual em padding é sobre a largura da tela. */
+  --margem: max(16px, calc((100% - var(--larg, 640px)) / 2 + 16px));
 }
 
-.scr b { font-family: var(--fonte-titulo); font-weight: 500; letter-spacing: -.01em; }
+/* As folhas moram fora do .scr (são irmãs da tela), mas falam a mesma língua. */
+.scr b, .sheet b { font-family: var(--fonte-titulo); font-weight: 500; letter-spacing: -.01em; }
 
 .nav {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  min-height: calc(60px + env(safe-area-inset-top));
+  padding: calc(10px + env(safe-area-inset-top)) var(--margem) 10px;
+  background: rgba(245, 248, 252, .92);
   border-bottom: 1px solid var(--borda-nav);
   flex: none;
+  user-select: none;
 }
+.nav > .marca { flex: none; margin-right: 2px; }
 
-.nav b, .big { font-family: var(--fonte-titulo); font-weight: 500; letter-spacing: -.015em; }
-.nav b { font-size: 17px; line-height: 1.1; }
+.nav h1, .nav b, .big { font-family: var(--fonte-titulo); font-weight: 500; letter-spacing: -.015em; }
+.nav h1 {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 20px;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .voltar {
-  font-size: 19px;
-  line-height: 1;
-  cursor: pointer;
-  background: none;
+  width: 40px;
+  height: 40px;
+  margin-left: -10px;
+  border-radius: 12px;
   border: none;
-  color: inherit;
-  padding: 0 4px 0 0;
-  transition: opacity .12s;
+  background: none;
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: none;
+  transition: background .12s, transform .1s;
 }
-.voltar:active { opacity: .5; }
-.nav { user-select: none; }
+.voltar svg { width: 22px; height: 22px; display: block; }
+.voltar:hover { background: #EAF1FA; }
+.voltar:active { transform: scale(.92); }
 
 .bd {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  padding: 12px 14px calc(16px + env(safe-area-inset-bottom));
+  gap: 12px;
+  padding: 14px var(--margem) calc(32px + env(safe-area-inset-bottom));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
 .bd::-webkit-scrollbar { display: none; }
-.bd.com-abas { padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
+
+/* Duas colunas no desktop, uma no celular: cada coluna tem no mínimo 340 px. */
+.grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 12px;
+  align-items: start;
+  flex: none;
+}
+.coluna { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+/* Título de seção: nome à esquerda, nota curta à direita. */
+.secao {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  flex: none;
+}
+.secao h2 {
+  margin: 0;
+  font-family: var(--fonte-titulo);
+  font-weight: 500;
+  font-size: 16px;
+  letter-spacing: -.01em;
+  line-height: 1.2;
+}
+.secao .note { font-size: 13px; }
 
 .cd {
   border: 1px solid var(--linha);
-  border-radius: 12px;
-  padding: 9px 10px;
+  border-radius: 16px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   flex: none;
   background: #fff;
-  box-shadow: 0 1px 2px rgba(10, 42, 110, .04);
+  color: inherit;
+  font-family: inherit;
+  box-shadow: var(--sombra);
 }
+button.cd { text-align: left; cursor: pointer; }
+button.cd:hover { border-color: var(--placeholder); }
+
+/* Cartão navy do número principal (sobra em caixa, saldo da obra). */
+.heroi {
+  background: var(--navy);
+  color: #fff;
+  border-radius: 20px;
+  padding: 18px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: none;
+}
+.heroi .note, .heroi-rotulo { font-size: 13px; color: #9FC4F0; }
+.heroi-valor {
+  font-family: var(--fonte-dados);
+  font-variant-numeric: tabular-nums;
+  font-size: 36px;
+  font-weight: 500;
+  letter-spacing: -.03em;
+  line-height: 1.05;
+}
+.heroi-blocos { display: flex; gap: 10px; margin-top: 10px; }
+.heroi-bloco {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, .08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.heroi-bloco > span:first-child { font-size: 12px; color: #9FC4F0; }
+.heroi-bloco b { font-family: var(--fonte-dados); font-size: 16px; font-weight: 500; letter-spacing: -.02em; }
+
+/* Cartão de lista: linhas separadas por fio, sem borda na última. */
+.lista {
+  border: 1px solid var(--linha);
+  border-radius: 16px;
+  padding: 2px 16px;
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  background: #fff;
+  box-shadow: var(--sombra);
+}
+.lista > * { border-bottom: 1px solid var(--linha-suave); }
+.lista > :last-child { border-bottom: none; }
+.linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 0;
+  width: 100%;
+  min-width: 0;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+}
+button.linha { cursor: pointer; transition: opacity .12s; }
+button.linha:active { opacity: .7; }
+.linha-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.linha-txt > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.linha-txt .note { font-size: 12.5px; }
+/* Linha de conta: rótulo à esquerda, valor em mono à direita. */
+.conta { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; }
+.conta > span:first-child { color: var(--texto-secundario); }
+.conta b, .conta .num { font-family: var(--fonte-dados); font-weight: 500; font-size: 14px; letter-spacing: -.02em; }
+.conta.total { border-top: 1px solid var(--linha); padding-top: 8px; font-size: 14px; }
+.conta.total > span:first-child { color: var(--navy); }
+.conta.total b { font-size: 17px; }
 
 .dsh {
   border: 1px dashed var(--placeholder);
-  border-radius: 12px;
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -216,15 +357,20 @@ a { color: var(--azul-700); }
   color: var(--texto-secundario);
   font-size: 13.5px;
   text-align: center;
-  padding: 12px;
+  padding: 16px;
   flex: none;
   background: #FAFCFF;
 }
 
 .bt {
   border: 1px solid var(--linha-forte);
-  border-radius: 10px;
-  padding: 8px 12px;
+  border-radius: 12px;
+  min-height: 48px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   text-align: center;
   font-size: 15px;
   font-family: var(--fonte-titulo);
@@ -235,83 +381,153 @@ a { color: var(--azul-700); }
   user-select: none;
   background: #fff;
   color: var(--navy);
+  text-decoration: none;
   transition: transform .1s, background .12s;
 }
 .bt:hover:not(:disabled) { background: #EEF4FB; }
 .bt:active:not(:disabled) { transform: scale(.97); }
 .bt:disabled { opacity: .55; cursor: default; }
 
-.btp { background: var(--navy); border-color: var(--navy); color: #fff; }
+.btp { background: var(--navy); border-color: var(--navy); color: #fff; min-height: 50px; border-radius: 14px; font-size: 16px; }
 .btp:hover:not(:disabled) { background: var(--navy-700); }
+.btp:active:not(:disabled) { transform: scale(.98); }
 /* Botão e selo azuis levam texto branco: no azul claro da marca o contraste era 3,4:1,
    abaixo do mínimo de leitura (4,5:1). O azul-700 dá 4,8:1 e continua sendo o azul do
    app; o claro segue nos ícones, barras e gráficos, onde não há texto por cima. */
 .bta { background: var(--azul-700); border-color: var(--azul-700); color: #fff; }
 .bta:hover:not(:disabled) { background: var(--azul-800); }
+/* Ação de texto, sem caixa ("fechar", "pular"). */
+.bt-texto {
+  background: none;
+  border: none;
+  color: var(--texto-secundario);
+  font-family: var(--fonte-texto);
+  font-size: 13.5px;
+  padding: 8px;
+  cursor: pointer;
+  flex: none;
+}
+.bt-texto:hover { color: var(--navy); }
+/* Botões lado a lado, dividindo a largura. */
+.par { display: flex; gap: 8px; flex: none; }
+.par > * { flex: 1; min-width: 0; }
 
 .fld {
   border: 1px solid var(--linha-forte);
-  border-radius: 10px;
-  padding: 7px 9px;
-  font-size: 13.5px;
+  border-radius: 12px;
+  min-height: 48px;
+  padding: 10px 14px;
+  font-size: 14px;
   color: var(--texto-secundario);
+  background: #fff;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex: none;
 }
 .fld b { color: var(--navy); font-weight: 600; }
 
 .inp {
   border: 1px solid var(--linha-forte);
-  border-radius: 10px;
-  padding: 7px 9px;
+  border-radius: 12px;
+  min-height: 48px;
+  padding: 11px 14px;
   /* 16px é o piso: abaixo disso o Safari do iPhone amplia a tela sozinho ao tocar no
      campo. Antes isso era evitado travando o zoom da página inteira. */
   font-size: 16px;
+  line-height: 1.4;
   font-family: var(--fonte-texto);
   color: var(--navy);
   background: #fff;
   outline: none;
   width: 100%;
   flex: none;
+  transition: border-color .12s, box-shadow .12s;
 }
-.inp:focus { border-color: var(--azul); box-shadow: 0 0 0 2px #CFE6FA; }
+.inp:focus { border-color: var(--azul); box-shadow: 0 0 0 3px #CFE6FA; }
 .inp::placeholder { color: var(--placeholder); }
+/* Campo de valor em destaque: o número grande no meio. */
+.inp-valor {
+  min-height: 64px;
+  border-radius: 14px;
+  text-align: center;
+  font-family: var(--fonte-dados);
+  font-size: 28px;
+  letter-spacing: -.02em;
+}
+/* Rótulo em cima do campo. */
+.rotulo { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--texto-secundario); flex: none; }
 
-.note { font-size: 12.5px; color: var(--texto-secundario); line-height: 1.25; }
+.note { font-size: 12.5px; color: var(--texto-secundario); line-height: 1.35; }
 label.note { display: block; }
 
 .ann {
-  font-size: 12.5px;
-  line-height: 1.25;
+  font-size: 13px;
+  line-height: 1.4;
   background: var(--azul-claro);
   border: 1px solid #C4E4FB;
-  border-radius: 10px;
-  padding: 6px 9px;
+  border-radius: 12px;
+  padding: 10px 12px;
   color: var(--navy-700);
   flex: none;
 }
+/* Aviso que pede ação (plano acabando, algo que falhou). O laranja escuro dá 6,4:1. */
+.ann-alerta { background: var(--alerta-fundo); border-color: var(--alerta-borda); color: var(--alerta); }
 
 .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .big { font-size: 21px; line-height: 1; }
 
 .chip {
   border: 1px solid var(--linha-forte);
-  border-radius: 8px;
-  padding: 2px 9px;
+  border-radius: 999px;
+  padding: 5px 11px;
   font-size: 12.5px;
+  line-height: 1.25;
   color: #2A4A7B;
   background: #fff;
   flex: none;
   cursor: pointer;
   font-family: var(--fonte-texto);
   user-select: none;
-  transition: transform .1s, opacity .12s;
+  white-space: nowrap;
+  transition: transform .1s, opacity .12s, background .12s;
 }
+span.chip { cursor: default; }
+button.chip { min-height: 36px; padding: 7px 14px; font-size: 13.5px; }
 button.chip:active { transform: scale(.95); }
-.chip.bta { color: #fff; }
+/* .chip vem depois de .bta e devolveria o fundo branco: o azul precisa ser repetido aqui. */
+.chip.bta { background: var(--azul-700); border-color: var(--azul-700); color: #fff; }
+/* Escolha marcada numa fila de chips (filtro, quem recebeu). */
+.chip.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+/* Percentual e valores em chip são dado, não rótulo. */
+.chip-num { font-family: var(--fonte-dados); }
+
+/* Controle segmentado (semana / mês / período). */
+.seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--linha-forte);
+  border-radius: 14px;
+  background: #fff;
+  flex: none;
+}
+.seg button {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--navy);
+  font-family: var(--fonte-texto);
+  font-size: 13.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .12s;
+}
+.seg button.on { background: var(--navy); color: #fff; }
 
 .bar {
   height: 8px;
@@ -323,15 +539,15 @@ button.chip:active { transform: scale(.95); }
 }
 
 button.li:active, button.cd:active { opacity: .7; }
-button.li, button.cd { transition: opacity .12s; }
+button.li, button.cd { transition: opacity .12s, border-color .12s; }
 
 .li {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   border-bottom: 1px solid var(--linha-suave);
-  padding-bottom: 6px;
+  padding: 10px 0;
   text-align: left;
   background: none;
   border-left: none;
@@ -343,8 +559,8 @@ button.li, button.cd { transition: opacity .12s; }
 }
 
 .av {
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: 1px solid #C4E4FB;
   background: var(--azul-claro);
@@ -356,52 +572,136 @@ button.li, button.cd { transition: opacity .12s; }
   font-family: var(--fonte-titulo);
   font-weight: 500;
   flex: none;
+  overflow: hidden;
 }
+.av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.av-bt { cursor: pointer; padding: 0; transition: transform .1s; }
+.av-bt:active { transform: scale(.92); }
+/* Iniciais do sócio: o navy distingue as duas pessoas lado a lado. */
+.av.socio { background: var(--navy); border-color: var(--navy); color: #fff; }
 
+/* Abas embaixo, no celular. A do meio (Enviar) salta para fora da barra. */
 .tb {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 2;
+  flex: none;
+  position: relative;
+  z-index: 6;
   display: flex;
+  align-items: flex-end;
+  background: rgba(255, 255, 255, .97);
   border-top: 1px solid var(--borda-nav);
-  background: #fff;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding: 6px 6px calc(8px + env(safe-area-inset-bottom));
 }
 .tb button {
   flex: 1;
   min-width: 0;
+  min-height: 44px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  padding: 7px 0 12px;
+  gap: 4px;
+  padding: 6px 0 4px;
   /* Cinco abas: "Relatórios" é a mais longa e é ela que dita o tamanho. Em tela
      estreita o rótulo encolhe em vez de quebrar em duas linhas ou vazar. */
-  font-size: clamp(10px, 3vw, 12px);
+  font-size: clamp(10px, 3vw, 11px);
   letter-spacing: .01em;
   cursor: pointer;
   background: none;
   border: none;
   font-family: var(--fonte-texto);
-  /* O cinza-azulado antigo (#8CA3BF) dava 2,6:1 sobre o branco, ilegível no sol do
-     canteiro. Este dá 4,9:1; a aba ativa continua marcada pelo navy e pelo ícone cheio. */
+  /* 4,9:1 sobre o branco; a aba ativa é marcada pelo navy e pelo ícone cheio. */
   color: var(--texto-secundario);
   user-select: none;
   transition: opacity .12s;
 }
 .tb button:active { opacity: .6; }
 .tb button.ativa { color: var(--navy); }
-.tb svg { width: 20px; height: 20px; display: block; }
+.tb svg { width: 22px; height: 22px; display: block; }
+.tb button.tb-enviar { padding-top: 0; min-height: 0; }
+.tb-saltado {
+  width: 52px;
+  height: 52px;
+  margin-top: -24px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: var(--azul);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(27, 143, 232, .38);
+  transition: transform .1s;
+}
+.tb-saltado svg { width: 24px; height: 24px; }
+.tb button.tb-enviar:active { opacity: 1; }
+.tb button.tb-enviar:active .tb-saltado { transform: scale(.92); }
 
+/* Menu lateral, no desktop. */
+.rail {
+  width: 236px;
+  flex: none;
+  height: 100%;
+  background: #fff;
+  border-right: 1px solid var(--borda-nav);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: calc(22px + env(safe-area-inset-top)) 14px 22px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.rail-topo { padding: 4px 10px 24px; }
+.rail > button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: none;
+  font-family: var(--fonte-texto);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--texto-secundario);
+  background: transparent;
+  transition: background .12s, color .12s;
+}
+.rail > button:hover { background: #F0F5FB; color: var(--navy); }
+.rail > button.ativa { color: var(--navy); background: var(--azul-claro); }
+.rail svg { width: 22px; height: 22px; display: block; flex: none; }
+.rail-pe {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 10px 0;
+  border-top: 1px solid var(--linha-suave);
+}
+.rail-quem { display: flex; flex-direction: column; min-width: 0; }
+.rail-quem b { font-size: 13.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-quem .note { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Marca e nome lado a lado (Marca.tsx). */
+.assinatura {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--fonte-titulo);
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -.03em;
+  line-height: 1;
+  color: var(--navy);
+}
+.marca { display: block; flex: none; }
+
+/* Botão redondo de criar (nova obra), só no celular: no desktop a ação fica no cabeçalho. */
 .fab {
   position: absolute;
   right: 16px;
-  bottom: calc(74px + env(safe-area-inset-bottom));
-  z-index: 2;
-  width: 50px;
-  height: 50px;
+  bottom: 20px;
+  z-index: 3;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
   background: var(--azul);
   border: none;
@@ -409,36 +709,51 @@ button.li, button.cd { transition: opacity .12s; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 23px;
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(27, 143, 232, .38);
+  transition: transform .12s;
 }
-.fab { transition: transform .12s; }
+.fab svg { width: 26px; height: 26px; }
 .fab:active { transform: scale(.94); }
-
-.ovl {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  background: rgba(0, 0, 0, .35);
-  display: flex;
+@media (min-width: 840px) {
+  .fab { display: none; }
+}
+/* O contrário: ação que só aparece no cabeçalho do desktop. */
+.so-largo { display: none !important; }
+@media (min-width: 840px) {
+  .so-largo { display: flex !important; }
+  .so-estreito { display: none !important; }
 }
 
+/* Folha: sobe de baixo no celular; no desktop vira uma janela no meio da tela. */
+.ovl {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(10, 42, 110, .38);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
 .sheet {
-  margin-top: auto;
   width: 100%;
+  max-width: var(--sheet-max);
+  max-height: calc(100% - 24px - env(safe-area-inset-top));
+  overflow-y: auto;
+  scrollbar-width: none;
   background: #fff;
-  border-top: 1px solid #DCE7F5;
-  border-radius: 22px 22px 0 0;
-  padding: 12px 14px calc(18px + env(safe-area-inset-bottom));
+  border-radius: 24px 24px 0 0;
+  padding: 12px 18px calc(24px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   box-shadow: 0 -14px 34px rgba(10, 42, 110, .14);
+  touch-action: pan-y;
 }
 .sheet-alca {
   width: 42px;
   height: 5px;
+  margin-bottom: 4px;
   border-radius: 3px;
   background: var(--linha-forte);
   align-self: center;
@@ -446,24 +761,36 @@ button.li, button.cd { transition: opacity .12s; }
   cursor: grab;
   flex: none;
 }
-.sheet { touch-action: pan-y; }
-
-.toast {
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: calc(78px + env(safe-area-inset-bottom));
-  z-index: 5;
-  background: var(--navy);
-  color: #fff;
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 13.5px;
-  text-align: center;
+.sheet-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.sheet-titulo b { font-family: var(--fonte-titulo); font-weight: 500; font-size: 18px; letter-spacing: -.015em; }
+.sheet-titulo .note { font-size: 13px; }
+@media (min-width: 840px) {
+  .ovl { align-items: center; padding: 24px; }
+  .sheet { border-radius: 20px; padding-bottom: 24px; box-shadow: 0 24px 60px rgba(10, 42, 110, .22); }
+  .sheet-alca { display: none; }
 }
 
-.marca { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.marca i { display: block; height: 9px; }
+.toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  z-index: 30;
+  width: fit-content;
+  max-width: min(480px, calc(100% - 32px));
+  margin: 0 auto;
+  background: var(--navy);
+  color: #fff;
+  border-radius: 12px;
+  padding: 11px 16px;
+  font-size: 13.5px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(10, 42, 110, .25);
+  pointer-events: none;
+}
+@media (min-width: 840px) {
+  .toast { bottom: 28px; }
+}
 
 .carregando {
   width: 18px;
@@ -504,34 +831,34 @@ button.li, button.cd { transition: opacity .12s; }
 /* A foto do Google entra no mesmo círculo das iniciais. */
 img.av { object-fit: cover; padding: 0; }
 
-/* Sino do cabeçalho: 36 px de área de toque na altura do avatar, com o número por cima.
-   O laranja dá 5,2:1 com o branco, acima do mínimo de leitura. */
+/* Sino do cabeçalho: 40 px de área de toque, com o número por cima. O laranja dá 5,2:1
+   com o branco, acima do mínimo de leitura. */
 .sino {
   position: relative;
-  width: 36px;
-  height: 36px;
-  margin: -4px -2px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: none;
   border: none;
-  border-radius: 50%;
+  border-radius: 12px;
   color: var(--navy);
   cursor: pointer;
   flex: none;
   transition: transform .1s, background .12s;
 }
-.sino:active { transform: scale(.92); background: var(--linha-suave); }
+.sino:hover { background: #EAF1FA; }
+.sino:active { transform: scale(.92); }
 .sino svg { width: 22px; height: 22px; display: block; }
 .sino-n {
   position: absolute;
-  top: 2px;
-  right: 0;
+  top: 3px;
+  right: 3px;
   min-width: 18px;
   height: 18px;
   padding: 0 4px;
-  border: 2px solid #fff;
+  border: 2px solid var(--fundo);
   border-radius: 99px;
   background: #C2410C;
   color: #fff;
@@ -584,62 +911,6 @@ button.ntf:active { opacity: .7; }
 }
 @keyframes letra-sobe { from { opacity: 0; transform: translateY(24px); } }
 
-/* A marca em volume da tela de entrada (MarcaVolume.tsx): quatro caixas de CSS 3D. */
-.marca-volume {
-  width: 150px;
-  height: 112px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  perspective: 320px;
-}
-.marca-volume-giro {
-  position: relative;
-  width: 66px;
-  height: 45px;
-  transform-style: preserve-3d;
-  transform: rotateX(-14deg) rotateY(-18deg);
-  /* Vaivém, não volta completa: de perfil as barras somem, porque são finas. O atraso
-     negativo começa o balanço pelo meio, de frente. */
-  animation: marca-balanco 5.7s ease-in-out -2.85s infinite alternate;
-}
-@keyframes marca-balanco {
-  from { transform: rotateX(-14deg) rotateY(-22deg); }
-  to { transform: rotateX(-14deg) rotateY(22deg); }
-}
-.marca-volume-barra {
-  position: absolute;
-  top: calc(var(--i) * 12px);
-  left: calc(50% - var(--l) / 2);
-  width: var(--l);
-  height: 9px;
-  transform-style: preserve-3d;
-}
-.marca-volume-barra i {
-  position: absolute;
-  display: block;
-  backface-visibility: hidden;
-}
-/* Topo e lados meio pixel maiores que a caixa: onde duas faces se encontram, o
-   antisserrilhado das duas bordas deixava passar um fio do fundo branco. */
-.face-frente { inset: 0; background: var(--frente); transform: translateZ(5.5px); }
-.face-topo { left: 0; right: 0; top: -1.5px; height: 12px; background: var(--topo); transform: rotateX(90deg) translateZ(4.5px); }
-.face-esq, .face-dir { top: 0; height: 9px; width: 12px; left: calc(var(--l) / 2 - 6px); background: var(--lado); }
-.face-esq { transform: rotateY(-90deg) translateZ(calc(var(--l) / 2)); }
-.face-dir { transform: rotateY(90deg) translateZ(calc(var(--l) / 2)); }
-/* Cada barra cai no lugar e aparece, em cascata. A opacidade vai nas faces e não na
-   barra: opacidade na barra achataria a caixa em 2D durante a queda. */
-.revelado .marca-volume-barra {
-  animation: marca-cai .7s cubic-bezier(.33, 1, .68, 1) both;
-  animation-delay: calc(var(--i) * 90ms);
-}
-.revelado .marca-volume-barra i {
-  animation: marca-surge .5s ease-out both;
-  animation-delay: calc(var(--i) * 90ms);
-}
-@keyframes marca-cai { from { transform: translateY(-26px); } }
-@keyframes marca-surge { from { opacity: 0; } }
-
 /* Fila de escolhas que passa da largura da tela: rola de lado sem barra à vista. */
 .tiras {
   display: flex;
@@ -654,7 +925,7 @@ button.ntf:active { opacity: .7; }
 .tiras .chip { flex: none; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Números: mono com dígitos de largura fixa, para os valores alinharem em coluna. */
-.num {
+.num, .scr .num, .sheet .num {
   font-family: var(--fonte-dados);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
@@ -700,8 +971,5 @@ button.ntf:active { opacity: .7; }
 
 @media (prefers-reduced-motion: reduce) {
   .esq::after,
-  .marca-volume-giro,
-  .revelado .marca-volume-barra,
-  .revelado .marca-volume-barra i,
   .revelado .nome-marca [aria-hidden] > span { animation: none; }
 }

@@ -53,12 +53,14 @@
         transform: scale(1.04);
         pointer-events: none;
       }
-      #abertura svg { display: block; width: 124px; height: 86px; overflow: visible; }
-      #abertura .ab { animation: ab-sobe .5s cubic-bezier(.22, .8, .3, 1) both; }
-      #abertura .ab:nth-child(2) { animation-delay: .07s; }
-      #abertura .ab:nth-child(3) { animation-delay: .14s; }
-      #abertura .ab:nth-child(4) { animation-delay: .21s; }
-      #abertura .ab:nth-child(5) { animation-delay: .3s; }
+      /* A marca (Marco) e o nome. O pórtico se desenha, a laje sobe, o nome aparece. */
+      #abertura svg { display: block; overflow: visible; }
+      #abertura .ab-marca { width: 88px; height: 78px; }
+      #abertura .ab-nome { width: 117px; height: 26px; }
+      #abertura .ab-portico { stroke-dasharray: 84; animation: ab-traca .55s cubic-bezier(.22, .8, .3, 1) both; }
+      #abertura .ab-laje { animation: ab-sobe .5s .18s cubic-bezier(.22, .8, .3, 1) both; }
+      #abertura .ab-nome { animation: ab-sobe .5s .3s cubic-bezier(.22, .8, .3, 1) both; }
+      @keyframes ab-traca { from { stroke-dashoffset: 84; } to { stroke-dashoffset: 0; } }
       @keyframes ab-sobe { from { opacity: 0; transform: translateY(8px); } }
       /* Só aparece se o app demorar: em canteiro de obra, sinal fraco é o normal, e uma
          abertura parada sem explicação parece app travado. */
@@ -74,23 +76,21 @@
       }
       @keyframes ab-aparece { from { opacity: 0; } }
       @media (prefers-reduced-motion: reduce) {
-        #abertura .ab { animation: none; }
+        #abertura .ab-portico, #abertura .ab-laje, #abertura .ab-nome { animation: none; }
         #abertura { transition-duration: .01s; }
       }
     </style>
   </head>
   <body>
     <div id="abertura" aria-hidden="true">
-      <!-- A marca e o nome em vetor: o "ALICERCE" são os contornos da Instrument Sans 500,
+      <!-- A marca e o nome em vetor: "alicerce" são os contornos da Instrument Sans 500,
            então aparece com a letra certa sem esperar a fonte baixar. -->
-      <svg viewBox="0 0 124 86" xmlns="http://www.w3.org/2000/svg">
-        <rect class="ab" x="39" y="0" width="46" height="10" fill="#6CB4F0" />
-        <rect class="ab" x="29" y="14" width="66" height="10" fill="#FFFFFF" />
-        <rect class="ab" x="33" y="28" width="58" height="10" fill="#6CB4F0" />
-        <rect class="ab" x="26" y="42" width="72" height="10" fill="#1B8FE8" />
-        <g class="ab">
-          <path fill="#FFFFFF" transform="translate(-0.39 85.33) scale(0.021)" d="M32 0 303 -720H395L136 0ZM589 0 330 -720H427L699 0ZM169 -287H555V-199H169ZM945 0V-720H1051V0ZM997 0V-87H1413V0ZM1674 0V-720H1780V0ZM2385 10Q2310 10 2246 -18Q2182 -45 2136 -94Q2089 -144 2063 -212Q2037 -280 2037 -361Q2037 -442 2062 -510Q2088 -577 2134 -626Q2181 -676 2245 -703Q2309 -730 2384 -730Q2468 -730 2535 -696Q2602 -663 2644 -602Q2687 -541 2697 -460H2593Q2580 -545 2524 -592Q2469 -640 2385 -640Q2314 -640 2260 -606Q2205 -571 2175 -508Q2145 -446 2145 -361Q2145 -277 2176 -214Q2206 -150 2260 -115Q2314 -80 2385 -80Q2469 -80 2526 -128Q2582 -175 2594 -260H2699Q2688 -178 2645 -118Q2602 -57 2536 -24Q2469 10 2385 10ZM2952 0V-720H3058V0ZM3004 0V-87H3452V0ZM3004 -329V-416H3416V-329ZM3004 -633V-720H3443V-633ZM3725 0V-720H4009Q4087 -720 4142 -694Q4197 -669 4227 -624Q4257 -578 4257 -516Q4257 -454 4227 -408Q4197 -362 4142 -336Q4087 -310 4009 -310H3805V-396H4006Q4078 -396 4116 -428Q4153 -459 4153 -515Q4153 -571 4116 -602Q4079 -633 4006 -633H3831V0ZM4141 0 3790 -363H3919L4293 0ZM4843 10Q4768 10 4704 -18Q4640 -45 4594 -94Q4547 -144 4521 -212Q4495 -280 4495 -361Q4495 -442 4520 -510Q4546 -577 4592 -626Q4639 -676 4703 -703Q4767 -730 4842 -730Q4926 -730 4993 -696Q5060 -663 5102 -602Q5145 -541 5155 -460H5051Q5038 -545 4982 -592Q4927 -640 4843 -640Q4772 -640 4718 -606Q4663 -571 4633 -508Q4603 -446 4603 -361Q4603 -277 4634 -214Q4664 -150 4718 -115Q4772 -80 4843 -80Q4927 -80 4984 -128Q5040 -175 5052 -260H5157Q5146 -178 5103 -118Q5060 -57 4994 -24Q4927 10 4843 10ZM5410 0V-720H5516V0ZM5462 0V-87H5910V0ZM5462 -329V-416H5874V-329ZM5462 -633V-720H5901V-633Z" />
-        </g>
+      <svg class="ab-marca" viewBox="0 0 72 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path class="ab-portico" d="M10 40 L36 8 L62 40" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+        <rect class="ab-laje" x="4" y="52" width="64" height="12" rx="4" fill="#1B8FE8" />
+      </svg>
+      <svg class="ab-nome" viewBox="0 -740 3439 752" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#FFFFFF" d="M389 0Q384 -19 382 -42Q381 -65 381 -98H376V-341Q376 -390 352 -414Q327 -439 274 -439Q223 -439 192 -419Q162 -399 157 -362H58Q65 -434 123 -477Q181 -520 278 -520Q378 -520 428 -474Q478 -427 478 -337V-98Q478 -75 481 -51Q484 -27 490 0ZM213 10Q135 10 89 -28Q43 -67 43 -133Q43 -201 92 -240Q140 -280 231 -294L399 -321V-248L247 -224Q196 -216 170 -197Q145 -178 145 -142Q145 -107 168 -90Q192 -72 237 -72Q297 -72 336 -101Q376 -130 376 -174L389 -100Q371 -47 325 -18Q279 10 213 10ZM589 0V-720H693V0ZM809 0V-510H913V0ZM804 -610V-727H919V-610ZM1241 10Q1168 10 1111 -24Q1054 -59 1022 -119Q989 -179 989 -256Q989 -333 1022 -392Q1054 -452 1111 -486Q1168 -520 1240 -520Q1301 -520 1349 -497Q1397 -474 1428 -433Q1459 -392 1468 -336H1370Q1360 -381 1326 -408Q1293 -435 1242 -435Q1198 -435 1165 -413Q1132 -391 1114 -351Q1096 -311 1096 -256Q1096 -202 1114 -161Q1132 -120 1165 -98Q1198 -75 1243 -75Q1292 -75 1326 -102Q1361 -128 1371 -173H1469Q1459 -118 1428 -77Q1396 -36 1348 -13Q1300 10 1241 10ZM1762 10Q1685 10 1626 -24Q1568 -58 1535 -118Q1502 -178 1502 -256Q1502 -335 1534 -394Q1567 -454 1626 -487Q1685 -520 1761 -520Q1835 -520 1890 -488Q1944 -457 1974 -401Q2003 -345 2003 -268Q2003 -256 2002 -246Q2002 -235 2000 -224H1572V-302H1927L1901 -271Q1901 -353 1864 -396Q1827 -439 1761 -439Q1690 -439 1648 -390Q1607 -342 1607 -256Q1607 -169 1648 -120Q1690 -71 1764 -71Q1809 -71 1842 -90Q1875 -108 1891 -144H1989Q1964 -72 1904 -31Q1845 10 1762 10ZM2079 0V-510H2178V-383H2183V0ZM2183 -266 2170 -387Q2188 -452 2232 -486Q2276 -520 2337 -520Q2360 -520 2369 -516V-418Q2364 -420 2355 -420Q2346 -421 2333 -421Q2258 -421 2220 -382Q2183 -343 2183 -266ZM2644 10Q2571 10 2514 -24Q2457 -59 2424 -119Q2392 -179 2392 -256Q2392 -333 2424 -392Q2457 -452 2514 -486Q2571 -520 2643 -520Q2704 -520 2752 -497Q2800 -474 2831 -433Q2862 -392 2871 -336H2773Q2763 -381 2730 -408Q2696 -435 2645 -435Q2601 -435 2568 -413Q2535 -391 2517 -351Q2499 -311 2499 -256Q2499 -202 2517 -161Q2535 -120 2568 -98Q2601 -75 2646 -75Q2695 -75 2730 -102Q2764 -128 2774 -173H2872Q2862 -118 2830 -77Q2799 -36 2751 -13Q2703 10 2644 10ZM3165 10Q3088 10 3030 -24Q2971 -58 2938 -118Q2905 -178 2905 -256Q2905 -335 2938 -394Q2970 -454 3029 -487Q3088 -520 3164 -520Q3238 -520 3292 -488Q3347 -457 3376 -401Q3406 -345 3406 -268Q3406 -256 3406 -246Q3405 -235 3403 -224H2975V-302H3330L3304 -271Q3304 -353 3267 -396Q3230 -439 3164 -439Q3093 -439 3052 -390Q3010 -342 3010 -256Q3010 -169 3052 -120Q3093 -71 3167 -71Q3212 -71 3245 -90Q3278 -108 3294 -144H3392Q3367 -72 3308 -31Q3248 10 3165 10Z" />
       </svg>
       <p>Sinal fraco? O Alicerce continua carregando…</p>
     </div>

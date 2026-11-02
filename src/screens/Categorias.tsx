@@ -11,7 +11,7 @@ import { Carregando, Tela } from '../components/Tela'
 import { Sheet } from '../components/Sheet'
 import type { Categoria } from '../lib/types'
 
-const CORES = ['#1B8FE8', '#0A2A6E', '#8CA3BF', '#B9CFE8', '#6CB4F0']
+const CORES = ['var(--azul)', 'var(--navy)', '#8CA3BF', 'var(--placeholder)', '#6CB4F0']
 
 export function Categorias() {
   const { obraId = '' } = useParams()
@@ -36,7 +36,7 @@ export function Categorias() {
         {carregando && <Carregando />}
         {erro && !carregando && (
           <>
-            <div className="ann">Não deu para abrir as categorias: {erro}</div>
+            <div className="ann ann-alerta">Não deu para abrir as categorias: {erro}</div>
             <button className="bt" onClick={() => recarregar()}>Tentar de novo</button>
           </>
         )}
@@ -83,39 +83,53 @@ export function Categorias() {
   return (
     <>
       <Tela titulo="Categorias" voltar={`/obra/${obraId}`}>
-        <div className="note">Valem para todas as obras. Os dois usuários usam a mesma lista.</div>
+        <div className="note" style={{ fontSize: 13, lineHeight: 1.4, padding: '0 4px' }}>
+          Valem para todas as obras. Os dois usuários usam a mesma lista.
+        </div>
 
-        <div className="row" style={{ gap: 7 }}>
+        <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
           <input
             className="inp"
+            aria-label="Nova categoria"
             placeholder="Nova categoria"
             value={nova}
             onChange={e => setNova(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && adicionar()}
-            style={{ flex: 1 }}
+            style={{ flex: 1, minWidth: 0 }}
           />
-          <button className="bt bta" style={{ padding: '7px 14px' }} onClick={adicionar}>+</button>
+          <button className="bt bta" aria-label="Adicionar categoria" onClick={adicionar} style={{ width: 48, padding: 0 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
         </div>
 
-        {categorias.map((c, i) => {
-          const gasto = gastoPorCategoria.get(c.id) ?? 0
-          return (
-            <m.button
-              key={c.id}
-              className="li"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...CURVA, delay: Math.min(i, 8) * 0.035 }}
-              onClick={() => setSelecionada(c)}
-            >
-              <div className="row" style={{ gap: 7 }}>
-                <span style={{ width: 13, height: 13, borderRadius: 3, background: CORES[i % CORES.length], display: 'block' }} />
-                <b style={{ fontSize: 14 }}>{c.nome}</b>
-              </div>
-              <span className="note">{gasto ? fmt(gasto) : 'sem uso'}</span>
-            </m.button>
-          )
-        })}
+        {categorias.length > 0 && (
+          <div className="lista">
+            {categorias.map((c, i) => {
+              const gasto = gastoPorCategoria.get(c.id) ?? 0
+              return (
+                <m.button
+                  key={c.id}
+                  className="linha"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ ...CURVA, delay: Math.min(i, 8) * 0.035 }}
+                  style={{ padding: '13px 0' }}
+                  onClick={() => setSelecionada(c)}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <span style={{ width: 12, height: 12, borderRadius: 4, background: CORES[i % CORES.length], display: 'block', flex: 'none' }} />
+                    <b style={{ fontSize: 14.5 }}>{c.nome}</b>
+                  </span>
+                  <span className={gasto ? 'num' : undefined} style={{ fontSize: 13, color: 'var(--texto-secundario)', flex: 'none' }}>
+                    {gasto ? fmt(gasto) : 'sem uso'}
+                  </span>
+                </m.button>
+              )
+            })}
+          </div>
+        )}
 
         <div className="ann">O agente sugere a categoria pelo fornecedor, mas quem manda é a sua lista.</div>
       </Tela>
@@ -123,9 +137,9 @@ export function Categorias() {
       <AnimatePresence>
         {selecionada && (
           <Sheet aoFechar={() => setSelecionada(null)}>
-            <div className="row">
-              <b style={{ fontSize: 17 }}>{selecionada.nome}</b>
-              <span className="note">{usado ? fmt(usado) : 'sem uso'}</span>
+            <div className="sheet-titulo">
+              <b>{selecionada.nome}</b>
+              <span className={usado ? 'note num' : 'note'}>{usado ? fmt(usado) : 'sem uso'}</span>
             </div>
 
             {usado > 0 ? (
@@ -141,9 +155,9 @@ export function Categorias() {
               </button>
             )}
 
-            <div className="note" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setSelecionada(null)}>
+            <button className="bt-texto" onClick={() => setSelecionada(null)}>
               fechar
-            </div>
+            </button>
           </Sheet>
         )}
       </AnimatePresence>

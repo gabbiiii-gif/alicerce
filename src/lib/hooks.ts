@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 
 export function useAsync<T>(carregar: () => Promise<T>, deps: unknown[]) {
   const [dados, setDados] = useState<T | null>(null)
@@ -40,4 +40,18 @@ export function useAsync<T>(carregar: () => Promise<T>, deps: unknown[]) {
   }, [recarregar])
 
   return { dados, carregando, erro, recarregar }
+}
+
+const LARGO = '(min-width: 840px)'
+
+function assinarLargo(ouvinte: () => void) {
+  const mq = window.matchMedia(LARGO)
+  mq.addEventListener('change', ouvinte)
+  return () => mq.removeEventListener('change', ouvinte)
+}
+
+// Desktop (840 px ou mais): menu lateral no lugar das abas e folhas no meio da tela.
+// O mesmo corte do CSS, para o JavaScript decidir o que o CSS sozinho não decide.
+export function useLargo() {
+  return useSyncExternalStore(assinarLargo, () => window.matchMedia(LARGO).matches, () => false)
 }

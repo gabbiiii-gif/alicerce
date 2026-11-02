@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { carregarObra, listarCategorias, registrarSaida } from '../data/api'
 import { useAsync } from '../lib/hooks'
@@ -8,11 +8,14 @@ import { brParaISO, hojeISO, isoParaBR } from '../lib/format'
 import { Carregando, Tela } from '../components/Tela'
 import { MoedaInput } from '../components/MoedaInput'
 
+// Valor e data são dado: em mono, como no resto do app.
+const MONO = { fontFamily: 'var(--fonte-dados)', letterSpacing: '-.02em' }
+// O `.chip` do CSS vem depois do `.bta` e repõe o fundo branco; o azul vai à mão.
+const AZUL = { background: 'var(--azul-700)', borderColor: 'var(--azul-700)' }
+
 // A saída sem nota: mesma ficha do Revisar, sem agente no meio. Serve para a compra que
 // não tem comprovante para fotografar e para quem prefere digitar a esperar a leitura.
 export function Lancar() {
-  // Liga cada rótulo ao seu campo: tocar no rótulo foca o campo, e o leitor de tela diz o nome.
-  const campo = useId()
   const { obraId = '' } = useParams()
   const navigate = useNavigate()
   const { userId } = useUsuario()
@@ -37,7 +40,7 @@ export function Lancar() {
         {carregando && <Carregando />}
         {erro && !carregando && (
           <>
-            <div className="ann">Não deu para abrir a obra: {erro}</div>
+            <div className="ann ann-alerta">Não deu para abrir a obra: {erro}</div>
             <button className="bt" onClick={() => recarregar()}>Tentar de novo</button>
           </>
         )}
@@ -76,49 +79,65 @@ export function Lancar() {
     <Tela titulo="Lançar na mão" voltar={`/obra/${obraId}/enviar`}>
       <div className="row">
         <span className="chip">sem comprovante</span>
-        <span className="note">{obra.nome}</span>
+        <span className="note" style={{ fontSize: 13 }}>{obra.nome}</span>
       </div>
 
-      <label className="note" htmlFor={`${campo}-fornecedor`}>Fornecedor</label>
-      <input id={`${campo}-fornecedor`} className="inp" value={fornecedor} onChange={e => setFornecedor(e.target.value)} autoFocus />
+      {/* O rótulo envolve o campo: tocar nele foca o campo, e o leitor de tela diz o nome. */}
+      <label className="rotulo">
+        Fornecedor
+        <input
+          className="inp"
+          placeholder="De quem é a compra?"
+          value={fornecedor}
+          onChange={e => setFornecedor(e.target.value)}
+          autoFocus
+        />
+      </label>
 
-      <label className="note" htmlFor={`${campo}-descricao`}>Descrição</label>
-      <input
-        id={`${campo}-descricao`}
-        className="inp"
-        placeholder="O que foi comprado (opcional)"
-        value={descricao}
-        onChange={e => setDescricao(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && confirmar()}
-      />
+      <label className="rotulo">
+        Descrição
+        <input
+          className="inp"
+          placeholder="O que foi comprado (opcional)"
+          value={descricao}
+          onChange={e => setDescricao(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && confirmar()}
+        />
+      </label>
 
-      <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <label className="note" htmlFor={`${campo}-valor`}>Valor</label>
-          <MoedaInput id={`${campo}-valor`} valor={valor} aoMudar={setValor} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label className="note" htmlFor={`${campo}-data`}>Data</label>
-          <input id={`${campo}-data`} className="inp" inputMode="numeric" placeholder="dd/mm/aaaa" value={data} onChange={e => setData(e.target.value)} />
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, flex: 'none' }}>
+        <label className="rotulo" style={{ minWidth: 0 }}>
+          Valor
+          <MoedaInput valor={valor} aoMudar={setValor} placeholder="R$ 0,00" style={MONO} />
+        </label>
+        <label className="rotulo" style={{ minWidth: 0 }}>
+          Data
+          <input className="inp" inputMode="numeric" placeholder="dd/mm/aaaa" value={data} onChange={e => setData(e.target.value)} style={MONO} />
+        </label>
       </div>
 
-      <div className="note">Categoria</div>
-      <div className="row" style={{ flexWrap: 'wrap', gap: 6, justifyContent: 'flex-start' }}>
-        {categorias.map(c => (
-          <button
-            key={c.id}
-            className={categoriaId === c.id ? 'chip bta' : 'chip'}
-            style={categoriaId === c.id ? { background: '#2272CC', borderColor: '#2272CC' } : undefined}
-            onClick={() => setCategoriaId(c.id)}
-          >
-            {c.nome}
-          </button>
-        ))}
+      <span className="note">Categoria</span>
+      <div role="group" aria-label="Categoria" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, flex: 'none' }}>
+        {categorias.map(c => {
+          const escolhida = categoriaId === c.id
+          return (
+            <button
+              key={c.id}
+              className={escolhida ? 'chip bta' : 'chip'}
+              style={escolhida ? AZUL : undefined}
+              aria-pressed={escolhida}
+              onClick={() => setCategoriaId(c.id)}
+            >
+              {c.nome}
+            </button>
+          )
+        })}
       </div>
 
-      <div className="row" style={{ marginTop: 'auto', gap: 8, paddingTop: 10 }}>
-        <button className="bt" style={{ flex: 1 }} onClick={() => navigate(`/obra/${obraId}/enviar`)}>Cancelar</button>
+      <div className="par" style={{ marginTop: 'auto', paddingTop: 12 }}>
+        <button className="bt" style={{ minHeight: 50, borderRadius: 14 }} onClick={() => navigate(`/obra/${obraId}/enviar`)}>
+          Cancelar
+        </button>
         <button className="bt btp" style={{ flex: 2 }} onClick={confirmar} disabled={salvando}>
           {salvando ? 'lançando…' : 'Lançar saída'}
         </button>

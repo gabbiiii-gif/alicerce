@@ -1,10 +1,12 @@
 import { m } from 'motion/react'
 import { CURVA } from '../lib/animacao'
 
-export function Barra({ pct, cor = '#1B8FE8' }: { pct: number; cor?: string }) {
+// `altura` só para quem foge dos 8 px da trilha: o cartão de obra da lista usa 6, como no
+// desenho da v2.
+export function Barra({ pct, cor = 'var(--azul)', altura }: { pct: number; cor?: string; altura?: number }) {
   const preenchido = Math.max(0, Math.min(100, pct))
   return (
-    <div className="bar">
+    <div className="bar" style={altura ? { height: altura } : undefined}>
       {/* Cresce até a marca em vez de já nascer cheia — e reanima quando o valor muda,
           que é o que dá a sensação de a obra ter andado depois de uma entrada nova.
           O resto da largura é o fundo da própria trilha.
