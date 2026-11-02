@@ -22,7 +22,10 @@ function primeiraPintura(): Plugin {
             .replace(/<link rel="stylesheet"[^>]*?href="\/(assets\/[^"]+\.css)"[^>]*>/g, (tag, arquivo: string) => {
               const css = bundle[arquivo]
               if (!css || css.type !== 'asset') return tag
-              delete bundle[arquivo]
+              // O arquivo continua na pasta de saída, de propósito. As telas carregadas sob
+              // demanda listam este CSS entre as dependências e o pedem ao abrir; sem o
+              // arquivo, o pedido dava 404, o carregamento da tela falhava e o app
+              // recarregava sozinho — na tela, uma área em branco por vários segundos.
               const texto = typeof css.source === 'string' ? css.source : new TextDecoder().decode(css.source)
               return `<style>${texto}</style>`
             })
